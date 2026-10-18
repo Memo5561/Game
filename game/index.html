@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#3B2A9E">
+<meta name="color-scheme" content="dark light">
+<meta name="format-detection" content="telephone=no">
+<title>Blocko</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/app.css">
+<script>
+  /* WebView-too-old fallback (classic ES5 script, see docs/ARCHITECTURE.md §4.15): if the module
+     app has not booted within 8 s (no ES-module support or a syntax error on an outdated
+     "Android System WebView"), show a short multilingual hint instead of a blank screen. */
+  (function () {
+    var MESSAGES = {
+      en: 'Please update “Android System WebView” in the Play Store, then restart Blocko.',
+      de: 'Bitte aktualisiere „Android System WebView“ im Play Store und starte Blocko neu.',
+      es: 'Actualiza «Android System WebView» en Play Store y vuelve a abrir Blocko.',
+      fr: 'Mettez à jour « Android System WebView » dans le Play Store, puis relancez Blocko.',
+      it: 'Aggiorna “Android System WebView” dal Play Store e riavvia Blocko.',
+      pt: 'Atualize o “Android System WebView” na Play Store e reinicie o Blocko.',
+      tr: 'Lütfen Play Store’dan “Android System WebView” uygulamasını güncelleyip Blocko’yu yeniden başlatın.',
+      ru: 'Обновите «Android System WebView» в Play Маркете и перезапустите Blocko.'
+    };
+    setTimeout(function () {
+      if (window.__blockoBooted) return;
+      var lang = String(navigator.language || 'en').slice(0, 2).toLowerCase();
+      var box = document.createElement('div');
+      box.id = 'webview-fallback';
+      box.setAttribute('role', 'alert');
+      box.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483646;display:-webkit-box;display:flex;' +
+        '-webkit-box-align:center;align-items:center;-webkit-box-pack:center;justify-content:center;padding:32px;' +
+        'background:#1B1446;color:#fff;font:700 18px/1.45 sans-serif;text-align:center';
+      box.appendChild(document.createTextNode(MESSAGES[lang] || MESSAGES.en));
+      document.body.appendChild(box);
+    }, 8000);
+  })();
+</script>
+</head>
+<body>
+  <!-- Screens, modals, toasts and the effects layer are filled by js/app/app.js. -->
+  <main id="app" aria-live="off"></main>
+  <div id="modals"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="fx" aria-hidden="true"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
