@@ -39,6 +39,12 @@ for (const f of ['docs/site/privacy-policy.html', 'docs/site/impressum.html']) {
     errors.push(`${f} still contains placeholders – fill in your data before publishing it`);
   }
 }
+const appAds = path.join(ROOT, 'docs/site/app-ads.txt');
+if (!fs.existsSync(appAds)) {
+  errors.push('docs/site/app-ads.txt is missing');
+} else if (/pub-X{4}/i.test(fs.readFileSync(appAds, 'utf8'))) {
+  errors.push('docs/site/app-ads.txt still contains the placeholder publisher id (pub-XXXX…) – use your AdMob publisher id');
+}
 if (!/^https:\/\//.test(CONFIG.PRIVACY_POLICY_URL)) errors.push('CONFIG.PRIVACY_POLICY_URL must be an https URL');
 
 // --- android ----------------------------------------------------------------
