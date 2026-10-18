@@ -1,5 +1,7 @@
 # Blocko – Block-Puzzle für Android
 
+> **Start hier:** [docs/DEINE_CHECKLISTE.md](docs/DEINE_CHECKLISTE.md) – was du noch selbst tun musst (Konten, Impressum, Werbe-IDs) und was nicht getestet werden konnte.
+
 **Blocko** ist ein 8×8-Block-Puzzle (das Genre von „Blöcke in Reihen legen und abräumen“): Du ziehst
 Blöcke aufs Spielfeld, füllst Reihen und Spalten und räumst sie mit Kombos ab. Das Spiel ist eine
 HTML5-App (reines JavaScript, Canvas, ohne Build-Schritt, komplett offline). Sie läuft in einer
