@@ -479,7 +479,8 @@ function canvasOrigin() {
 window.__sandbox = {
   isReady: false,
   renderer,
-  drag,
+  /** the DragController (`drag` below is the hover helper of the debug API) */
+  dragController: drag,
   get session() { return state.session; },
   get log() { return state.log; },
   themes: THEME_IDS.slice(),
