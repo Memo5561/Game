@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "serve": "node tools/serve.mjs",
-    "test": "node --test tests/unit/",
+    "test": "node --test",
     "e2e": "node tests/e2e/run.mjs",
     "sim": "node tools/simulate.mjs",
     "assets": "node tools/store-assets.mjs",
