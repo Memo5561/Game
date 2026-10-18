@@ -1712,10 +1712,10 @@ export class Renderer {
     const pulse = 0.5 + 0.5 * Math.sin(T * 0.009);
     const img = sp.block[piece.color];
     const cells = shape.cells;
-    ctx.globalAlpha = 0.4 + 0.25 * pulse;
+    ctx.globalAlpha = 0.58 + 0.22 * pulse;
     for (let k = 0; k < cells.length; k++) ctx.drawImage(img, bx + (H.c + cells[k][1]) * cell, by + (H.r + cells[k][0]) * cell, cell, cell);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.35 * pulse;
+    ctx.globalAlpha = 0.3 * pulse * (this.theme.fxGlow ?? 1);
     for (let k = 0; k < cells.length; k++) ctx.drawImage(sp.flash, bx + (H.c + cells[k][1]) * cell, by + (H.r + cells[k][0]) * cell, cell, cell);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
