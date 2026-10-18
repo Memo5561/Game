@@ -55,7 +55,7 @@ const KEYS = [0, 5, -5]; // C, F, G
 const CHORD_BARS = [1, 2, 3, 4];
 const CHORD_BAR_WEIGHTS = [0.12, 0.62, 0.08, 0.18];
 /** Pluck densities (probability scale per eighth note); index drifts by ±1 per chord. */
-const DENSITIES = [0.15, 0.25, 0.35, 0.45, 0.55];
+const DENSITIES = [0.2, 0.3, 0.4, 0.5, 0.6];
 /** Rhythmic accent weights for the 8 eighths of a bar. */
 const ACCENT = [1, 0.3, 0.65, 0.4, 0.85, 0.3, 0.6, 0.45];
 /** Melody random walk: interval choices (pentatonic steps) and their weights. */
@@ -108,7 +108,8 @@ export class MusicPlanner {
     this.barBase = 0;
     this.barMode = 'fresh';
     this.motifBase = 0;
-    this.fillBar = false;
+    this.motifTwist = 0;
+    this.fill = null; // ascending fill notes for the current bar, or null
   }
 
   /** Appends all events with start time < `until` to `out` (in time order) and returns it. */
@@ -230,37 +231,54 @@ export class MusicPlanner {
 
   _startBar() {
     const r = this.random;
-    // Remember the previous bar as a motif if it had a few notes.
-    if (this.barMode === 'fresh' && this.barNotes.length >= 2) this.motif = this.barNotes;
+    // Remember the previous fresh bar as a motif if it has a real contour (≥ 3 notes, ≥ 2 pitches).
+    const prev = this.barNotes;
+    if (this.barMode === 'fresh' && prev.length >= 3 && prev.some((n) => n.delta !== prev[0].delta)) {
+      this.motif = prev;
+    }
+    const replayedLastBar = this.barMode === 'motif';
     this.barNotes = [];
     const lastBarOfChord = this.chordStepsLeft <= STEPS_PER_BAR;
-    this.fillBar = lastBarOfChord && !this.rest && this.density >= 0.22 && r() < 0.18;
-    if (this.rest) this.barMode = 'rest';
-    else if (this.motif && r() < 0.35) {
+    this.fill = lastBarOfChord && !this.rest && this.density >= 0.25 && r() < 0.18 ? this._fillNotes() : null;
+    if (this.rest) {
+      this.barMode = 'rest';
+    } else if (this.motif && !replayedLastBar && r() < 0.35) {
+      // Re-use the motif (never twice in a row), moved onto a chord tone, sometimes with a twist.
       this.barMode = 'motif';
-      this.motifBase = this._nearestChordTone(this.melody);
-    } else this.barMode = 'fresh';
+      this.motifBase = this._motifBase();
+      this.motifTwist = r() < 0.3 ? (r() < 0.5 ? -1 : 1) : 0;
+    } else {
+      this.barMode = 'fresh';
+    }
   }
 
   _pluckStep(out, pos) {
     if (this.barMode === 'rest') return;
     const r = this.random;
     const root = this._melodyRoot();
-    if (this.fillBar && pos >= 4) {
-      // Sparkle fill: a soft ascending sixteenth-note arpeggio on chord tones.
+    if (this.fill && pos >= 4) {
+      // Sparkle fill: a soft, strictly ascending sixteenth-note run on chord tones that ends on
+      // the bar line, leading into the next chord.
+      const offset = 8 - this.fill.length;
       for (let k = 0; k < 2; k++) {
-        const idx = this._nearestChordTone(Math.min(MELODY_STEPS + 1, 3 + (pos - 4) * 2 + k));
+        const j = (pos - 4) * 2 + k - offset;
+        if (j < 0) continue;
+        const idx = this.fill[j];
+        this.melody = clampIndex(idx);
         out.push({
-          type: 'pluck', time: this.time + k * EIGHTH / 2, midi: pentaNote(root, idx),
-          vel: 0.3 + 0.05 * (pos - 4), pan: (k ? 0.35 : -0.35),
+          type: 'pluck', time: this.time + (k * EIGHTH) / 2, midi: pentaNote(root, idx),
+          vel: 0.3 + 0.03 * j, pan: k ? 0.35 : -0.35,
         });
       }
       return;
     }
     if (this.barMode === 'motif') {
-      for (const n of this.motif) {
+      const motif = this.motif;
+      for (let i = 0; i < motif.length; i++) {
+        const n = motif[i];
         if (n.pos !== pos) continue;
-        const idx = clampIndex(this.motifBase + n.delta);
+        const twist = i === motif.length - 1 ? this.motifTwist : 0;
+        const idx = clampIndex(this.motifBase + n.delta + twist);
         this.melody = idx;
         out.push({ type: 'pluck', time: this.time, midi: pentaNote(root, idx), vel: n.vel, pan: r() * 0.8 - 0.4 });
       }
@@ -278,15 +296,45 @@ export class MusicPlanner {
     out.push({ type: 'pluck', time: this.time, midi: pentaNote(root, idx), vel, pan: r() * 0.8 - 0.4 });
   }
 
-  /** Nearest melody index whose pitch class belongs to the current chord (incl. its root). */
-  _nearestChordTone(idx) {
+  /** Start index for a motif replay: a chord tone near the melody such that the whole motif fits. */
+  _motifBase() {
+    let lo = 0;
+    let hi = MELODY_STEPS - 1;
+    for (const n of this.motif) {
+      lo = Math.max(lo, -n.delta);
+      hi = Math.min(hi, MELODY_STEPS - 1 - n.delta);
+    }
+    if (lo > hi) return clampIndex(this.melody);
+    const target = Math.min(hi, Math.max(lo, this.melody));
+    for (let d = 0; d <= hi - lo; d++) {
+      for (const cand of d ? [target - d, target + d] : [target]) {
+        if (cand >= lo && cand <= hi && this._isChordTone(cand)) return cand;
+      }
+    }
+    return target;
+  }
+
+  /** Ascending chord-tone indices from a little below the melody (4–8 notes), or null. */
+  _fillNotes() {
+    const notes = [];
+    for (let i = Math.max(0, this.melody - 3); i <= MELODY_STEPS + 1 && notes.length < 8; i++) {
+      if (this._isChordTone(i)) notes.push(i);
+    }
+    return notes.length >= 4 ? notes : null;
+  }
+
+  /** Whether melody index `idx` is a tone of the current chord (incl. its root). */
+  _isChordTone(idx) {
     const chord = CHORDS[Math.max(0, this.chord)];
-    const root = this._melodyRoot();
+    const pc = mod12(pentaNote(this._melodyRoot(), idx) - this.key);
+    return pc === chord.root || chord.tones.some((t) => mod12(t) === pc);
+  }
+
+  /** Nearest melody index whose pitch class belongs to the current chord. */
+  _nearestChordTone(idx) {
     for (let d = 0; d <= 3; d++) {
       for (const cand of d ? [idx - d, idx + d] : [idx]) {
-        if (cand < 0 || cand > MELODY_STEPS + 1) continue;
-        const pc = mod12(pentaNote(root, cand) - this.key);
-        if (pc === chord.root || chord.tones.some((t) => mod12(t) === pc)) return cand;
+        if (cand >= 0 && cand <= MELODY_STEPS - 1 && this._isChordTone(cand)) return cand;
       }
     }
     return clampIndex(idx);
