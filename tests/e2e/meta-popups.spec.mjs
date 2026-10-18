@@ -52,7 +52,7 @@ export default async function metaPopupsSpec() {
     s = await state(page);
     assert(s.modals.join() === 'levelUp', `level-up celebrated on arrival at home (${s.modals})`);
     const body = await text(page, '[data-modal="levelUp"]');
-    assert(/Level up!/.test(body) && /level 3/.test(body) && /\+100/.test(body) && /Neon/.test(body), `level-up content (${body})`);
+    assert(/Level up!/.test(body) && /level 3/.test(body) && new RegExp(`\\+${CONFIG.ECONOMY.LEVEL_UP_COINS}`).test(body) && /Neon/.test(body), `level-up content (${body})`);
     assert(await ev(page, () => document.querySelector('[data-modal="levelUp"] canvas').width > 0), 'theme preview painted');
     await page.waitForTimeout(400);
     await shotB(page, 'levelUp-phone');
