@@ -175,6 +175,51 @@ test('the score never influences the dealt tray', () => {
   }
 });
 
+test('the rng is consumed in a fixed order, whatever the phase', () => {
+  const states = [{ trayIndex: 0 }, { trayIndex: 30 }, { trayIndex: 30, mercyTrays: 1 }].map((ctx) => {
+    const gen = new PieceGenerator({ rng: new RNG(123), mode: 'classic' });
+    gen.nextTray(new Board(), { experience: 10, ...ctx });
+    return gen.rng.getState();
+  });
+  assert.equal(new Set(states).size, 1, 'early, normal and mercy draw the same number of values');
+});
+
+test('raw (unfiltered) trays: RAW_P_MAX for classic, RAW_P_MAX_LEVELS for journey/daily', () => {
+  // Crowded board where most random trays are unsolvable.
+  const board = boardFrom(['##.##.##', '#.##.##.', '.##.##.#', '##.##.##', '#.##.##.', '.##.##.#', '##.##.##', '........']);
+  const deal = (mode, overrides, seed) => {
+    const gen = new PieceGenerator({ rng: new RNG(seed), mode, config: { ...GEN, ...overrides } });
+    return gen.nextTray(board, { trayIndex: 10000, fill: 0.4, level: { difficulty: 1 } });
+  };
+  let classicDiffers = 0;
+  let levelsDiffers = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    // a constant of the other mode never matters …
+    assert.deepEqual(deal('journey', { RAW_P_MAX: 1, RAW_P_MAX_LEVELS: 0 }, seed), deal('journey', { RAW_P_MAX: 0, RAW_P_MAX_LEVELS: 0 }, seed));
+    assert.deepEqual(deal('classic', { RAW_P_MAX: 0, RAW_P_MAX_LEVELS: 1 }, seed), deal('classic', { RAW_P_MAX: 0, RAW_P_MAX_LEVELS: 0 }, seed));
+    // … while its own one does
+    if (JSON.stringify(deal('classic', { RAW_P_MAX: 1 }, seed)) !== JSON.stringify(deal('classic', { RAW_P_MAX: 0 }, seed))) classicDiffers++;
+    if (JSON.stringify(deal('daily', { RAW_P_MAX_LEVELS: 1 }, seed)) !== JSON.stringify(deal('daily', { RAW_P_MAX_LEVELS: 0 }, seed))) levelsDiffers++;
+  }
+  assert.ok(classicDiffers > 0 && levelsDiffers > 0);
+});
+
+test('early multi-line preference (EARLY_MULTI_P) picks a tray with a 2-line single clear', () => {
+  // Rows 6 and 7 miss only (6,3)/(7,3): I2v clears both at once. Row 0 misses (0,5),(0,6),(0,7).
+  const board = boardFrom(['#####...', '........', '........', '........', '........', '........', '###.####', '###.####']);
+  const multi = { shapes: ['I2v', 'I1', 'I1'].map(getShape), colors: [0, 1, 2] }; // 2 lines at once
+  const spread = { shapes: ['I3h', 'I1', 'I1'].map(getShape), colors: [0, 1, 2] }; // 3 single clears
+  // exhaustive search, so that only the preference rule is tested
+  const gen = new PieceGenerator({ rng: new RNG(1), mode: 'classic', config: { ...GEN, NODE_LIMIT: 1e6 } });
+  const a = (shapes) => analyzeTray(board, shapes, { nodeLimit: 1e6 });
+  assert.deepEqual([a(multi.shapes).maxSingle, a(spread.shapes).maxSingle], [2, 1]);
+  assert.ok(a(spread.shapes).maxLines >= 3 && a(multi.shapes).maxLines === 2);
+  assert.equal(gen.bestForLines(board, [spread, multi], 0), spread, 'plain rule: most lines');
+  assert.equal(gen.bestForLines(board, [spread, multi], 2), multi, 'multi-line preference');
+  assert.equal(gen.bestForLines(board, [spread], 2), spread, 'falls back to the plain rule');
+  assert.ok(GEN.EARLY_MULTI_P > 0 && GEN.EARLY_MULTI_P <= 1);
+});
+
 test('phases: early (longer for new players), mercy, normal', () => {
   const gen = new PieceGenerator({ rng: new RNG(1), mode: 'classic' });
   const vet = { experience: GEN.NEWBIE_GAMES };

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Must match the game's background (index.html / renderer) to avoid flashes. -->
+    <color name="blocko_background">#FF1B1446</color>
+    <color name="blocko_background_top">#FF3B2A9E</color>
+    <color name="blocko_accent">#FF7B5CFF</color>
+    <color name="blocko_text">#FFFFFFFF</color>
+    <color name="blocko_text_secondary">#B3FFFFFF</color>
+</resources>

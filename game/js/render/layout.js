@@ -23,7 +23,8 @@ const SLOT_FILL = 0.94;
  * @property {number} boardX      left of cell (0,0)
  * @property {number} boardY      top of cell (0,0)
  * @property {number} boardPx     8 * cell
- * @property {Rect[]} trayRects   hit/draw rects of the 3 slots (exclude gutter and side margins)
+ * @property {Rect[]} trayRects   hit/draw rects of the 3 slots (exclude gutter and side margins);
+ *                                each also carries `cy`, the vertical centre its piece is drawn at
  * @property {number} trayCell    tray cell size
  * @property {boolean} trayVertical
  * @property {boolean} landscape
@@ -85,13 +86,15 @@ export function computeLayout(w, h, dpr = 1, insets = {}) {
     trayCell = snapDown(trayCellOf(cell));
     gutter = gutterOf(cell);
     const extra = Math.max(0, h - need(cell));
-    const top = topOf(cell) + extra * 0.32;
+    const top = topOf(cell) + extra * 0.3;
     boardX = snap(mL + (availW - N * cell) / 2);
     boardY = snap(top + P * cell);
-    const trayTop = boardY + N * cell + P * cell + gapOf(cell) * 0.5 + extra * 0.2;
+    const trayTop = boardY + N * cell + P * cell + gapOf(cell) * 0.5 + extra * 0.12;
     const trayBottom = h - gutter;
+    // pieces sit in the upper part of a tall hit rect (close to the board, hit area stays generous)
+    const visualH = Math.min(trayBottom - trayTop, trayHOf(cell) + gapOf(cell) * 0.5 + extra * 0.2);
     for (let i = 0; i < 3; i++) {
-      trayRects.push({ x: mL + i * slotW, y: trayTop, w: slotW, h: Math.max(1, trayBottom - trayTop) });
+      trayRects.push({ x: mL + i * slotW, y: trayTop, w: slotW, h: Math.max(1, trayBottom - trayTop), cy: trayTop + visualH / 2 });
     }
   } else {
     const gapXOf = (c) => 0.7 * c;
@@ -116,7 +119,7 @@ export function computeLayout(w, h, dpr = 1, insets = {}) {
     const top = topOf(cell);
     const slotH = slotHOf(cell);
     for (let i = 0; i < 3; i++) {
-      trayRects.push({ x: trayX, y: top + i * slotH, w: Math.max(1, w - mR - trayX), h: slotH });
+      trayRects.push({ x: trayX, y: top + i * slotH, w: Math.max(1, w - mR - trayX), h: slotH, cy: top + (i + 0.5) * slotH });
     }
   }
 

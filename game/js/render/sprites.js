@@ -650,9 +650,9 @@ export function paintBoardPanel(ctx, theme, ox, oy, cell, n = 8) {
       ctx.lineWidth = Math.max(0.6, cell * 0.02);
       ctx.stroke();
     }
-    // light maple bed under the cells
+    // recessed bed under the cells
     roundRect(ctx, ox - cell * 0.06, oy - cell * 0.06, n * cell + cell * 0.12, n * cell + cell * 0.12, cell * 0.12);
-    ctx.fillStyle = darken(theme.cellEmpty, 0.3);
+    ctx.fillStyle = darken(theme.cellEmpty, 0.35);
     ctx.fill();
   } else {
     // subtle top sheen on the panel
@@ -701,7 +701,7 @@ export function paintBoardPanel(ctx, theme, ox, oy, cell, n = 8) {
  * @param {number} h device px
  * @param {{x:number, y:number, size:number, cell:number}} focus board centre and size (device px)
  */
-export function paintBackground(ctx, theme, w, h, focus) {
+export function paintBackground(ctx, theme, w, h, focus, edge = null) {
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, theme.bg[0]);
   g.addColorStop(1, theme.bg[1]);
@@ -841,6 +841,63 @@ export function paintBackground(ctx, theme, w, h, focus) {
   v.addColorStop(1, theme.dark ? 'rgba(0,0,0,0.38)' : 'rgba(110,60,160,0.16)');
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, w, h);
+
+  // Seamless joint with the DOM HUD: the edge next to the HUD fades back to the plain
+  // bg gradient (portrait: top edge = exactly --bg-top; landscape: left edge = the same
+  // vertical --bg-top → --bg-bottom gradient a full-height HUD column uses).
+  if (edge) {
+    const f = Math.round(focus.cell * 1.4);
+    const strip = edge === 'left' ? makeCanvas(f, h) : makeCanvas(w, f);
+    const s = strip.getContext('2d');
+    s.fillStyle = g;
+    s.fillRect(0, 0, strip.width, strip.height);
+    s.globalCompositeOperation = 'destination-in';
+    const m = edge === 'left' ? s.createLinearGradient(0, 0, f, 0) : s.createLinearGradient(0, 0, 0, f);
+    m.addColorStop(0, 'rgba(0,0,0,1)');
+    m.addColorStop(1, 'rgba(0,0,0,0)');
+    s.fillStyle = m;
+    s.fillRect(0, 0, strip.width, strip.height);
+    ctx.drawImage(strip, 0, 0);
+  }
+}
+
+/** Pulsing frame around the board (booster target mode). */
+function paintFrame(ctx, theme, ox, oy, cell) {
+  const pad = cell * BOARD_PAD;
+  const x = ox - pad;
+  const y = oy - pad;
+  const w = 8 * cell + 2 * pad;
+  const r = theme.style === 'pixel' ? cell * 0.08 : cell * (theme.style === 'candy' ? 0.5 : 0.36);
+  ctx.save();
+  ctx.shadowColor = theme.accent;
+  ctx.shadowBlur = cell * 0.45;
+  ctx.strokeStyle = theme.accent;
+  ctx.lineWidth = Math.max(2, cell * 0.09);
+  roundRect(ctx, x, y, w, w, r);
+  ctx.stroke();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** 3x3 hammer target (cells with a warm tint and a bright outline); m = margin around it. */
+function paintTarget(ctx, theme, cell, m) {
+  const w = cell * 3;
+  ctx.save();
+  ctx.translate(m, m);
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      roundRect(ctx, c * cell + cell * 0.06, r * cell + cell * 0.06, cell * 0.88, cell * 0.88, cell * 0.18);
+      ctx.fillStyle = r === 1 && c === 1 ? 'rgba(255,90,60,0.5)' : 'rgba(255,120,70,0.32)';
+      ctx.fill();
+    }
+  }
+  ctx.shadowColor = 'rgba(255,90,40,0.9)';
+  ctx.shadowBlur = cell * 0.35;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = Math.max(2, cell * 0.07);
+  roundRect(ctx, 0, 0, w, w, cell * 0.28);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /**
@@ -1250,6 +1307,11 @@ export class SpriteSet {
     this.glowV = [];
     this.hand = null;
     this.handSize = 0;
+    this.frame = null;
+    this.target = null;
+    this.targetPad = 0;
+    /** background edge that blends into the DOM HUD: 'top' | 'left' | null (auto when undefined) */
+    this.seamEdge = undefined;
     this.hammer = null;
     /** text sprite cache: key → { img, w, h } */
     this.texts = new Map();
@@ -1312,7 +1374,17 @@ export class SpriteSet {
       y: (layout.boardY + layout.boardPx * 0.45) * dpr,
       size: layout.boardPx * dpr,
       cell: layout.cell * dpr,
-    });
+    }, this.seamEdge === undefined ? (layout.landscape ? 'left' : 'top') : this.seamEdge);
+
+    // target-mode frame (same box as the board sprite) and 3x3 target
+    this.frame = makeCanvas(bw * dpr, bw * dpr);
+    {
+      const off = (pad + margin) * dpr;
+      paintFrame(this.frame.getContext('2d'), theme, off, off, layout.cell * dpr);
+    }
+    this.targetPad = layout.cell * 0.5;
+    this.target = makeCanvas((layout.cell * 3 + 2 * this.targetPad) * dpr, (layout.cell * 3 + 2 * this.targetPad) * dpr);
+    paintTarget(this.target.getContext('2d'), theme, layout.cell * dpr, this.targetPad * dpr);
 
     // particles
     const shs = Math.max(8, Math.round(cs * 0.5));

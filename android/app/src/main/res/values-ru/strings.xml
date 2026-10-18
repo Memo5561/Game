@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_channel_name">Напоминания</string>
+    <string name="reminder_channel_description">Необязательное ежедневное напоминание об игре</string>
+    <string name="reminder_default_text">Как насчёт быстрой головоломки?</string>
+    <string name="webview_update_title">Требуется обновление</string>
+    <string name="webview_update_message">Для Blocko нужна более новая версия Android System WebView. Обновите её в Google Play и снова откройте игру.</string>
+    <string name="webview_update_button">Обновить</string>
+    <string name="error_title">Что-то пошло не так</string>
+    <string name="error_message">Игра неожиданно остановилась.</string>
+    <string name="error_retry">Повторить</string>
+</resources>

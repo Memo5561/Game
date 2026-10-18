@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- App theme (no AppCompat needed: the UI is the WebView). -->
+    <style name="Theme.Blocko" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/blocko_background</item>
+        <item name="android:colorBackground">@color/blocko_background</item>
+        <item name="android:colorAccent">@color/blocko_accent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Launch theme: system splash screen (androidx.core:core-splashscreen), then Theme.Blocko. -->
+    <style name="Theme.Blocko.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/blocko_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Blocko</item>
+    </style>
+
+</resources>

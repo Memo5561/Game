@@ -85,8 +85,12 @@ Hast du einen anderen Benutzernamen oder eine eigene Domain, ändere die Paket-I
    (`android/app/src/main/java/io/github/memo5561/blocko/`) anpassen. Am einfachsten geht das in
    Android Studio: Rechtsklick auf das Paket → **Refactor → Rename**. `namespace` und
    `applicationId` dürfen sich technisch auch unterscheiden.
-4. `npm run check-release` meldet einen Fehler, wenn `applicationId` und `PACKAGE_ID` nicht
+4. `docs/site/index.html`: den Google-Play-Link (enthält die Paket-ID) anpassen.
+5. `npm run check-release` meldet einen Fehler, wenn `applicationId` und `PACKAGE_ID` nicht
    übereinstimmen.
+
+Nutzt du einen anderen GitHub-Namen als `memo5561`, ersetze ihn auch in allen Adressen dieser
+Anleitung und in STORE_LISTING.md / PLAY_CONSOLE_ANGABEN.md durch deinen.
 
 Regeln: nur Kleinbuchstaben, Ziffern, Punkte und Unterstriche, mindestens zwei Teile, jeder Teil
 beginnt mit einem Buchstaben.
@@ -142,10 +146,14 @@ Offizielle Anleitung: <https://developer.android.com/studio/run/device>
 ### 1.4 Was die Debug-Version zeigt
 
 - **Nur Testanzeigen** von Google, gekennzeichnet mit „Test Ad“. Damit verdienst du nichts,
-  riskierst aber auch nichts.
-- Der **Einwilligungsdialog (UMP)** wird so getestet, als wärst du im EWR, auch wenn du woanders bist.
-  Er erscheint erst nach dem ersten Game-over und erst, wenn in AdMob eine veröffentlichte
-  DSGVO-Nachricht existiert (Schritt 3). Zum erneuten Testen: App-Daten löschen
+  riskierst aber auch nichts. `debug` und `staging` nutzen **immer** Googles Test-App-ID und
+  Test-Anzeigenblöcke, egal was in `gradle.properties` steht.
+- Der **Einwilligungsdialog (UMP)** erscheint nach dem ersten Game-over. In der Debug-Version wird
+  dafür ein Standort im EWR simuliert. Das klappt im **Emulator** automatisch. Auf einem **echten
+  Handy** nur, wenn seine gehashte Geräte-ID in `BLOCKO_TEST_DEVICE_IDS` steht (siehe Schritt 3.9).
+  Wegen der Test-App-ID siehst du hier Googles **Beispiel-Dialog**, nicht deine eigene Nachricht. Deine
+  eigene DSGVO-Nachricht (Schritt 3.5) erscheint nur in einem Release-Build mit `BLOCKO_ADS_MODE=live`
+  (prüfen in Schritt 9.3). Zum erneuten Testen: App-Daten löschen
   (**Einstellungen → Apps → Blocko → Speicher → Daten löschen**).
 - **Käufe** funktionieren in der Debug-Version erst, wenn die App in der Play Console existiert,
   die Produkte angelegt sind und dein Google-Konto Lizenztester ist (Schritt 6).
@@ -183,6 +191,11 @@ gelb markierten Platzhalter durch deine echten Daten:
 - `support@example.com` → deine Support-E-Mail-Adresse (Tipp: eine eigene Adresse nur für das Spiel)
 - Telefonnummer und USt-IdNr: ausfüllen oder die Zeile löschen (Hinweise stehen als Kommentar in
   der Datei)
+- Zum Schluss im `<body>`-Tag `class="draft"` entfernen. Dann verschwinden die gelbe Markierung und
+  der Entwurfs-Hinweis.
+
+Prüfe das Ergebnis lokal: Datei im Browser öffnen (Doppelklick). `npm run check-release` meldet,
+solange noch Platzhalter in den beiden Seiten stehen.
 
 Trage dieselben Daten in `game/js/config.js` → `LEGAL` ein. Daraus entsteht das Impressum
 **in der App** (Einstellungen → Impressum).
@@ -274,9 +287,11 @@ BLOCKO_ADMOB_REWARDED_ID=ca-app-pub-…/…
 BLOCKO_ADS_MODE=test        # bleibt "test" bis Schritt 9!
 ```
 
-Im Modus `test` nutzt die App die offiziellen Test-Anzeigenblöcke von Google. Erst `live` schaltet
-deine echten Blöcke scharf. Wie genau die IDs pro Modus verwendet werden, steht in
-[android/README.md](../android/README.md).
+Im Modus `test` nutzt die App Googles offizielle **Test-App-ID und Test-Anzeigenblöcke**. Deine
+eigenen IDs werden **nur** im Build-Typ `release` mit `BLOCKO_ADS_MODE=live` verwendet. `debug` und
+`staging` zeigen immer Testanzeigen. Ein `live`-Release-Build bricht mit einer Fehlermeldung ab, wenn
+eine ID fehlt, eine Google-Test-ID ist oder nicht wie eine echte AdMob-ID aussieht (Gradle-Prüfung
+`checkReleaseAdIds`). Details: [android/README.md](../android/README.md).
 
 ### 3.5 Einwilligungsdialog (DSGVO) veröffentlichen – Pflicht für EU-Nutzer
 
@@ -353,9 +368,13 @@ Kontosperrung**, die sich praktisch nicht rückgängig machen lässt.
 - [ ] Dein Handy (und Testhandys) als **Testgerät** eintragen:
   - in AdMob: **Einstellungen → Testgeräte → Testgerät hinzufügen** (Werbe-ID des Handys: Android
     **Einstellungen → Google → Anzeigen** bzw. **Datenschutz → Werbung**), **und**
-  - in der App: In Logcat (Android Studio) erscheint beim ersten Laden einer Anzeige eine Zeile mit
-    `setTestDeviceIds(...)` und einer gehashten ID. Trage diese ID in `android/gradle.properties` →
-    `BLOCKO_TEST_DEVICE_IDS` ein (Format siehe android/README.md).
+  - in der App: In Logcat (Android Studio, Suchfeld `setTestDeviceIds` bzw. `addTestDeviceHashedId`)
+    erscheint beim ersten Laden einer Anzeige bzw. des Einwilligungsdialogs eine Zeile mit einer
+    gehashten ID (32 Zeichen, z. B. `33BE2250B43518CCDA7DE426D04EE231`). Trage sie in
+    `android/gradle.properties` ein, mehrere Geräte durch Komma getrennt:
+    `BLOCKO_TEST_DEVICE_IDS=33BE2250B43518CCDA7DE426D04EE231,ABCDEF0123456789ABCDEF0123456789`.
+    Diese Geräte bekommen nie echte Anzeigen, und auf ihnen funktioniert die EWR-Simulation des
+    Einwilligungsdialogs.
 - [ ] Freunde testen nur Builds mit `BLOCKO_ADS_MODE=test` (Schritt 8).
 - [ ] Die App nicht in „Klick-Tausch“-Gruppen oder ähnlichen Gruppen teilen.
 
@@ -604,9 +623,21 @@ Google Play nimmt nur **signierte Android App Bundles (.aab)** an. Dabei gibt es
 
 ### 7.2 Variante B: keystore.properties (für Builds per Kommandozeile)
 
-Lege die Datei `android/keystore.properties` an (die Feldnamen stehen in
-[android/README.md](../android/README.md)). Dann signiert `./gradlew bundleRelease` (im Ordner
-`android/`) automatisch. Diese Datei steht in `.gitignore`. **⚠ Niemals committen oder hochladen.**
+1. Kopiere `android/keystore.properties.example` nach **`android/keystore.properties`** und trage ein:
+   ```properties
+   storeFile=/Pfad/zu/Schluessel/blocko-upload.jks   # relativ zu android/ oder absoluter Pfad
+   storePassword=DEIN_KEYSTORE_PASSWORT
+   keyAlias=upload
+   keyPassword=DEIN_SCHLUESSEL_PASSWORT
+   ```
+   Einen Schlüssel kannst du auch auf der Kommandozeile erzeugen (der Befehl steht in der
+   Beispieldatei, `keytool` gehört zum JDK von Android Studio).
+2. Im Ordner `android/`: `./gradlew bundleRelease` (Windows: `gradlew.bat bundleRelease`). Das
+   signierte AAB liegt dann unter `android/app/build/outputs/bundle/release/app-release.aab`.
+3. Ohne `keystore.properties` ist der Release-Build **unsigniert**. Dann signierst du ihn mit dem
+   Assistenten aus Variante A.
+
+`keystore.properties` und `*.jks` stehen in `.gitignore`. **⚠ Niemals committen oder hochladen.**
 
 ### 7.3 Upload-Schlüssel sichern – sofort!
 
@@ -644,12 +675,15 @@ Offiziell: <https://developer.android.com/studio/publish/app-signing>,
 ### 8.1 Interner Test (schnell, für dich)
 
 1. In `android/gradle.properties`: **`BLOCKO_ADS_MODE=test`**, Versionscode erhöhen.
-2. Release-AAB signiert bauen (Schritt 7).
-3. Play Console → **Testen → Interner Test → Neuen Release erstellen** → AAB hochladen → Name/Notizen
+2. `npm run check-release` ausführen. Für einen Test-Build darf **nur** der Fehler
+   „BLOCKO_ADS_MODE is not "live"“ übrig bleiben. Impressum und Datenschutzerklärung sollten schon
+   fertig und online sein, weil Tester und Google-Prüfer sie sehen.
+3. Release-AAB signiert bauen (Schritt 7).
+4. Play Console → **Testen → Interner Test → Neuen Release erstellen** → AAB hochladen → Name/Notizen
    → speichern → veröffentlichen.
-4. **Tester**: Liste mit deinem Konto (und Lizenztestern) anlegen. Den Teilnahme-Link am Handy öffnen
+5. **Tester**: Liste mit deinem Konto (und Lizenztestern) anlegen. Den Teilnahme-Link am Handy öffnen
    → „Tester werden“ → App aus dem Play Store installieren.
-5. Hier machst du die Testkäufe aus Schritt 6 und testest die Bewertungskarte. Beim internen Test
+6. Hier machst du die Testkäufe aus Schritt 6 und testest die Bewertungskarte. Beim internen Test
    gibt es kein Kontingent, die Karte erscheint immer, solange dein Konto die App noch nicht bewertet hat.
 
 Der interne Test zählt **nicht** für die 12-Tester-Pflicht.
@@ -729,6 +763,7 @@ meist bis zu etwa 7 Tage. Bei Ablehnung: weiter testen, verbessern und erneut be
 ### 9.1 Live-Build vorbereiten
 
 - [ ] `android/gradle.properties`: **`BLOCKO_ADS_MODE=live`** und alle vier echten `BLOCKO_ADMOB_*`-IDs
+      (der Release-Build bricht sonst mit einer Meldung von `checkReleaseAdIds` ab)
 - [ ] `BLOCKO_TEST_DEVICE_IDS` enthält deine eigenen Geräte (damit du auch im Live-Build nur Testanzeigen siehst)
 - [ ] `BLOCKO_VERSION_CODE` erhöht, `BLOCKO_VERSION_NAME` = `config.js` → `VERSION`
 - [ ] `config.js` → `LEGAL` vollständig (Name, Anschrift, E-Mail, empfohlen Telefon)
@@ -763,6 +798,10 @@ Fehler (✘) **musst** du beheben, bevor du hochlädst.
 3. **Live-Build zuerst selbst testen**: AAB in den **internen Test** hochladen, installieren, eine
    Runde spielen. Auf deinem als Testgerät eingetragenen Handy erscheinen echte Anzeigenblöcke mit
    „Test Ad“-Kennzeichnung. **⚠ Erscheint keine Test-Kennzeichnung, nicht klicken!**
+   - [ ] Jetzt erscheint **deine eigene DSGVO-Nachricht** (Sprache des Handys, Buttons „Einwilligen“,
+         „Optionen verwalten“, ggf. „Nicht einwilligen“). Die Release-Version simuliert keinen
+         Standort. Du siehst den Dialog, weil du dich in Deutschland (EWR) befindest.
+   - [ ] Einstellungen → Datenschutz-Einstellungen öffnet den Dialog erneut.
 
 ### 9.4 Hochladen und gestaffelt ausrollen
 

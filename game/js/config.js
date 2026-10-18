@@ -55,7 +55,7 @@ export const CONFIG = Object.freeze({
     D_MAX: 1.0,
     RAW_P_MAX: 0.3,           // classic, at difficulty 1: chance to take an unfiltered random candidate
     RAW_P_MAX_LEVELS: 0.12,   // same for journey/daily levels (their bands are tuned with this)
-    EARLY_MULTI_P: 0.5,       // early phase: chance to prefer a tray with a single placement clearing >= 2 lines
+    EARLY_MULTI_P: 0.6,       // early phase: chance to prefer a tray with a single placement clearing >= 2 lines
     // [weight at difficulty 0, weight at difficulty 1] per shape family.
     // Effective weight of one orientation = lerp(w0, w1, d) / orientations in the family.
     FAMILY_WEIGHTS: Object.freeze({

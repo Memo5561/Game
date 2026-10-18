@@ -5,11 +5,14 @@
 // depth-first search over piece orders and positions that applies line clears between
 // placements. The choice depends on the phase:
 //   - early (start of a classic run, longer for new players): the solvable candidate that allows
-//     the most line clears → quick, satisfying first clears; never a dead end
+//     the most line clears → quick, satisfying first clears; never a dead end. With probability
+//     EARLY_MULTI_P only candidates with a multi-line clear (one placement, >= 2 lines) count
+//     first, so "wow" moments come early
 //   - mercy (crowded board, no clear for a while, right after a revive): a random solvable
 //     candidate that allows a clear (journey/daily: preferably one that collects gems)
-//   - otherwise: a random solvable candidate, or – with probability RAW_P_MAX × difficulty – the
-//     first sample unfiltered, so that runs eventually end
+//   - otherwise: a random solvable candidate, or – with probability RAW_P_MAX × difficulty
+//     (classic; journey/daily: RAW_P_MAX_LEVELS × difficulty) – the first sample unfiltered, so
+//     that runs eventually end
 // The generator never looks at the best score and never picks a tray because it is unsolvable.
 // Everything is deterministic: the search is bounded by a node budget (never by time) and the rng
 // is consumed in a fixed order.
@@ -424,13 +427,15 @@ export class PieceGenerator {
     const rawRoll = this.rng.next();
     const pickRoll = this.rng.next();
     const gemRoll = this.rng.next();
+    const multiRoll = this.rng.next();
 
     const fitting = candidates.filter((cand) => cand.shapes.some((s) => board.anyPlacement(s)));
     if (fitting.length === 0) return this.toPieces(smallestFitting(board, 3), candidates[0].colors);
 
     let chosen;
     if (phase === 'early') {
-      chosen = this.bestForLines(board, fitting) || this.rescue(board, 3) || fitting[0];
+      const minSingle = multiRoll < cfg.EARLY_MULTI_P ? 2 : 0;
+      chosen = this.bestForLines(board, fitting, minSingle) || this.rescue(board, 3) || fitting[0];
     } else if (phase === 'mercy') {
       const wantGems = this.mode !== 'classic' && hasGems(board) && gemRoll < 1 - d;
       const opts = { nodeLimit: cfg.NODE_LIMIT, targetLines: 1, targetGems: wantGems ? 1 : 0 };
@@ -446,7 +451,7 @@ export class PieceGenerator {
         if (wantGems && a.maxGems >= 1) gemClearing.push(cand);
       }
       chosen = pickFirstNonEmpty(pickRoll, gemClearing, clearing, solvable, fitting);
-    } else if (rawRoll < cfg.RAW_P_MAX * d) {
+    } else if (rawRoll < (this.mode === 'classic' ? cfg.RAW_P_MAX : cfg.RAW_P_MAX_LEVELS) * d) {
       chosen = fitting[0];
     } else {
       const opts = { nodeLimit: cfg.NODE_LIMIT, targetLines: 0 };
@@ -497,19 +502,21 @@ export class PieceGenerator {
 
   /**
    * The solvable candidate with the highest min(maxLines, 3), ties by maxSingle, then by sample
-   * order.
+   * order. With `minSingle` >= 2, candidates whose best single placement clears at least that many
+   * lines are preferred (the plain rule applies if there is none).
    * @param {Board} board
    * @param {Candidate[]} candidates
+   * @param {number} [minSingle=0]
    * @returns {Candidate | null}
    */
-  bestForLines(board, candidates) {
+  bestForLines(board, candidates, minSingle = 0) {
     const opts = { nodeLimit: this.config.NODE_LIMIT, targetLines: 3, targetSingle: 3 };
     let best = null;
     let bestKey = -1;
     for (const cand of candidates) {
       const a = analyzeTray(board, cand.shapes, opts);
       if (!a.solvable) continue;
-      const key = Math.min(a.maxLines, 3) * 10 + a.maxSingle;
+      const key = (a.maxSingle >= minSingle ? 100 : 0) + Math.min(a.maxLines, 3) * 10 + a.maxSingle;
       if (key > bestKey) {
         best = cand;
         bestKey = key;

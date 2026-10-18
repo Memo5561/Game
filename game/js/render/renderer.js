@@ -675,7 +675,7 @@ export class Renderer {
       if (!this.session.tray[i]) continue;
       this._shuffleStart[i] = this.time + k * TIMING.SHUFFLE_STAGGER;
       const R = this.layout.trayRects[i];
-      this._sparkleBurst(R.x + R.w / 2, R.y + R.h / 2, 6, this.layout.trayCell * 2, k * TIMING.SHUFFLE_STAGGER);
+      this._sparkleBurst(R.x + R.w / 2, R.cy, 6, this.layout.trayCell * 2, k * TIMING.SHUFFLE_STAGGER);
       k++;
     }
     return this._after(TIMING.SHUFFLE);
@@ -714,9 +714,12 @@ export class Renderer {
     const L = this.layout;
     if (kind === 'newBest') {
       const s = this._sprite('newbest', this._tr('newbest'), 'newbest', this._bigFont(0.9));
-      this._spawnText(TK_BANNER, s, L.boardX + L.boardPx / 2, L.boardY + L.cell * 1.1, TIMING.NEW_BEST, 0);
-      this._confetti(L.boardX, L.boardY, 28, -0.9);
-      this._confetti(L.boardX + L.boardPx, L.boardY, 28, -2.25);
+      const bxm = L.boardX + L.boardPx / 2;
+      const bym = L.boardY + L.cell * 1.1;
+      this._spawnText(TK_BANNER, s, bxm, bym, TIMING.NEW_BEST, 0);
+      this._confetti(bxm - s.w * 0.45, bym, 26, -2.5, 60);
+      this._confetti(bxm + s.w * 0.45, bym, 26, -0.64, 60);
+      this._sparkleBurst(bxm, bym, 8, s.w * 0.5, 60);
       return this._after(TIMING.NEW_BEST);
     }
     if (kind === 'win') {
@@ -1048,7 +1051,7 @@ export class Renderer {
         Math.cos(a) * sp, Math.sin(a) * sp - cell * (3 + rnd() * 4) * power,
         cell * (0.28 + rnd() * 0.3), 480 + rnd() * 360, rnd() * 6.28, (rnd() - 0.5) * 16);
     }
-    P.spawn(P_DOT, color, x, y, 0, 0, cell * 2.1, 300);
+    P.spawn(P_DOT, color, x, y, 0, 0, cell * 1.5, 280);
     if (rnd() < 0.5) {
       P.spawn(P_SPARKLE, 0, x + (rnd() - 0.5) * cell, y + (rnd() - 0.5) * cell, (rnd() - 0.5) * cell * 2, -cell * (1 + rnd() * 2),
         cell * (0.5 + rnd() * 0.5), 380 + rnd() * 240);
@@ -1293,7 +1296,7 @@ export class Renderer {
     const tc = this.layout.trayCell;
     const d = this.dpr;
     out.x = Math.round((R.x + (R.w - shape.w * tc) / 2) * d) / d;
-    out.y = Math.round((R.y + (R.h - shape.h * tc) / 2) * d) / d;
+    out.y = Math.round((R.cy - (shape.h * tc) / 2) * d) / d;
     return out;
   }
 
@@ -1351,13 +1354,9 @@ export class Renderer {
     ctx.drawImage(sp.board, br.x, br.y, br.w, br.h);
 
     if (this.targetMode) {
-      ctx.globalAlpha = 0.25 + 0.2 * Math.sin(T * 0.008);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.drawImage(sp.sweepH, bx, by - sp.sweepThick / 2, L.boardPx, sp.sweepThick);
-      ctx.drawImage(sp.sweepH, bx, by + L.boardPx - sp.sweepThick / 2, L.boardPx, sp.sweepThick);
-      ctx.drawImage(sp.sweepV, bx - sp.sweepThick / 2, by, sp.sweepThick, L.boardPx);
-      ctx.drawImage(sp.sweepV, bx + L.boardPx - sp.sweepThick / 2, by, sp.sweepThick, L.boardPx);
-      ctx.globalCompositeOperation = 'source-over';
+      // pulsing frame: "tap a block"
+      ctx.globalAlpha = 0.45 + 0.4 * Math.sin(T * 0.008);
+      ctx.drawImage(sp.frame, br.x, br.y, br.w, br.h);
       ctx.globalAlpha = 1;
     }
 
@@ -1383,7 +1382,7 @@ export class Renderer {
       ctx.globalAlpha = 1;
       if (this._hlRows.length || this._hlCols.length) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.28 + 0.22 * pulse;
+        ctx.globalAlpha = (0.28 + 0.22 * pulse) * (this.theme.fxGlow ?? 1);
         const th = sp.sweepThick;
         for (let k = 0; k < this._hlRows.length; k++) {
           ctx.drawImage(sp.lineGlow(D.color, false), bx, by + (this._hlRows[k] + 0.5) * cell - th / 2, L.boardPx, th);
@@ -1403,7 +1402,7 @@ export class Renderer {
     const fk = (T - this._flashStart) / this._flashDur;
     if (fk >= 0 && fk < 1) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.55 * (1 - fk) * (1 - fk);
+      ctx.globalAlpha = 0.32 * (1 - fk) * (1 - fk) * (this.theme.fxGlow ?? 1);
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(bx, by, L.boardPx, L.boardPx);
       ctx.globalAlpha = 1;
@@ -1423,8 +1422,9 @@ export class Renderer {
       if (this._hint.active) this._drawHint(ctx, sp, T, cell, bx, by);
     }
 
-    this._drawTexts(ctx, T, dpr, ox, oy);
     this.particles.draw(ctx, sp, dpr, ox, oy, LAYER_TOP);
+    ctx.setTransform(dpr, 0, 0, dpr, ox * dpr, oy * dpr);
+    this._drawTexts(ctx, T, dpr, ox, oy);
 
     // cross-fade from the previous state (sync)
     const sf = (T - this._fadeStart) / TIMING.SYNC_FADE;
@@ -1491,6 +1491,7 @@ export class Renderer {
   }
 
   _drawDying(ctx, sp, T, cell, bx, by) {
+    const glow = this.theme.fxGlow ?? 1;
     for (let k = 0; k < this._dyN; k++) {
       const age = T - this._dyStart[k];
       const idx = this._dyIdx[k];
@@ -1500,20 +1501,27 @@ export class Renderer {
       const gem = this._dyGem[k];
       const delay = this._dyDelay[k];
       if (age < delay) {
-        // lit-up phase: quick white flash, then glowing until the burst wave arrives
+        // lit-up phase: the block glows (additive copy of itself + a light white flash) until
+        // the burst wave arrives – stays saturated instead of washing out to white
         ctx.drawImage(img, x, y, cell, cell);
-        if (gem) ctx.drawImage(sp.gem[gem], x, y, cell, cell);
-        const fa = age < TIMING.FLASH ? 0.35 + 0.55 * (age / TIMING.FLASH) : 0.9 - 0.45 * clamp01((age - TIMING.FLASH) / 120);
-        ctx.globalAlpha = fa;
-        ctx.drawImage(sp.flash, x, y, cell, cell);
+        const flash = age < TIMING.FLASH ? age / TIMING.FLASH : 1 - clamp01((age - TIMING.FLASH) / 90);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.3 * glow;
+        ctx.drawImage(img, x, y, cell, cell);
+        ctx.globalCompositeOperation = 'source-over';
+        if (flash > 0) {
+          ctx.globalAlpha = 0.6 * flash * (0.5 + 0.5 * glow);
+          ctx.drawImage(sp.flash, x, y, cell, cell);
+        }
         ctx.globalAlpha = 1;
+        if (gem) ctx.drawImage(sp.gem[gem], x, y, cell, cell);
       } else {
         const b = clamp01((age - delay) / TIMING.BURST);
         const s = cell * (1 + 0.35 * easeOutCubic(b)) * (1 - 0.25 * b * b);
         const o = (cell - s) / 2;
         ctx.globalAlpha = 1 - b;
         ctx.drawImage(img, x + o, y + o, s, s);
-        ctx.globalAlpha = (1 - b) * 0.7;
+        ctx.globalAlpha = (1 - b) * 0.35 * glow;
         ctx.drawImage(sp.flash, x + o, y + o, s, s);
         ctx.globalAlpha = 1;
       }
@@ -1522,6 +1530,7 @@ export class Renderer {
 
   _drawSweeps(ctx, sp, T, cell, bx, by, boardPx) {
     if (!this._swN) return;
+    const glow = this.theme.fxGlow ?? 1;
     ctx.globalCompositeOperation = 'lighter';
     const th = sp.sweepThick;
     for (let k = 0; k < this._swN; k++) {
@@ -1532,8 +1541,8 @@ export class Renderer {
       const o = this._swOrigin[k];
       const a = Math.max(0, o - grow * N);
       const b = Math.min(N, o + grow * N);
-      const thick = th * (0.8 + 0.4 * grow);
-      ctx.globalAlpha = 0.95 * fade;
+      const thick = th * (0.36 + 0.26 * grow);
+      ctx.globalAlpha = 0.55 * fade * glow;
       if (this._swRow[k]) {
         const yy = by + (this._swIdx[k] + 0.5) * cell;
         ctx.drawImage(sp.sweepH, bx + a * cell, yy - thick / 2, (b - a) * cell, thick);
@@ -1548,11 +1557,12 @@ export class Renderer {
 
   _drawRings(ctx, sp, T) {
     if (!this._rgN) return;
+    const glow = Math.max(0.6, this.theme.fxGlow ?? 1);
     ctx.globalCompositeOperation = 'lighter';
     for (let k = 0; k < this._rgN; k++) {
       const t = clamp01((T - this._rgStart[k]) / this._rgDur[k]);
       const r = this._rgR[k] * easeOutCubic(t);
-      ctx.globalAlpha = 0.85 * (1 - t) * (1 - t);
+      ctx.globalAlpha = 0.85 * (1 - t) * (1 - t) * glow;
       ctx.drawImage(sp.ring, this._rgX[k] - r, this._rgY[k] - r, r * 2, r * 2);
     }
     ctx.globalAlpha = 1;
@@ -1603,7 +1613,7 @@ export class Renderer {
       if (!shape) continue;
       const R = L.trayRects[i];
       let cx = R.x + R.w / 2 + shakeX;
-      const cy = R.y + R.h / 2;
+      const cy = R.cy;
       let scale = 1;
       let rot = 0;
       let alpha = 1;
@@ -1667,15 +1677,16 @@ export class Renderer {
   _drawTarget(ctx, sp, T, cell, bx, by) {
     const tg = this._target;
     const pulse = 0.5 + 0.5 * Math.sin(T * 0.014);
-    ctx.globalAlpha = 0.35 + 0.25 * pulse;
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const r = tg.r + dr;
-        const c = tg.c + dc;
-        if (r < 0 || c < 0 || r >= N || c >= N) continue;
-        ctx.drawImage(sp.flash, bx + c * cell, by + r * cell, cell, cell);
-      }
-    }
+    const L = this.layout;
+    // 3x3 target, clipped to the board
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx, by, L.boardPx, L.boardPx);
+    ctx.clip();
+    ctx.globalAlpha = 0.75 + 0.25 * pulse;
+    const m = sp.targetPad;
+    ctx.drawImage(sp.target, bx + (tg.c - 1) * cell - m, by + (tg.r - 1) * cell - m, cell * 3 + 2 * m, cell * 3 + 2 * m);
+    ctx.restore();
     ctx.globalAlpha = 1;
     const hs = cell * 1.3;
     const bob = Math.sin(T * 0.012) * cell * 0.08;
@@ -1699,7 +1710,7 @@ export class Renderer {
     const t = (T - H.start) % TIMING.HINT_CYCLE;
     const R = L.trayRects[H.trayIndex];
     const sx = R.x + R.w / 2;
-    const sy = R.y + R.h / 2;
+    const sy = R.cy;
     const ex = bx + (H.c + shape.w / 2) * cell;
     const ey = by + (H.r + shape.h / 2) * cell;
     let k;

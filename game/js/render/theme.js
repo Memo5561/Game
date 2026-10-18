@@ -32,6 +32,7 @@ import { paintBoardPreview } from './sprites.js';
  * @property {string} greyTint            tint of greyed-out blocks (game over / dimmed pieces)
  * @property {number} ghostAlpha          opacity of the drop preview
  * @property {boolean} dark               dark UI (light text) or light UI
+ * @property {number} fxGlow              strength of additive glow effects (lower on light themes)
  * @property {Object<string, string>} ui  DOM colors, see themeCssVars()
  */
 
@@ -49,6 +50,7 @@ export const THEMES = F({
   jewel: F({
     id: 'jewel',
     nameKey: 'theme.jewel',
+    fxGlow: 1,
     style: 'jewel',
     palette: F(['#F0405A', '#FF8A2A', '#FFC72C', '#2FCB72', '#2FB6F0', '#5470FF', '#9D5BF0', '#FF5CC0']),
     shades: F([
@@ -83,6 +85,7 @@ export const THEMES = F({
   neon: F({
     id: 'neon',
     nameKey: 'theme.neon',
+    fxGlow: 1,
     style: 'neon',
     palette: F(['#FF3864', '#FF8C1A', '#FFE53B', '#3DFF6E', '#19E6FF', '#3D7BFF', '#B347FF', '#FF3DD8']),
     bg: F(['#14082E', '#05030C']),
@@ -113,6 +116,7 @@ export const THEMES = F({
   candy: F({
     id: 'candy',
     nameKey: 'theme.candy',
+    fxGlow: 0.45,
     style: 'candy',
     palette: F(['#FF6B8B', '#FFA25C', '#FFD95C', '#5FD99A', '#5CC8FF', '#7F8CFF', '#B97CFF', '#FF85D5']),
     bg: F(['#FFD9EE', '#C3B5FF']),
@@ -143,16 +147,17 @@ export const THEMES = F({
   wood: F({
     id: 'wood',
     nameKey: 'theme.wood',
+    fxGlow: 0.75,
     style: 'wood',
-    palette: F(['#C2412F', '#DE7F2C', '#E8B84A', '#6E9B3A', '#2F8F8A', '#3E6AA8', '#7D4C8C', '#F2D9A6']),
+    palette: F(['#D2452F', '#EA8A2E', '#F4C64E', '#7BAE3E', '#2FA39C', '#4677C4', '#9459B0', '#F1DDB0']),
     bg: F(['#6B4528', '#2A170B']),
     bgGlow: '#FFB45C',
     bgGlowAlpha: 0.22,
     bgPattern: 'planks',
     board: '#3A2112',
     boardEdge: '#7A4B26',
-    cellEmpty: '#C99A62',
-    cellEmptyEdge: '#E3BA82',
+    cellEmpty: '#4E3220',
+    cellEmptyEdge: '#6A4630',
     accent: '#FFC857',
     accent2: '#E07A3F',
     text: '#FFF4E0',
@@ -173,6 +178,7 @@ export const THEMES = F({
   pixel: F({
     id: 'pixel',
     nameKey: 'theme.pixel',
+    fxGlow: 0.9,
     style: 'pixel',
     palette: F(['#E43B44', '#F77622', '#FEE761', '#63C74D', '#2CE8F5', '#3B6FE0', '#9A4FD0', '#F6757A']),
     bg: F(['#29366F', '#141626']),
@@ -203,6 +209,7 @@ export const THEMES = F({
   gold: F({
     id: 'gold',
     nameKey: 'theme.gold',
+    fxGlow: 1,
     style: 'gold',
     palette: F(['#E0115F', '#FF8F1F', '#FFD447', '#12B76A', '#22C3D6', '#2563EB', '#9B5DE5', '#F472B6']),
     bg: F(['#2A2214', '#050504']),

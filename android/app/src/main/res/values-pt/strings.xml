@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_channel_name">Lembretes</string>
+    <string name="reminder_channel_description">Lembrete diário opcional para jogar</string>
+    <string name="reminder_default_text">Que tal um quebra-cabeça rápido?</string>
+    <string name="webview_update_title">Atualização necessária</string>
+    <string name="webview_update_message">O Blocko precisa de uma versão mais recente do Android System WebView. Atualize-o no Google Play e abra o jogo novamente.</string>
+    <string name="webview_update_button">Atualizar</string>
+    <string name="error_title">Algo deu errado</string>
+    <string name="error_message">O jogo parou inesperadamente.</string>
+    <string name="error_retry">Tentar novamente</string>
+</resources>

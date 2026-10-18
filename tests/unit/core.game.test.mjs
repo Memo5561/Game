@@ -339,30 +339,31 @@ test('toJSON/fromJSON resumes every mode exactly', () => {
   }
 });
 
-test('300-move seeded run with save/resume round-trips at random points gives identical trays', () => {
+test('300 seeded moves with save/resume round-trips at random points give identical trays', () => {
   const choose = new RNG(1234);
-  const straight = GameSession.create({ mode: 'classic', seed: 2027, gamesPlayed: 4 });
-  let resumed = GameSession.create({ mode: 'classic', seed: 2027, gamesPlayed: 4 });
   let moves = 0;
-  while (moves < 300) {
-    if (straight.status === 'over') {
-      // keep both runs going with the revive, then restart both with the same seed
-      if (straight.canRevive()) {
+  let runs = 0;
+  for (let seed = 2027; moves < 300; seed++) {
+    runs++;
+    const straight = GameSession.create({ mode: 'classic', seed, gamesPlayed: 4 });
+    let resumed = GameSession.create({ mode: 'classic', seed, gamesPlayed: 4 });
+    while (moves < 300) {
+      if (choose.chance(0.2)) resumed = GameSession.fromJSON(JSON.parse(JSON.stringify(resumed.toJSON())));
+      if (straight.status === 'over') {
+        if (!straight.canRevive()) break; // next run with the next seed
         assert.deepEqual(resumed.revive(), straight.revive());
         continue;
       }
-      break;
+      const m = botMove(straight);
+      const ra = straight.placePiece(m.trayIndex, m.r, m.c);
+      const rb = resumed.placePiece(m.trayIndex, m.r, m.c);
+      assert.deepEqual(rb.tray, ra.tray, `run ${runs}, tray after move ${moves}`);
+      assert.deepEqual(rb, ra);
+      moves++;
     }
-    if (choose.chance(0.2)) resumed = GameSession.fromJSON(JSON.parse(JSON.stringify(resumed.toJSON())));
-    const m = botMove(straight);
-    const ra = straight.placePiece(m.trayIndex, m.r, m.c);
-    const rb = resumed.placePiece(m.trayIndex, m.r, m.c);
-    assert.deepEqual(rb.tray, ra.tray, `tray after move ${moves}`);
-    assert.deepEqual(rb, ra);
-    moves++;
+    assert.deepEqual(resumed.toJSON(), straight.toJSON());
   }
-  assert.ok(moves >= 100, `played ${moves} moves`);
-  assert.deepEqual(resumed.toJSON(), straight.toJSON());
+  assert.equal(moves, 300);
 });
 
 test('fromJSON rejects incompatible data', () => {

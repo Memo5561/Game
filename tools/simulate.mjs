@@ -258,6 +258,8 @@ function simulateClassic() {
   let multiMoves = 0;
   let earlyClearMoves = 0;
   let earlyMultiMoves = 0;
+  let phaseClearMoves = 0;
+  let phaseMultiMoves = 0;
   let earlyGameOvers = 0;
   let capped = 0;
   let earlyTrays = 0;
@@ -282,9 +284,15 @@ function simulateClassic() {
         if (res.linesCount === 0) return;
         clearMoves++;
         if (res.linesCount >= 2) multiMoves++;
-        if (s.trayIndex < 20) {
+        // trayIndex is already the next tray when this placement emptied the tray
+        const tray = res.trayRefilled ? s.trayIndex - 1 : s.trayIndex;
+        if (tray < 20) {
           earlyClearMoves++;
           if (res.linesCount >= 2) earlyMultiMoves++;
+        }
+        if (tray < GEN_CONFIG.EARLY_TRAYS) {
+          phaseClearMoves++;
+          if (res.linesCount >= 2) phaseMultiMoves++;
         }
       },
     });
@@ -309,7 +317,7 @@ function simulateClassic() {
     console.log(`  trays ${String(a).padStart(2)}–${b === Infinity ? '∞ ' : String(b).padEnd(2)}  ${pct(phaseUnsolvable[k], phaseTrays[k]).padStart(6)}  (${phaseUnsolvable[k]}/${phaseTrays[k]})`);
   });
   console.log(`clearing moves per tray ${fmt(clearMoves / totalTrays, 2)}`);
-  console.log(`multi-line clears (>=2 lines): ${pct(multiMoves, clearMoves)} of clearing moves overall, ${pct(earlyMultiMoves, earlyClearMoves)} in trays 1–20`);
+  console.log(`multi-line clears (>=2 lines): ${pct(phaseMultiMoves, phaseClearMoves)} of clearing moves in the early phase (trays 1–${GEN_CONFIG.EARLY_TRAYS}), ${pct(earlyMultiMoves, earlyClearMoves)} in trays 1–20, ${pct(multiMoves, clearMoves)} overall`);
   console.log(`trays 1–20 that offer a multi-line clear: ${pct(earlyMultiTrays, earlyTrays)}`);
   console.log(`nextTray time   avg ${fmt(mean(genTimes), 3)} ms  p95 ${fmt(quantile(genTimes, 0.95), 3)} ms  p99 ${fmt(quantile(genTimes, 0.99), 3)} ms  max ${fmt(genTimes[genTimes.length - 1], 2)} ms`);
 }

@@ -51,9 +51,9 @@ const DIFFICULTY = Object.freeze({
  * and template tier weights (index 1..3, null = by level number).
  */
 const CONTENT = Object.freeze({
-  normal: Object.freeze({ effort: [8.5, 23.5], borders: [18, 30], cells: [11, 22], extraGems: 0, tiers: null }),
-  hard: Object.freeze({ effort: [17.5, 29.5], borders: [30, 42], cells: [18, 26], extraGems: 1, tiers: [0, 0.2, 1, 1] }),
-  superhard: Object.freeze({ effort: [21.5, 33.5], borders: [40, 52], cells: [22, 30], extraGems: 2, tiers: [0, 0, 0.5, 1] }),
+  normal: Object.freeze({ effort: [8.5, 21], borders: [16, 27], cells: [11, 22], extraGems: 0, tiers: null }),
+  hard: Object.freeze({ effort: [16, 26], borders: [28, 38], cells: [18, 26], extraGems: 1, tiers: [0, 0.2, 1, 1] }),
+  superhard: Object.freeze({ effort: [21.5, 31], borders: [38, 50], cells: [22, 30], extraGems: 2, tiers: [0, 0, 0.5, 1] }),
 });
 /** Seeded gem layouts tried per journey level (closest to the effort target wins). */
 const GEM_LAYOUT_TRIES = 10;

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Blocko</string>
+    <string name="reminder_channel_name">Reminders</string>
+    <string name="reminder_channel_description">Optional daily reminder to play</string>
+    <string name="reminder_default_text">Ready for a quick puzzle?</string>
+    <string name="webview_update_title">Update required</string>
+    <string name="webview_update_message">Blocko needs a newer version of Android System WebView. Please update it in Google Play and open the game again.</string>
+    <string name="webview_update_button">Update</string>
+    <string name="error_title">Something went wrong</string>
+    <string name="error_message">The game stopped unexpectedly.</string>
+    <string name="error_retry">Retry</string>
+</resources>

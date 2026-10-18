@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Blocko – entspannendes Block-Puzzle für Android. Blöcke ziehen, Reihen füllen, abräumen. Auch offline.">
+<title>Blocko – Block Puzzle</title>
+<!--
+  Startseite für GitHub Pages. Kann in die Wurzel des Repositorys memo5561.github.io UND in den Ordner blocko/
+  kopiert werden. Die Links unten sind absolut (/blocko/...), damit sie von beiden Orten aus funktionieren.
+  Der Google-Play-Link funktioniert erst, wenn die App veröffentlicht ist. Passe die Paket-ID an, falls du sie änderst.
+  Optional: Das offizielle "Get it on Google Play"-Badge herunterladen, LOKAL ablegen und statt des Buttons
+  einbinden (kein Hotlinking von Google-Servern, damit die Seite keine Daten an Dritte sendet).
+-->
+<style>
+  :root { --bg-top: #3B2A9E; --bg-bottom: #1B1446; --accent: #6A4BFF; --gold: #FFD23F; }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; color: #fff; line-height: 1.55; font-size: 16px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-bottom);
+    background-image: radial-gradient(ellipse at 50% 20%, rgba(106,75,255,.55) 0, rgba(106,75,255,0) 60%),
+                      linear-gradient(180deg, var(--bg-top) 0, var(--bg-bottom) 100%);
+    background-attachment: fixed;
+    display: flex; flex-direction: column;
+  }
+  main { flex: 1; max-width: 720px; width: 100%; margin: 0 auto; padding: 48px 16px 24px; text-align: center; }
+  .icon {
+    width: 120px; height: 120px; margin: 0 auto 22px; border-radius: 28px; padding: 22px;
+    background: linear-gradient(180deg, #3B2A9E, #1B1446);
+    box-shadow: 0 18px 40px rgba(0,0,0,.45), inset 0 0 0 2px rgba(255,255,255,.08);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .icon i { display: block; border-radius: 10px; box-shadow: inset 0 -5px 0 rgba(0,0,0,.22); }
+  .icon i:nth-child(1) { background: linear-gradient(180deg, #FF7A86, #E02A45); }
+  .icon i:nth-child(2) { background: linear-gradient(180deg, #FFE57A, #F5A800); }
+  .icon i:nth-child(3) { background: linear-gradient(180deg, #7FE3FF, #0F95E0); }
+  .icon i:nth-child(4) { background: linear-gradient(180deg, #C79BFF, #7A2FE6); }
+  h1 { margin: 0; font-size: clamp(2.4rem, 9vw, 3.6rem); font-weight: 900; letter-spacing: -1px; line-height: 1.05;
+       text-shadow: 0 6px 0 #0E0A30; }
+  .tag { margin: 10px 0 0; color: var(--gold); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .lead { margin: 22px auto 0; max-width: 560px; font-size: 1.08rem; opacity: .92; }
+  .lead + .lead { margin-top: 10px; opacity: .75; font-size: 1rem; }
+  .play {
+    display: inline-block; margin: 30px 0 8px; padding: 14px 26px; border-radius: 14px;
+    background: #000; color: #fff; text-decoration: none; font-weight: 700; font-size: 1.05rem;
+    border: 1px solid rgba(255,255,255,.35); box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  }
+  .play small { display: block; font-weight: 500; font-size: .75rem; opacity: .8; letter-spacing: .5px; }
+  .play:hover, .play:focus { background: #14102e; }
+  ul.features { list-style: none; padding: 0; margin: 30px auto 0; max-width: 520px; text-align: left;
+    display: grid; gap: 10px; }
+  ul.features li { position: relative; background: rgba(255,255,255,.08); border-radius: 12px; padding: 10px 14px 10px 40px; }
+  ul.features li::before { content: ''; position: absolute; left: 14px; top: 50%; width: 14px; height: 14px;
+    margin-top: -7px; border-radius: 4px; background: var(--gold); }
+  ul.features li:nth-child(2)::before { background: #7FE3FF; }
+  ul.features li:nth-child(3)::before { background: #FF7A86; }
+  ul.features li:nth-child(4)::before { background: #C79BFF; }
+  footer { text-align: center; padding: 18px 16px 28px; font-size: .92rem; color: rgba(255,255,255,.8); }
+  footer a { color: #fff; margin: 0 8px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <div class="icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <h1>Blocko</h1>
+  <p class="tag">Block Puzzle</p>
+
+  <p class="lead">Blöcke ziehen, Reihen und Spalten füllen, abräumen! Ein entspannendes Block-Puzzle mit
+  Klassik-Modus, Abenteuer-Leveln und täglicher Herausforderung, auch offline spielbar.</p>
+  <p class="lead" lang="en">Drag blocks, fill rows and columns, clear the board! A relaxing block puzzle with
+  Classic mode, Journey levels and a Daily Challenge, playable offline.</p>
+
+  <a class="play" href="https://play.google.com/store/apps/details?id=io.github.memo5561.blocko" rel="noopener">
+    <small>JETZT BEI · GET IT ON</small>Google Play
+  </a>
+
+  <ul class="features">
+    <li>8×8-Spielfeld, Kombos und Highscore-Jagd · <span lang="en">8×8 board, combos and high scores</span></li>
+    <li>Unbegrenzt viele Level · <span lang="en">Unlimited Journey levels</span></li>
+    <li>Jeden Tag ein neues Rätsel · <span lang="en">A new puzzle every day</span></li>
+    <li>Sechs Block-Designs · <span lang="en">Six block themes</span></li>
+  </ul>
+</main>
+
+<footer>
+  <a href="/blocko/privacy-policy.html">Datenschutz · Privacy Policy</a>
+  <a href="/blocko/impressum.html">Impressum · Legal Notice</a>
+</footer>
+</body>
+</html>

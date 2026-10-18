@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_channel_name">Recordatorios</string>
+    <string name="reminder_channel_description">Recordatorio diario opcional para jugar</string>
+    <string name="reminder_default_text">¿Te apetece un puzle rápido?</string>
+    <string name="webview_update_title">Actualización necesaria</string>
+    <string name="webview_update_message">Blocko necesita una versión más reciente de Android System WebView. Actualízala en Google Play y vuelve a abrir el juego.</string>
+    <string name="webview_update_button">Actualizar</string>
+    <string name="error_title">Algo salió mal</string>
+    <string name="error_message">El juego se detuvo inesperadamente.</string>
+    <string name="error_retry">Reintentar</string>
+</resources>

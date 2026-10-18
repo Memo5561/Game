@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_channel_name">Erinnerungen</string>
+    <string name="reminder_channel_description">Optionale tägliche Spiel-Erinnerung</string>
+    <string name="reminder_default_text">Lust auf ein kurzes Rätsel?</string>
+    <string name="webview_update_title">Update erforderlich</string>
+    <string name="webview_update_message">Blocko benötigt eine neuere Version von „Android System WebView“. Bitte aktualisiere sie bei Google Play und öffne das Spiel erneut.</string>
+    <string name="webview_update_button">Aktualisieren</string>
+    <string name="error_title">Etwas ist schiefgelaufen</string>
+    <string name="error_message">Das Spiel wurde unerwartet beendet.</string>
+    <string name="error_retry">Erneut versuchen</string>
+</resources>

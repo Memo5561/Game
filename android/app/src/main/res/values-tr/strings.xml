@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_channel_name">Hatırlatıcılar</string>
+    <string name="reminder_channel_description">İsteğe bağlı günlük oyun hatırlatıcısı</string>
+    <string name="reminder_default_text">Kısa bir bulmacaya ne dersin?</string>
+    <string name="webview_update_title">Güncelleme gerekli</string>
+    <string name="webview_update_message">Blocko, Android System WebView\'in daha yeni bir sürümüne ihtiyaç duyuyor. Lütfen Google Play\'den güncelleyin ve oyunu yeniden açın.</string>
+    <string name="webview_update_button">Güncelle</string>
+    <string name="error_title">Bir şeyler ters gitti</string>
+    <string name="error_message">Oyun beklenmedik şekilde durdu.</string>
+    <string name="error_retry">Tekrar dene</string>
+</resources>
