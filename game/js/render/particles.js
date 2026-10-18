@@ -8,6 +8,8 @@ export const P_DOT = 2;       // colored glow dot (additive)
 export const P_CONFETTI = 3;  // paper confetti, flutters (drawn in the top layer)
 export const P_GEM = 4;       // collected gem flying on a curve to (tx, ty) (top layer)
 
+import { ROT_FRAMES } from './sprites.js';
+
 /** Draw layers. */
 export const LAYER_BOARD = 0;
 export const LAYER_TOP = 1;
@@ -146,8 +148,7 @@ export class Particles {
   }
 
   /**
-   * Draws one layer. The caller's transform is replaced per particle and NOT restored; the
-   * renderer resets it afterwards.
+   * Draws one layer with the transform set to (dpr, shake offset); no per-particle transforms.
    * @param {CanvasRenderingContext2D} ctx
    * @param {import('./sprites.js').SpriteSet} sp
    * @param {number} dpr
@@ -158,7 +159,9 @@ export class Particles {
   draw(ctx, sp, dpr, ox, oy, layer) {
     const n = this.n;
     if (!n) return;
-    // pass 1: normal blending
+    // pass 1: normal blending, axis-aligned draws of pre-rotated frames
+    ctx.setTransform(dpr, 0, 0, dpr, ox * dpr, oy * dpr);
+    const QUARTER = Math.PI / 2;
     for (let i = 0; i < n; i++) {
       if (this.delay[i] > 0) continue;
       const k = this.kind[i];
@@ -166,30 +169,31 @@ export class Particles {
       if ((layer === LAYER_TOP) !== top || k === P_SPARKLE || k === P_DOT) continue;
       const t = this.age[i] / this.life[i];
       let img;
-      let w = this.size[i];
-      let h = w;
-      let fy = 1;
+      let w;
+      let h;
       let alpha = t > 0.6 ? 1 - (t - 0.6) / 0.4 : 1;
+      const rot = this.rot[i];
       if (k === P_SHARD) {
-        img = sp.shard[this.color[i]];
-        w = h = this.size[i] * (1 - t * 0.35);
+        // frames cover 90° (square shard); frame box = shard size × √2
+        const f = ((((rot % QUARTER) + QUARTER) % QUARTER) / QUARTER) * ROT_FRAMES;
+        img = sp.shardFrames[this.color[i]][f | 0];
+        w = h = this.size[i] * (1 - t * 0.35) * 1.414;
       } else if (k === P_CONFETTI) {
-        img = sp.confetti[this.color[i] % sp.confetti.length];
-        h = w * 1.6;
-        fy = Math.cos(this.age[i] * 0.012 + i * 1.7);
+        const frames = sp.confettiFrames[this.color[i] % sp.confettiFrames.length];
+        const f = ((((rot % Math.PI) + Math.PI) % Math.PI) / Math.PI) * ROT_FRAMES;
+        img = frames[f | 0];
+        w = this.size[i] * 1.9;
+        // paper flutter: squash the frame vertically
+        h = w * Math.max(0.15, Math.abs(Math.cos(this.age[i] * 0.012 + i * 1.7)));
         alpha = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
       } else {
         img = sp.gem[this.color[i]];
-        const s = 1 - 0.45 * t;
-        w = h = this.size[i] * s;
+        w = h = this.size[i] * (1 - 0.45 * t);
         alpha = t > 0.85 ? 1 - (t - 0.85) / 0.15 : 1;
       }
       if (!img) continue;
-      const c = Math.cos(this.rot[i]);
-      const s = Math.sin(this.rot[i]);
       ctx.globalAlpha = alpha;
-      ctx.setTransform(dpr * c, dpr * s, -dpr * s * fy, dpr * c * fy, (this.x[i] + ox) * dpr, (this.y[i] + oy) * dpr);
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.drawImage(img, this.x[i] - w / 2, this.y[i] - h / 2, w, h);
     }
     if (layer !== LAYER_BOARD) {
       ctx.globalAlpha = 1;
@@ -197,7 +201,6 @@ export class Particles {
     }
     // pass 2: additive glows
     ctx.globalCompositeOperation = 'lighter';
-    ctx.setTransform(dpr, 0, 0, dpr, ox * dpr, oy * dpr);
     for (let i = 0; i < n; i++) {
       if (this.delay[i] > 0) continue;
       const k = this.kind[i];

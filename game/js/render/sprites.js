@@ -6,7 +6,7 @@
 //
 // Sizes: painters work in device pixels; `SpriteSet` records the CSS size each sprite represents.
 
-import { rgb, rgba, mix, lighten, darken, greyOf, saturate } from './color.js';
+import { rgba, mix, lighten, darken, greyOf, saturate } from './color.js';
 import { BOARD_PAD } from './layout.js';
 
 export { BOARD_PAD };
@@ -933,6 +933,28 @@ export function paintBoardPreview(ctx, w, h, theme) {
 // Effect sprites
 // ---------------------------------------------------------------------------------------------
 
+/** Number of pre-rotated frames for particles. */
+export const ROT_FRAMES = 8;
+
+/**
+ * Pre-rotated copies of a sprite over [0, period) – each frame is a square of the sprite's
+ * diagonal so every rotation fits.
+ * @returns {HTMLCanvasElement[]}
+ */
+function rotatedFrames(src, period) {
+  const d = Math.ceil(Math.hypot(src.width, src.height));
+  const out = [];
+  for (let k = 0; k < ROT_FRAMES; k++) {
+    const c = makeCanvas(d, d);
+    const ctx = c.getContext('2d');
+    ctx.translate(d / 2, d / 2);
+    ctx.rotate((k / ROT_FRAMES) * period);
+    ctx.drawImage(src, -src.width / 2, -src.height / 2);
+    out.push(c);
+  }
+  return out;
+}
+
 /** White rounded block silhouette (flash / pop highlight), same shape as the theme's blocks. */
 function paintFlash(ctx, theme, s) {
   const g = s * 0.045;
@@ -1291,7 +1313,11 @@ export class SpriteSet {
     this.boardRect = { x: 0, y: 0, w: 0, h: 0 };
     this.background = null;
     this.shard = [];
+    /** @type {HTMLCanvasElement[][]} per color: ROT_FRAMES rotations over 90° (frame size = shard × √2) */
+    this.shardFrames = [];
     this.confetti = [];
+    /** @type {HTMLCanvasElement[][]} per confetti color: ROT_FRAMES rotations over 180° */
+    this.confettiFrames = [];
     this.confettiW = 0;
     this.confettiH = 0;
     this.sparkle = null;
@@ -1301,7 +1327,12 @@ export class SpriteSet {
     /** white light-sweep bars [horizontal, vertical] */
     this.sweepH = null;
     this.sweepV = null;
+    /** sweep bar thickness (CSS px); sprites are drawn 1:1 as cropped slices */
     this.sweepThick = 0;
+    /** hover glow bar thickness (CSS px) */
+    this.glowThick = 0;
+    this.glowLen = 0;
+    this.glowPx = 0;
     /** colored hover glow bars, lazily built per color */
     this.glowH = [];
     this.glowV = [];
@@ -1354,16 +1385,14 @@ export class SpriteSet {
     this.shadow = one(sp, (ctx) => paintShadow(ctx, cs, cs * this.shadowPad));
 
     // board panel incl. its drop shadow margin
+    // The cell grid sits at a whole-pixel offset inside the sprite, so a 1:1 blit at
+    // boardX * dpr - off keeps every cell on the device pixel grid.
     const pad = layout.cell * BOARD_PAD;
-    const margin = layout.cell * 1.0;
-    const bw = layout.boardPx + 2 * (pad + margin);
-    this.boardRect = { x: layout.boardX - pad - margin, y: layout.boardY - pad - margin, w: bw, h: bw };
-    this.board = makeCanvas(bw * dpr, bw * dpr);
-    {
-      const ctx = this.board.getContext('2d');
-      const off = (pad + margin) * dpr;
-      paintBoardPanel(ctx, theme, off, off, layout.cell * dpr, 8);
-    }
+    const off = Math.round((pad + layout.cell) * dpr);
+    const bwPx = Math.round(layout.boardPx * dpr) + 2 * off;
+    this.boardRect = { x: layout.boardX - off / dpr, y: layout.boardY - off / dpr, w: bwPx / dpr, h: bwPx / dpr };
+    this.board = makeCanvas(bwPx, bwPx);
+    paintBoardPanel(this.board.getContext('2d'), theme, off, off, layout.cell * dpr, 8);
 
     // background (device px, full canvas)
     const W = Math.round(cssW * dpr);
@@ -1377,19 +1406,18 @@ export class SpriteSet {
     }, this.seamEdge === undefined ? (layout.landscape ? 'left' : 'top') : this.seamEdge);
 
     // target-mode frame (same box as the board sprite) and 3x3 target
-    this.frame = makeCanvas(bw * dpr, bw * dpr);
-    {
-      const off = (pad + margin) * dpr;
-      paintFrame(this.frame.getContext('2d'), theme, off, off, layout.cell * dpr);
-    }
+    this.frame = makeCanvas(bwPx, bwPx);
+    paintFrame(this.frame.getContext('2d'), theme, off, off, layout.cell * dpr);
     this.targetPad = layout.cell * 0.5;
     this.target = makeCanvas((layout.cell * 3 + 2 * this.targetPad) * dpr, (layout.cell * 3 + 2 * this.targetPad) * dpr);
     paintTarget(this.target.getContext('2d'), theme, layout.cell * dpr, this.targetPad * dpr);
 
-    // particles
+    // particles – shards and confetti are pre-rotated (ROT_FRAMES angles) so that the per-frame
+    // draws stay axis-aligned (rotated drawImage is ~6x slower on software rasterizers)
     const shs = Math.max(8, Math.round(cs * 0.5));
     for (let i = 0; i < 8; i++) {
       this.shard[i] = one(shs, (ctx, s) => paintShard(ctx, theme, i, s));
+      this.shardFrames[i] = rotatedFrames(this.shard[i], Math.PI / 2);
       this.dot[i] = one(Math.max(8, Math.round(cs * 0.6)), (ctx, s) => paintDot(ctx, s, theme.palette[i]));
     }
     this.dotWhite = one(Math.max(8, Math.round(cs * 0.6)), (ctx, s) => paintDot(ctx, s, '#FFFFFF'));
@@ -1403,15 +1431,19 @@ export class SpriteSet {
       paintConfetti(c.getContext('2d'), col, this.confettiW, this.confettiH);
       return c;
     });
+    this.confettiFrames = this.confetti.map((c) => rotatedFrames(c, Math.PI));
 
     // light sweep bars
     const len = Math.round(layout.boardPx * dpr);
-    const thick = Math.round(cs * 1.7);
+    const thick = Math.round(cs * 0.9);
     this.sweepThick = thick / dpr;
     this.sweepH = makeCanvas(len, thick);
     paintLineGlow(this.sweepH.getContext('2d'), len, thick, '#FFFFFF', false);
     this.sweepV = makeCanvas(thick, len);
     paintLineGlow(this.sweepV.getContext('2d'), len, thick, '#FFFFFF', true);
+    this.glowLen = len;
+    this.glowPx = Math.round(cs * 1.7);
+    this.glowThick = this.glowPx / dpr;
     this.glowH = [];
     this.glowV = [];
 
@@ -1427,8 +1459,8 @@ export class SpriteSet {
   lineGlow(color, vertical) {
     const list = vertical ? this.glowV : this.glowH;
     if (!list[color]) {
-      const len = this.sweepH.width;
-      const thick = this.sweepH.height;
+      const len = this.glowLen;
+      const thick = this.glowPx;
       const col = this.theme.palette[color];
       const c = vertical ? makeCanvas(thick, len) : makeCanvas(len, thick);
       paintLineGlow(c.getContext('2d'), len, thick, saturate(col, 0.2), vertical);
@@ -1452,6 +1484,3 @@ export class SpriteSet {
     return s;
   }
 }
-
-/** rgb() re-export for callers that need channel values. */
-export { rgb };

@@ -26,7 +26,7 @@ const VIEWPORTS = [
   { name: 'tabletPortrait', width: 800, height: 1280, deviceScaleFactor: 2 },
 ];
 const THEMES = ['jewel', 'neon', 'candy', 'wood', 'pixel', 'gold'];
-const ALL_SCENARIOS = ['mid', 'hover', 'clear', 'gameover', 'journey', 'tutorial', 'hammer', 'allclear', 'newbest', 'dim', 'shuffle', 'revive'];
+const ALL_SCENARIOS = ['mid', 'hover', 'clear', 'gameover', 'journey', 'tutorial', 'hammer', 'allclear', 'newbest', 'dim', 'shuffle', 'revive', 'previews'];
 const THEME_SCENARIOS = ['mid', 'hover', 'clear', 'gameover', 'journey', 'hammer'];
 
 function assert(cond, message) {
@@ -177,6 +177,26 @@ async function checkDrags(page, cdp, vp) {
   assert(st.session.board[56] === 0 && st.session.tray[2], `${vp.name}: cancel() did not place`);
 }
 
+/** Tutorial: a drop up to 1.0 cell away from the hinted target snaps onto it. */
+async function checkTutorialSnap(page) {
+  const info = await sb(page, () => {
+    const s = window.__sandbox;
+    s.scenario('tutorial');
+    s.renderer.freeze(false);
+    const h = s.session.tutorialHint();
+    const p = s.pointerFor(h.trayIndex, h.r, h.c);
+    const cell = s.renderer.layout.cell;
+    // 0.8 cells right and 0.5 cells down of the exact spot: outside the normal 0.6-cell snap
+    p.end.x += 0.8 * cell;
+    p.end.y += 0.5 * cell;
+    return { p, h, board: s.state().session.board.join('') };
+  });
+  await mouseDrag(page, info.p.start, info.p.end);
+  await page.waitForTimeout(80);
+  const st = await sb(page, () => window.__sandbox.state());
+  assert(st.session.score > 0, `tutorial: drop near the hint snapped and cleared (score ${st.session.score})`);
+}
+
 /** Promise timing contract + idle loop stop. */
 async function checkTiming(page) {
   const r = await sb(page, async () => {
@@ -219,6 +239,7 @@ async function measurePerf(browser, server) {
     results.normal = await sb(page, () => window.__sandbox.perfRun({ clears: 8 }));
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     results.throttled4x = await sb(page, () => window.__sandbox.perfRun({ clears: 10 }));
+    results['4x@dpr1.5'] = await sb(page, () => window.__sandbox.perfRun({ clears: 10, maxDpr: 1.5 }));
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     assert(errors.length === 0, `perf page errors:\n${errors.join('\n')}`);
   } finally {
@@ -237,7 +258,10 @@ export default async function renderSpec() {
       try {
         await checkLayout(page, vp);
         await checkDrags(page, cdp, vp);
-        if (vp.name === 'phone') await checkTiming(page);
+        if (vp.name === 'phone') {
+          await checkTutorialSnap(page);
+          await checkTiming(page);
+        }
         const scenarios = vp.name === 'phone' ? ALL_SCENARIOS : ['mid', 'hover', 'clear', 'tutorial'];
         for (const sc of scenarios) {
           await sb(page, (n) => window.__sandbox.scenario(n), sc);
@@ -272,7 +296,7 @@ export default async function renderSpec() {
     const perf = await measurePerf(browser, server);
     console.log(`  render perf (360×700@3 → dpr 2, repeated 6-line clears with gems):`);
     for (const [k, v] of Object.entries(perf)) {
-      console.log(`    ${k.padEnd(12)} frames ${v.frames}  interval avg ${v.avgInterval} / p95 ${v.p95Interval} ms  draw work avg ${v.avgWork} / p95 ${v.p95Work} / max ${v.maxWork} ms`);
+      console.log(`    ${k.padEnd(12)} dpr ${v.dpr}  frames ${v.frames}  interval avg ${v.avgInterval} / p95 ${v.p95Interval} ms  draw work avg ${v.avgWork} / p95 ${v.p95Work} / max ${v.maxWork} ms`);
     }
     assert(perf.throttled4x.frames > 30, 'perf run produced animated frames');
     assert(perf.throttled4x.p95Work < 33, `p95 draw work under 4x CPU throttling ${perf.throttled4x.p95Work} ms`);

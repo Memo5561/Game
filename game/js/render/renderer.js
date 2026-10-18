@@ -127,7 +127,7 @@ export class Renderer {
     /** Automatic drop to 1.5 dpr on slow devices. Extra. */
     this.autoDpr = true;
     /** Optional frame statistics for the sandbox (extra): enable with renderer.perf.enabled = true. */
-    this.perf = { enabled: false, n: 0, work: new Float32Array(4096), interval: new Float32Array(4096) };
+    this.perf = { enabled: false, n: 0, lastT: 0, work: new Float32Array(4096), interval: new Float32Array(4096) };
 
     this.dpr = 1;
     this._dprCap = 2;
@@ -815,6 +815,7 @@ export class Renderer {
       for (const key of Object.keys(PRAISE_STYLES)) this._sprite(`praise.${key}`, this._tr(`praise.${key}`), 'praise', this._bigFont(1.0), key);
       this._sprite('nospace', this._tr('nospace'), 'nospace', this._bigFont(0.95));
       this._sprite('newbest', this._tr('newbest'), 'newbest', this._bigFont(0.9));
+      for (let n = 2; n <= 5; n++) this._sprite(`combo.${n}`, this._tr('combo', { n }), 'combo', this._smallFont(0.62));
     }, 0);
   }
 
@@ -1002,13 +1003,9 @@ export class Renderer {
       comboY = praiseY + s.h * 0.62;
     }
     if (result.combo >= 2) {
-      const slot = this._spawnText(TK_COMBO, null, midX, result.praise ? comboY : cy - L.cell * 1.1, TIMING.PRAISE, L.cell * 0.6);
-      const { w, h } = renderTextSprite(slot.own, this._tr('combo', { n: result.combo }), {
-        kind: 'combo', size: this._smallFont(0.62), dpr: this.dpr, theme: this.theme, maxWidth: L.boardPx,
-      });
-      slot.img = slot.own;
-      slot.w = w;
-      slot.h = h;
+      // cached per combo value (the glow blur is the expensive part of text rendering)
+      const s = this._sprite(`combo.${result.combo}`, this._tr('combo', { n: result.combo }), 'combo', this._smallFont(0.62));
+      this._spawnText(TK_COMBO, s, midX, result.praise ? comboY : cy - L.cell * 1.1, TIMING.PRAISE, L.cell * 0.6);
     }
     const pts = result.totalPoints || 0;
     if (pts > 0) {
@@ -1051,7 +1048,7 @@ export class Renderer {
         Math.cos(a) * sp, Math.sin(a) * sp - cell * (3 + rnd() * 4) * power,
         cell * (0.28 + rnd() * 0.3), 480 + rnd() * 360, rnd() * 6.28, (rnd() - 0.5) * 16);
     }
-    P.spawn(P_DOT, color, x, y, 0, 0, cell * 1.5, 280);
+    if (rnd() < 0.5) P.spawn(P_DOT, color, x, y, 0, 0, cell * 1.15, 260);
     if (rnd() < 0.5) {
       P.spawn(P_SPARKLE, 0, x + (rnd() - 0.5) * cell, y + (rnd() - 0.5) * cell, (rnd() - 0.5) * cell * 2, -cell * (1 + rnd() * 2),
         cell * (0.5 + rnd() * 0.5), 380 + rnd() * 240);
@@ -1134,16 +1131,23 @@ export class Renderer {
     if (this._frameHook) this._frameHook();
     this._update(dt);
     this._draw();
-    if (this.perf.enabled && animatedBefore) {
-      const i = this.perf.n % this.perf.work.length;
-      this.perf.work[i] = performance.now() - t0;
-      this.perf.interval[i] = raw;
-      this.perf.n++;
+    if (this.perf.enabled) {
+      // interval = wall time between frame callbacks (RAF timestamps can repeat when frames are skipped)
+      const t1 = performance.now();
+      if (animatedBefore && this.perf.lastT) {
+        const i = this.perf.n % this.perf.work.length;
+        this.perf.work[i] = t1 - t0;
+        this.perf.interval[i] = t0 - this.perf.lastT;
+        this.perf.n++;
+      }
+      this.perf.lastT = t0;
     }
     const more = this._needsFrame();
     if (more && animatedBefore) this._sampleDpr(raw);
-    if (more && this._running) this._raf = requestAnimationFrame(this._onFrame);
-    else {
+    // effects started during this frame may already have requested the next one (invalidate)
+    if (more && this._running) {
+      if (!this._raf) this._raf = requestAnimationFrame(this._onFrame);
+    } else if (!this._raf) {
       this._last = 0;
       this._scheduleAmbient();
     }
@@ -1343,22 +1347,24 @@ export class Renderer {
     let oy = 0;
     const sk = (T - this._shakeStart) / this._shakeDur;
     if (sk >= 0 && sk < 1) {
+      // whole device pixels keep every sprite on the fast (non-resampling) blit path
       const a = this._shakeAmp * (1 - sk);
-      ox = Math.sin(T * 0.11) * a;
-      oy = Math.cos(T * 0.083) * a * 0.75;
+      ox = Math.round(Math.sin(T * 0.11) * a * dpr) / dpr;
+      oy = Math.round(Math.cos(T * 0.083) * a * 0.75 * dpr) / dpr;
     }
-    ctx.setTransform(dpr, 0, 0, dpr, ox * dpr, oy * dpr);
 
-    // board panel (frame + empty cells, one sprite)
+    // board panel (frame + empty cells, one sprite) – blitted 1:1 in device pixels
     const br = sp.boardRect;
-    ctx.drawImage(sp.board, br.x, br.y, br.w, br.h);
-
+    const bdx = Math.round((br.x + ox) * dpr);
+    const bdy = Math.round((br.y + oy) * dpr);
+    ctx.drawImage(sp.board, bdx, bdy);
     if (this.targetMode) {
       // pulsing frame: "tap a block"
       ctx.globalAlpha = 0.45 + 0.4 * Math.sin(T * 0.008);
-      ctx.drawImage(sp.frame, br.x, br.y, br.w, br.h);
+      ctx.drawImage(sp.frame, bdx, bdy);
       ctx.globalAlpha = 1;
     }
+    ctx.setTransform(dpr, 0, 0, dpr, ox * dpr, oy * dpr);
 
     // game-over grey factor per row
     const ungrey = this._ungreyStart > NEVER ? 1 - clamp01((T - this._ungreyStart) / TIMING.UNGREY) : 0;
@@ -1383,7 +1389,7 @@ export class Renderer {
       if (this._hlRows.length || this._hlCols.length) {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = (0.28 + 0.22 * pulse) * (this.theme.fxGlow ?? 1);
-        const th = sp.sweepThick;
+        const th = sp.glowThick;
         for (let k = 0; k < this._hlRows.length; k++) {
           ctx.drawImage(sp.lineGlow(D.color, false), bx, by + (this._hlRows[k] + 0.5) * cell - th / 2, L.boardPx, th);
         }
@@ -1396,7 +1402,7 @@ export class Renderer {
     }
 
     this._drawDying(ctx, sp, T, cell, bx, by);
-    this._drawSweeps(ctx, sp, T, cell, bx, by, L.boardPx);
+    this._drawSweeps(ctx, sp, T, cell, bx, by);
 
     // board flash (all clear / revive)
     const fk = (T - this._flashStart) / this._flashDur;
@@ -1528,27 +1534,30 @@ export class Renderer {
     }
   }
 
-  _drawSweeps(ctx, sp, T, cell, bx, by, boardPx) {
+  _drawSweeps(ctx, sp, T, cell, bx, by) {
     if (!this._swN) return;
     const glow = this.theme.fxGlow ?? 1;
-    ctx.globalCompositeOperation = 'lighter';
+    const dpr = this.dpr;
+    const cellPx = cell * dpr;
     const th = sp.sweepThick;
+    ctx.globalCompositeOperation = 'lighter';
     for (let k = 0; k < this._swN; k++) {
       const age = T - this._swStart[k];
       if (age < 0) continue;
+      // the bar grows from the placed piece to both ends, then fades; drawn as a 1:1 slice
       const grow = easeOutCubic(clamp01(age / 170));
       const fade = age < 170 ? 1 : 1 - clamp01((age - 170) / (TIMING.SWEEP - 170));
       const o = this._swOrigin[k];
-      const a = Math.max(0, o - grow * N);
-      const b = Math.min(N, o + grow * N);
-      const thick = th * (0.36 + 0.26 * grow);
-      ctx.globalAlpha = 0.55 * fade * glow;
+      const a = Math.round(Math.max(0, o - grow * N) * cellPx);
+      const b = Math.round(Math.min(N, o + grow * N) * cellPx);
+      if (b - a < 1) continue;
+      ctx.globalAlpha = 0.6 * fade * glow;
       if (this._swRow[k]) {
-        const yy = by + (this._swIdx[k] + 0.5) * cell;
-        ctx.drawImage(sp.sweepH, bx + a * cell, yy - thick / 2, (b - a) * cell, thick);
+        const yy = Math.round((by + (this._swIdx[k] + 0.5) * cell - th / 2) * dpr) / dpr;
+        ctx.drawImage(sp.sweepH, a, 0, b - a, sp.sweepH.height, bx + a / dpr, yy, (b - a) / dpr, th);
       } else {
-        const xx = bx + (this._swIdx[k] + 0.5) * cell;
-        ctx.drawImage(sp.sweepV, xx - thick / 2, by + a * cell, thick, (b - a) * cell);
+        const xx = Math.round((bx + (this._swIdx[k] + 0.5) * cell - th / 2) * dpr) / dpr;
+        ctx.drawImage(sp.sweepV, 0, a, sp.sweepV.width, b - a, xx, by + a / dpr, th, (b - a) / dpr);
       }
     }
     ctx.globalAlpha = 1;
@@ -1703,8 +1712,12 @@ export class Renderer {
     const pulse = 0.5 + 0.5 * Math.sin(T * 0.009);
     const img = sp.block[piece.color];
     const cells = shape.cells;
-    ctx.globalAlpha = 0.38 + 0.27 * pulse;
+    ctx.globalAlpha = 0.4 + 0.25 * pulse;
     for (let k = 0; k < cells.length; k++) ctx.drawImage(img, bx + (H.c + cells[k][1]) * cell, by + (H.r + cells[k][0]) * cell, cell, cell);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.35 * pulse;
+    for (let k = 0; k < cells.length; k++) ctx.drawImage(sp.flash, bx + (H.c + cells[k][1]) * cell, by + (H.r + cells[k][0]) * cell, cell, cell);
+    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
 
     const t = (T - H.start) % TIMING.HINT_CYCLE;
@@ -1776,7 +1789,7 @@ export class Renderer {
           const d = s.kind === TK_COMBO ? 0.08 : 0;
           const kk = clamp01((k - d) / (1 - d));
           if (k < d) continue;
-          scale = kk < 0.32 ? elasticOut(kk / 0.32) : 1 + 0.05 * (kk - 0.32);
+          scale = kk < 0.32 ? elasticOut(kk / 0.32) : 1;
           alpha = kk > 0.8 ? 1 - (kk - 0.8) / 0.2 : 1;
           if (kk > 0.8) y -= s.rise * ((kk - 0.8) / 0.2);
           break;

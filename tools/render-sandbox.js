@@ -7,7 +7,7 @@ import { getShape } from '/game/js/core/shapes.js';
 import { generateLevel } from '/game/js/core/levels.js';
 import { Renderer } from '/game/js/render/renderer.js';
 import { DragController, pointerForCell } from '/game/js/input/drag.js';
-import { THEME_IDS, getTheme, themeCssVars } from '/game/js/render/theme.js';
+import { THEME_IDS, getTheme, themeCssVars, renderThemePreview } from '/game/js/render/theme.js';
 
 const params = new URLSearchParams(location.search);
 const SEED = Number(params.get('seed') || 20261018) >>> 0;
@@ -205,6 +205,8 @@ function newSession(mode = 'classic', extra = {}) {
 }
 
 function use(session) {
+  const pv = document.getElementById('previews');
+  if (pv) pv.remove();
   state.session = session;
   state.busy = false;
   clearTimeout(state.hintTimer);
@@ -330,7 +332,7 @@ const SCENARIOS = {
     renderer.advance(opts.at ?? 170);
   },
   /** Game over sequence finished (grey board + 'No space!'). */
-  gameover() {
+  gameover(opts = {}) {
     const s = newSession();
     setBoard(s, BOARDS.gameover);
     setTray(s, [['O3', 2], ['I4h', 4], ['L5c', 6]]);
@@ -339,7 +341,25 @@ const SCENARIOS = {
     use(s);
     renderer.freeze(true);
     renderer.animateGameOver();
-    renderer.advance(980);
+    renderer.advance(opts.at ?? 980);
+  },
+  /** Shop previews of all themes (renderThemePreview) in a DOM overlay. */
+  previews() {
+    SCENARIOS.mid();
+    let box = document.getElementById('previews');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'previews';
+      box.style.cssText = 'position:fixed;inset:auto 8px 8px 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;'
+        + 'padding:8px;background:rgba(0,0,0,.55);border-radius:14px;z-index:5';
+      for (const id of THEME_IDS) {
+        const c = document.createElement('canvas');
+        c.style.cssText = 'width:100%;aspect-ratio:1;border-radius:12px;display:block';
+        box.appendChild(c);
+      }
+      document.body.appendChild(box);
+    }
+    [...box.children].forEach((c, i) => renderThemePreview(c, getTheme(THEME_IDS[i])));
   },
   /** Journey level with gems (playable). */
   journey() {
@@ -432,10 +452,12 @@ function hoverAt(i, r, c) {
 }
 
 /** Repeated heavy 6-line clears with gems for frame-time measurement. */
-async function perfRun({ clears = 10, interval = 380, autoDpr = false } = {}) {
+async function perfRun({ clears = 10, interval = 380, autoDpr = false, maxDpr = 2 } = {}) {
   const s = newSession();
   use(s);
   renderer.autoDpr = autoDpr;
+  renderer.maxDpr = maxDpr;
+  renderer.resize();
   await new Promise((r) => setTimeout(r, 300));
   const perf = renderer.perf;
   perf.n = 0;
@@ -451,6 +473,10 @@ async function perfRun({ clears = 10, interval = 380, autoDpr = false } = {}) {
   }
   await new Promise((r) => setTimeout(r, 900));
   perf.enabled = false;
+  const dpr = renderer.dpr;
+  renderer.maxDpr = 2;
+  renderer.autoDpr = true;
+  renderer.resize();
   const n = Math.min(perf.n, perf.work.length);
   const work = Array.from(perf.work.slice(0, n)).sort((a, b) => a - b);
   const iv = Array.from(perf.interval.slice(0, n)).sort((a, b) => a - b);
@@ -458,7 +484,7 @@ async function perfRun({ clears = 10, interval = 380, autoDpr = false } = {}) {
   const pct = (a, p) => a[Math.min(a.length - 1, Math.floor(a.length * p))] || 0;
   return {
     frames: n,
-    dpr: renderer.dpr,
+    dpr,
     avgInterval: +avg(iv).toFixed(2),
     p95Interval: +pct(iv, 0.95).toFixed(2),
     avgWork: +avg(work).toFixed(2),

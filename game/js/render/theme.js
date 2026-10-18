@@ -50,7 +50,6 @@ export const THEMES = F({
   jewel: F({
     id: 'jewel',
     nameKey: 'theme.jewel',
-    fxGlow: 1,
     style: 'jewel',
     palette: F(['#F0405A', '#FF8A2A', '#FFC72C', '#2FCB72', '#2FB6F0', '#5470FF', '#9D5BF0', '#FF5CC0']),
     shades: F([
@@ -72,6 +71,7 @@ export const THEMES = F({
     textStroke: '#1A0F4A',
     greyTint: '#6F69A8',
     ghostAlpha: 0.42,
+    fxGlow: 1,
     dark: true,
     ui: F({
       panel: '#2A1F7A', panelEdge: '#4A3BB8', overlay: 'rgba(12,8,40,0.72)',
@@ -85,7 +85,6 @@ export const THEMES = F({
   neon: F({
     id: 'neon',
     nameKey: 'theme.neon',
-    fxGlow: 1,
     style: 'neon',
     palette: F(['#FF3864', '#FF8C1A', '#FFE53B', '#3DFF6E', '#19E6FF', '#3D7BFF', '#B347FF', '#FF3DD8']),
     bg: F(['#14082E', '#05030C']),
@@ -103,6 +102,7 @@ export const THEMES = F({
     textStroke: '#120530',
     greyTint: '#5A5F8A',
     ghostAlpha: 0.5,
+    fxGlow: 1,
     dark: true,
     ui: F({
       panel: '#120A30', panelEdge: '#19E6FF', overlay: 'rgba(4,2,14,0.78)',
@@ -116,7 +116,6 @@ export const THEMES = F({
   candy: F({
     id: 'candy',
     nameKey: 'theme.candy',
-    fxGlow: 0.45,
     style: 'candy',
     palette: F(['#FF6B8B', '#FFA25C', '#FFD95C', '#5FD99A', '#5CC8FF', '#7F8CFF', '#B97CFF', '#FF85D5']),
     bg: F(['#FFD9EE', '#C3B5FF']),
@@ -134,6 +133,7 @@ export const THEMES = F({
     textStroke: '#6E2A68',
     greyTint: '#B9A9D6',
     ghostAlpha: 0.45,
+    fxGlow: 0.45,
     dark: false,
     ui: F({
       panel: '#FFFFFF', panelEdge: '#F1D8FF', overlay: 'rgba(80,40,110,0.45)',
@@ -147,7 +147,6 @@ export const THEMES = F({
   wood: F({
     id: 'wood',
     nameKey: 'theme.wood',
-    fxGlow: 0.75,
     style: 'wood',
     palette: F(['#D2452F', '#EA8A2E', '#F4C64E', '#7BAE3E', '#2FA39C', '#4677C4', '#9459B0', '#F1DDB0']),
     bg: F(['#6B4528', '#2A170B']),
@@ -165,6 +164,7 @@ export const THEMES = F({
     textStroke: '#3A1E0C',
     greyTint: '#8A7560',
     ghostAlpha: 0.5,
+    fxGlow: 0.75,
     dark: true,
     ui: F({
       panel: '#5A3820', panelEdge: '#8C5A30', overlay: 'rgba(30,15,5,0.7)',
@@ -178,7 +178,6 @@ export const THEMES = F({
   pixel: F({
     id: 'pixel',
     nameKey: 'theme.pixel',
-    fxGlow: 0.9,
     style: 'pixel',
     palette: F(['#E43B44', '#F77622', '#FEE761', '#63C74D', '#2CE8F5', '#3B6FE0', '#9A4FD0', '#F6757A']),
     bg: F(['#29366F', '#141626']),
@@ -196,6 +195,7 @@ export const THEMES = F({
     textStroke: '#10111E',
     greyTint: '#566C86',
     ghostAlpha: 0.5,
+    fxGlow: 0.9,
     dark: true,
     ui: F({
       panel: '#29366F', panelEdge: '#566C86', overlay: 'rgba(16,17,30,0.78)',
@@ -209,7 +209,6 @@ export const THEMES = F({
   gold: F({
     id: 'gold',
     nameKey: 'theme.gold',
-    fxGlow: 1,
     style: 'gold',
     palette: F(['#E0115F', '#FF8F1F', '#FFD447', '#12B76A', '#22C3D6', '#2563EB', '#9B5DE5', '#F472B6']),
     bg: F(['#2A2214', '#050504']),
@@ -227,6 +226,7 @@ export const THEMES = F({
     textStroke: '#241A04',
     greyTint: '#7A6E55',
     ghostAlpha: 0.45,
+    fxGlow: 1,
     dark: true,
     ui: F({
       panel: '#17130C', panelEdge: '#C9A227', overlay: 'rgba(0,0,0,0.75)',
