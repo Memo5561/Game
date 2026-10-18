@@ -1,20 +1,21 @@
 // Balancing simulator: a heuristic bot plays classic runs, journey levels and daily challenges
 // and reports the numbers used to tune js/core/generator.js and js/core/levels.js.
 //
-// Usage: node tools/simulate.mjs [--runs=200] [--levels=60] [--attempts=3] [--days=30]
-//                                [--start=2026-10-01] [--seed=1] [--bot=planner|greedy]
+// Usage: node tools/simulate.mjs [--runs=200] [--levels=100] [--attempts=8] [--days=30]
+//          [--start=2026-10-01] [--seed=1] [--bot=greedy|planner] [--experience=10]
+//          [--config='{"RAW_P_MAX":0.15}']   (JSON merged over CONFIG.GENERATOR to try tunings)
 //
 // Bots (same priorities: points from line clears/gems ≫ remaining pieces still fit ≫ few isolated
 // holes ≫ smooth surface ≫ room for big pieces ≫ open centre):
-//   planner (default, ≈ a decent human): plans the whole tray with a small beam search over piece
-//           orders and positions, then plays that plan.
-//   greedy  (≈ a casual player): picks the best single placement each time.
+//   greedy  (default, the balancing reference ≈ a casual/decent player): best single placement.
+//   planner (≈ a strong player): plans the whole tray with a small beam search over piece orders
+//           and positions, then plays that plan.
 
 import { GameSession } from '../game/js/core/game.js';
 import { Board } from '../game/js/core/board.js';
 import { getShape } from '../game/js/core/shapes.js';
-import { analyzeTray } from '../game/js/core/generator.js';
-import { generateLevel, generateDailyLevel } from '../game/js/core/levels.js';
+import { analyzeTray, PieceGenerator } from '../game/js/core/generator.js';
+import { generateLevel, generateDailyLevel, levelKind } from '../game/js/core/levels.js';
 import { hashString } from '../game/js/core/rng.js';
 import { clearPoints } from '../game/js/core/scoring.js';
 import { CONFIG } from '../game/js/config.js';
@@ -25,12 +26,14 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, v === undefined ? true : v];
 }));
 const RUNS = Number(args.runs || 200);
-const LEVELS = Number(args.levels || 60);
-const ATTEMPTS = Number(args.attempts || 3);
+const LEVELS = Number(args.levels || 100);
+const ATTEMPTS = Number(args.attempts || 8);
 const DAYS = Number(args.days || 30);
 const START_DAY = String(args.start || '2026-10-01');
 const BASE_SEED = Number(args.seed || 1);
-const BOT = String(args.bot || 'planner');
+const BOT = String(args.bot || 'greedy');
+const EXPERIENCE = Number(args.experience ?? 10);
+const GEN_CONFIG = args.config ? Object.freeze({ ...CONFIG.GENERATOR, ...JSON.parse(args.config) }) : CONFIG.GENERATOR;
 const BEAM_WIDTH = 6;
 const MAX_TRAYS = 1000; // safety cap for endless classic runs
 
@@ -166,14 +169,14 @@ function planTray(session) {
 /**
  * Plays a session to its end (or MAX_TRAYS) with a bot. Exported for the unit tests.
  * @param {GameSession} session
- * @param {{ revive?: boolean, onTray?: Function, onPlace?: Function, bot?: 'planner'|'greedy' }} [opts]
+ * @param {{ revive?: boolean, onTray?: Function, onPlace?: Function, bot?: 'planner'|'greedy', maxTrays?: number }} [opts]
  *   revive: use the revive once on game over; onTray(session) after every new tray;
- *   onPlace(result, session) after every placement
+ *   onPlace(result, session) after every placement; stops at trayIndex >= maxTrays
  */
-export function playOut(session, { revive = false, onTray, onPlace, bot = BOT } = {}) {
+export function playOut(session, { revive = false, onTray, onPlace, bot = BOT, maxTrays = MAX_TRAYS } = {}) {
   let plan = [];
   if (onTray) onTray(session);
-  while (session.trayIndex < MAX_TRAYS) {
+  while (session.trayIndex < maxTrays) {
     if (session.status === 'over' && revive && session.canRevive()) {
       session.revive();
       plan = [];
@@ -230,6 +233,19 @@ function timeGenerator(session, times) {
 // Classic
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * A session whose generator uses GEN_CONFIG (the first tray is already dealt with CONFIG).
+ * @param {Object} opts GameSession.create options
+ */
+function createSession(opts) {
+  const session = GameSession.create(opts);
+  if (GEN_CONFIG !== CONFIG.GENERATOR) {
+    session.generator = Object.assign(new PieceGenerator({ rng: session.rng, mode: session.mode, config: GEN_CONFIG }),
+      { uid: session.generator.uid });
+  }
+  return session;
+}
+
 function simulateClassic() {
   const PHASES = [[1, 8], [9, 20], [21, 40], [41, Infinity]];
   const phaseTrays = PHASES.map(() => 0);
@@ -245,10 +261,10 @@ function simulateClassic() {
   let earlyGameOvers = 0;
   let capped = 0;
   let earlyTrays = 0;
-  let earlyBurstTrays = 0;
+  let earlyMultiTrays = 0;
 
   for (let i = 0; i < RUNS; i++) {
-    const session = GameSession.create({ mode: 'classic', seed: hashString(`classic-${BASE_SEED}-${i}`) });
+    const session = createSession({ mode: 'classic', seed: hashString(`classic-${BASE_SEED}-${i}`), gamesPlayed: EXPERIENCE });
     timeGenerator(session, genTimes);
     playOut(session, {
       onTray(s) {
@@ -259,7 +275,7 @@ function simulateClassic() {
         if (!analyzeTray(s.board, shapes, { nodeLimit: 300000, targetLines: 0 }).solvable) phaseUnsolvable[phase]++;
         if (n <= 20) {
           earlyTrays++;
-          if (analyzeTray(s.board, shapes, { nodeLimit: 300000, targetLines: 0, targetBurst: 2 }).maxBurst >= 2) earlyBurstTrays++;
+          if (analyzeTray(s.board, shapes, { nodeLimit: 300000, targetLines: 0, targetSingle: 2 }).maxSingle >= 2) earlyMultiTrays++;
         }
       },
       onPlace(res, s) {
@@ -273,7 +289,7 @@ function simulateClassic() {
       },
     });
     if (session.trayIndex >= MAX_TRAYS) capped++;
-    if (session.status === 'over' && session.trayIndex < 8) earlyGameOvers++;
+    if (session.status === 'over' && session.trayIndex < GEN_CONFIG.EARLY_TRAYS) earlyGameOvers++;
     trays.push(session.trayIndex + 1);
     placements.push(session.piecesPlaced);
     scores.push(session.score);
@@ -283,19 +299,19 @@ function simulateClassic() {
   genTimes.sort((a, b) => a - b);
   const totalTrays = trays.reduce((a, b) => a + b, 0);
 
-  console.log(`\n=== Classic: ${RUNS} runs (${BOT} bot) ===`);
+  console.log(`\n=== Classic: ${RUNS} runs (${BOT} bot, experience ${EXPERIENCE}) ===`);
   console.log(`trays/run       p10 ${quantile(trays, 0.1)}  median ${quantile(trays, 0.5)}  p90 ${quantile(trays, 0.9)}`);
   console.log(`placements/run  p10 ${quantile(placements, 0.1)}  median ${quantile(placements, 0.5)}  p90 ${quantile(placements, 0.9)}`);
   console.log(`score           avg ${fmt(mean(scores), 0)}  median ${quantile(scores.slice().sort((a, b) => a - b), 0.5)}`);
-  console.log(`game over within first 8 trays: ${earlyGameOvers} runs; capped at ${MAX_TRAYS} trays: ${capped}`);
+  console.log(`game over within the first ${GEN_CONFIG.EARLY_TRAYS} trays: ${earlyGameOvers} runs; capped at ${MAX_TRAYS} trays: ${capped}`);
   console.log('unsolvable trays at deal time by phase:');
   PHASES.forEach(([a, b], k) => {
     console.log(`  trays ${String(a).padStart(2)}–${b === Infinity ? '∞ ' : String(b).padEnd(2)}  ${pct(phaseUnsolvable[k], phaseTrays[k]).padStart(6)}  (${phaseUnsolvable[k]}/${phaseTrays[k]})`);
   });
   console.log(`clearing moves per tray ${fmt(clearMoves / totalTrays, 2)}`);
   console.log(`multi-line clears (>=2 lines): ${pct(multiMoves, clearMoves)} of clearing moves overall, ${pct(earlyMultiMoves, earlyClearMoves)} in trays 1–20`);
-  console.log(`trays 1–20 that offer a multi-line clear: ${pct(earlyBurstTrays, earlyTrays)}`);
-  console.log(`nextTray time   avg ${fmt(mean(genTimes), 3)} ms  p95 ${fmt(quantile(genTimes, 0.95), 3)} ms  max ${fmt(genTimes[genTimes.length - 1], 2)} ms`);
+  console.log(`trays 1–20 that offer a multi-line clear: ${pct(earlyMultiTrays, earlyTrays)}`);
+  console.log(`nextTray time   avg ${fmt(mean(genTimes), 3)} ms  p95 ${fmt(quantile(genTimes, 0.95), 3)} ms  p99 ${fmt(quantile(genTimes, 0.99), 3)} ms  max ${fmt(genTimes[genTimes.length - 1], 2)} ms`);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -303,64 +319,69 @@ function simulateClassic() {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Plays a level `attempts` times (one revive allowed per attempt).
- * @returns {Array<{ won: boolean, pieces: number, stars: number, revived: boolean }>}
+ * Plays a level `attempts` times with different seeds; each attempt may use one revive.
+ * `firstTry` = won without the revive.
+ * @returns {Array<{ won: boolean, firstTry: boolean, pieces: number, stars: number }>}
  */
 function playLevel(level, mode, attempts) {
   const out = [];
   for (let a = 0; a < attempts; a++) {
-    const session = GameSession.create({ mode, level, seed: hashString(`${level.id}-${BASE_SEED}-${a}`) });
+    const session = createSession({ mode, level, seed: hashString(`${level.id}-${BASE_SEED}-${a}`), gamesPlayed: EXPERIENCE });
     playOut(session, { revive: true });
-    out.push({ won: session.status === 'won', pieces: session.piecesPlaced, stars: session.stars(), revived: session.reviveUsed });
+    const won = session.status === 'won';
+    out.push({ won, firstTry: won && !session.reviveUsed, pieces: session.piecesPlaced, stars: session.stars() });
   }
   return out;
 }
 
 function summarizeLevels(title, entries) {
   const results = entries.flatMap((e) => e.results.map((r) => ({ ...r, level: e.level })));
+  if (results.length === 0) return;
   const won = results.filter((r) => r.won);
   const stars = [0, 0, 0, 0];
   for (const r of won) stars[r.stars]++;
-  const ratio = won.map((r) => r.pieces / r.level.par[0]);
-  console.log(`${title}: completion ${pct(won.length, results.length)} (${won.length}/${results.length}), revive used in ${pct(results.filter((r) => r.revived).length, results.length)}`);
-  console.log(`  pieces used avg ${fmt(mean(won.map((r) => r.pieces)))} vs par3 avg ${fmt(mean(won.map((r) => r.level.par[0])))} / par2 avg ${fmt(mean(won.map((r) => r.level.par[1])))}  (pieces/par3 median ${fmt(quantile(ratio.sort((a, b) => a - b), 0.5), 2)})`);
-  console.log(`  stars of wins: 3★ ${pct(stars[3], won.length)}  2★ ${pct(stars[2], won.length)}  1★ ${pct(stars[1], won.length)}`);
+  const ratio = won.map((r) => r.pieces / r.level.par[0]).sort((a, b) => a - b);
+  console.log(`${title.padEnd(16)} first try ${pct(results.filter((r) => r.firstTry).length, results.length).padStart(6)}   with revive ${pct(won.length, results.length).padStart(6)}   (${results.length} attempts)`);
+  console.log(`${''.padEnd(16)} pieces avg ${fmt(mean(won.map((r) => r.pieces)))} vs par3 ${fmt(mean(won.map((r) => r.level.par[0])))} / par2 ${fmt(mean(won.map((r) => r.level.par[1])))} (median pieces/par3 ${fmt(quantile(ratio, 0.5), 2)});  stars 3★ ${pct(stars[3], won.length)} 2★ ${pct(stars[2], won.length)} 1★ ${pct(stars[1], won.length)}`);
 }
 
 function simulateJourney() {
-  console.log(`\n=== Journey levels 1–${LEVELS} (${ATTEMPTS} attempts each, 1 revive allowed) ===`);
+  console.log(`\n=== Journey levels 1–${LEVELS} (${ATTEMPTS} attempts each; first try = no revive) ===`);
+  console.log('targets (first try): 1–9 ≥ 95 %, normal 80–92 %, hard 55–75 %, super hard 35–55 %; 3★ in ~30–50 %');
   const entries = [];
   for (let n = 1; n <= LEVELS; n++) {
     const level = generateLevel(n);
     entries.push({ level, results: playLevel(level, 'journey', ATTEMPTS) });
   }
-  summarizeLevels('levels 1–50 ', entries.slice(0, 50));
-  if (LEVELS > 50) summarizeLevels(`levels 51–${LEVELS}`, entries.slice(50));
-  const hard = entries.filter((e) => e.results.some((r) => !r.won)).map((e) => `${e.level.id}(${e.results.filter((r) => r.won).length}/${e.results.length})`);
-  if (hard.length) console.log(`  levels with failed attempts: ${hard.join(' ')}`);
-  console.log('  per level [won/attempts avg pieces | par3/par2]:');
-  for (let k = 0; k < entries.length; k += 6) {
-    console.log('   ' + entries.slice(k, k + 6).map(({ level, results }) => {
+  summarizeLevels('levels 1–9', entries.filter((e) => e.level.number <= 9));
+  summarizeLevels('normal (10+)', entries.filter((e) => e.level.number >= 10 && levelKind(e.level.number) === 'normal'));
+  summarizeLevels('hard', entries.filter((e) => levelKind(e.level.number) === 'hard'));
+  summarizeLevels('super hard', entries.filter((e) => levelKind(e.level.number) === 'superhard'));
+  summarizeLevels('all', entries);
+  console.log('  per level [tag difficulty: first-try wins/attempts, avg pieces of wins | par3/par2]:');
+  for (let k = 0; k < entries.length; k += 5) {
+    console.log('   ' + entries.slice(k, k + 5).map(({ level, results }) => {
       const w = results.filter((r) => r.won);
-      return `${level.id.padEnd(4)} ${w.length}/${results.length} ${fmt(mean(w.map((r) => r.pieces)), 0).padStart(3)}|${level.par[0]}/${level.par[1]}`;
+      return `${level.id.padEnd(4)}${level.tag[0]}${level.difficulty.toFixed(2)} ${results.filter((r) => r.firstTry).length}/${results.length} ${fmt(mean(w.map((r) => r.pieces)), 0).padStart(3)}|${level.par[0]}/${level.par[1]}`;
     }).join('  '));
   }
 }
 
 function simulateDaily() {
-  console.log(`\n=== Daily challenges: ${DAYS} days from ${START_DAY} (${ATTEMPTS} attempts each, 1 revive allowed) ===`);
+  console.log(`\n=== Daily challenges: ${DAYS} days from ${START_DAY} (${ATTEMPTS} attempts each) ===`);
   const entries = [];
   for (let d = 0; d < DAYS; d++) {
     const level = generateDailyLevel(addDays(START_DAY, d));
     entries.push({ level, results: playLevel(level, 'daily', ATTEMPTS) });
   }
-  summarizeLevels('daily       ', entries);
-  const failed = entries.filter((e) => e.results.some((r) => !r.won)).map((e) => `${e.level.id}(${e.results.filter((r) => r.won).length}/${e.results.length}, goal ${e.level.goals.score})`);
-  if (failed.length) console.log(`  days with failed attempts: ${failed.join(' ')}`);
+  summarizeLevels('daily', entries);
+  const failed = entries.filter((e) => e.results.some((r) => !r.firstTry)).map((e) => `${e.level.id}(${e.results.filter((r) => r.firstTry).length}/${e.results.length}, goal ${e.level.goals.score})`);
+  if (failed.length) console.log(`  days with failed first tries: ${failed.join(' ')}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const t0 = performance.now();
+  if (GEN_CONFIG !== CONFIG.GENERATOR) console.log('generator config override:', args.config);
   if (RUNS > 0) simulateClassic();
   if (LEVELS > 0) simulateJourney();
   if (DAYS > 0) simulateDaily();

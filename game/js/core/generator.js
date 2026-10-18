@@ -416,7 +416,7 @@ export class PieceGenerator {
     const d = this.difficultyFor(ctx);
     this.lastDifficulty = d;
     const phase = this.phaseFor(ctx);
-    const weightOf = (s) => shapeWeight(s, d);
+    const weightOf = (s) => shapeWeight(s, d, cfg.FAMILY_WEIGHTS);
 
     // Fixed rng order: all candidates (shapes + colors) first, then the decision rolls.
     const candidates = [];
@@ -487,7 +487,7 @@ export class PieceGenerator {
     const d = this.lastDifficulty;
     const candidates = [];
     for (let i = 0; i < this.config.CANDIDATES; i++) {
-      candidates.push(this.sampleCandidate(count, pool, (s) => shapeWeight(s, d)));
+      candidates.push(this.sampleCandidate(count, pool, (s) => shapeWeight(s, d, this.config.FAMILY_WEIGHTS)));
     }
     const chosen = this.bestForLines(board, candidates) || this.rescue(board, count);
     return chosen

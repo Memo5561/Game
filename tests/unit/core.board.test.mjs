@@ -40,6 +40,7 @@ test('canPlace and place', () => {
   assert.deepEqual(placed, [[5, 6], [6, 6], [7, 6], [7, 7]]);
   assert.equal(b.get(7, 7), 5, 'stores color + 1');
   assert.equal(b.filledCount(), 4);
+  assert.equal(b.fillRatio(), 4 / 64);
   assert.ok(!b.canPlace(getShape('I1'), 7, 7));
   assert.ok(b.canPlace(getShape('I1'), 5, 7), 'gaps inside the bounding box are free');
 });

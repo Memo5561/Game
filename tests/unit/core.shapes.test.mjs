@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SHAPES, SHAPE_BY_ID, getShape } from '../../game/js/core/shapes.js';
+import { CONFIG } from '../../game/js/config.js';
+import { SHAPES, SHAPE_BY_ID, getShape, familyWeight, shapeWeight } from '../../game/js/core/shapes.js';
+import { RNG } from '../../game/js/core/rng.js';
 
 const key = (cells) => cells.map(([r, c]) => `${r},${c}`).sort().join(';');
+const FAMILIES = ['1x1', 'I2', 'I3', 'L3', 'O2', 'I4', 'T', 'L4', 'SZ', 'R23', 'I5', 'L5', 'O3'];
 
-test('every shape is normalized and consistent', () => {
+test('every shape is normalized, frozen and consistent', () => {
   for (const s of SHAPES) {
     assert.ok(s.cells.length > 0, s.id);
     assert.equal(Math.min(...s.cells.map(([r]) => r)), 0, `${s.id} min r`);
@@ -14,8 +17,12 @@ test('every shape is normalized and consistent', () => {
     assert.equal(s.size, s.cells.length, `${s.id} size`);
     assert.equal(new Set(s.cells.map(([r, c]) => `${r},${c}`)).size, s.size, `${s.id} duplicate cells`);
     assert.ok([1, 2, 3, 4].includes(s.tier), `${s.id} tier`);
-    assert.ok(s.weight > 0, `${s.id} weight`);
+    assert.ok(FAMILIES.includes(s.family), `${s.id} family`);
+    assert.deepEqual(Object.keys(s).sort(), ['cells', 'family', 'h', 'id', 'size', 'tier', 'w']);
+    assert.ok(Object.isFrozen(s) && Object.isFrozen(s.cells) && Object.isFrozen(s.cells[0]));
   }
+  assert.ok(Object.isFrozen(SHAPES));
+  assert.ok(Object.isFrozen(SHAPE_BY_ID));
 });
 
 test('ids and cell sets are unique', () => {
@@ -39,26 +46,46 @@ test('all shapes are orthogonally connected (no diagonal shapes)', () => {
   }
 });
 
-test('the required shape families are complete', () => {
-  const required = [
-    'I1', 'I2h', 'I2v', 'I3h', 'I3v', 'I4h', 'I4v', 'I5h', 'I5v', 'O2', 'O3', 'R2x3', 'R3x2',
-    'L3a', 'L3b', 'L3c', 'L3d',
-    'L4a', 'L4b', 'L4c', 'L4d', 'J4a', 'J4b', 'J4c', 'J4d',
-    'L5a', 'L5b', 'L5c', 'L5d', 'T4a', 'T4b', 'T4c', 'T4d', 'S4h', 'S4v', 'Z4h', 'Z4v',
-  ];
-  for (const id of required) assert.ok(SHAPE_BY_ID[id], `missing ${id}`);
-  // the 8 L/J tetromino orientations are all different
-  const lj = ['L4a', 'L4b', 'L4c', 'L4d', 'J4a', 'J4b', 'J4c', 'J4d'].map((id) => key(getShape(id).cells));
-  assert.equal(new Set(lj).size, 8);
-  assert.equal(getShape('O3').size, 9);
-  assert.equal(getShape('L5a').size, 5);
+test('families have the specified orientations', () => {
+  const orientations = { '1x1': 1, I2: 2, I3: 2, L3: 4, O2: 1, I4: 2, T: 4, L4: 8, SZ: 4, R23: 2, I5: 2, L5: 4, O3: 1 };
+  for (const family of FAMILIES) {
+    const members = SHAPES.filter((s) => s.family === family);
+    assert.equal(members.length, orientations[family], family);
+    assert.equal(new Set(members.map((s) => s.size)).size, 1, `${family} sizes`);
+  }
+  assert.deepEqual(getShape('O3').cells.length, 9);
+  assert.deepEqual([getShape('R2x3').w, getShape('R2x3').h, getShape('R3x2').w, getShape('R3x2').h], [3, 2, 2, 3]);
+  for (const id of ['I1', 'I5h', 'I5v', 'L5a', 'L3d', 'J4c', 'T4b', 'S4v', 'Z4h']) assert.ok(SHAPE_BY_ID[id], id);
 });
 
-test('lookup helpers and immutability', () => {
+test('lookup helpers', () => {
   for (const s of SHAPES) assert.equal(getShape(s.id), s);
   assert.equal(getShape('nope'), undefined);
-  assert.ok(Object.isFrozen(SHAPES));
-  assert.ok(Object.isFrozen(SHAPES[0]));
-  assert.ok(Object.isFrozen(SHAPES[0].cells));
-  assert.ok(Object.isFrozen(SHAPE_BY_ID));
+});
+
+test('family and shape weights follow CONFIG.GENERATOR.FAMILY_WEIGHTS', () => {
+  const W = CONFIG.GENERATOR.FAMILY_WEIGHTS;
+  for (const family of FAMILIES) {
+    assert.equal(familyWeight(family, 0), W[family][0]);
+    assert.equal(familyWeight(family, 1), W[family][1]);
+    assert.ok(Math.abs(familyWeight(family, 0.5) - (W[family][0] + W[family][1]) / 2) < 1e-12);
+    const members = SHAPES.filter((s) => s.family === family);
+    const sum = members.reduce((a, s) => a + shapeWeight(s, 0.3), 0);
+    assert.ok(Math.abs(sum - familyWeight(family, 0.3)) < 1e-9, `${family} orientations share the family weight`);
+  }
+});
+
+test('sampling 100k pieces matches the family shares within 1 % at d = 0 and d = 1', () => {
+  for (const d of [0, 1]) {
+    const rng = new RNG(4242 + d);
+    const counts = Object.fromEntries(FAMILIES.map((f) => [f, 0]));
+    const samples = 100000;
+    for (let i = 0; i < samples; i++) counts[rng.weighted(SHAPES, (s) => shapeWeight(s, d)).family]++;
+    const total = FAMILIES.reduce((a, f) => a + familyWeight(f, d), 0);
+    for (const f of FAMILIES) {
+      const expected = familyWeight(f, d) / total;
+      const actual = counts[f] / samples;
+      assert.ok(Math.abs(actual - expected) < 0.01, `d=${d} ${f}: ${actual.toFixed(4)} vs ${expected.toFixed(4)}`);
+    }
+  }
 });

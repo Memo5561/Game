@@ -105,10 +105,11 @@ export function getShape(id) {
  * Weight of a whole family at difficulty d: lerp of CONFIG.GENERATOR.FAMILY_WEIGHTS[family].
  * @param {string} family
  * @param {number} d difficulty 0..1
+ * @param {Object<string, ReadonlyArray<number>>} [weights] extra: alternative weight table
  * @returns {number}
  */
-export function familyWeight(family, d) {
-  const [w0, w1] = CONFIG.GENERATOR.FAMILY_WEIGHTS[family];
+export function familyWeight(family, d, weights = CONFIG.GENERATOR.FAMILY_WEIGHTS) {
+  const [w0, w1] = weights[family];
   return w0 + (w1 - w0) * d;
 }
 
@@ -116,8 +117,9 @@ export function familyWeight(family, d) {
  * Weight of one orientation: the family weight shared by all orientations of the family.
  * @param {Shape} shape
  * @param {number} d difficulty 0..1
+ * @param {Object<string, ReadonlyArray<number>>} [weights] extra: alternative weight table
  * @returns {number}
  */
-export function shapeWeight(shape, d) {
-  return familyWeight(shape.family, d) / FAMILY_SIZE[shape.family];
+export function shapeWeight(shape, d, weights = CONFIG.GENERATOR.FAMILY_WEIGHTS) {
+  return familyWeight(shape.family, d, weights) / FAMILY_SIZE[shape.family];
 }

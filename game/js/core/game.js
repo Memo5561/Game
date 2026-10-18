@@ -25,93 +25,124 @@ import { PieceGenerator } from './generator.js';
  * @property {number} placePoints
  * @property {{ rows: number[], cols: number[] }} lines
  * @property {number} linesCount
- * @property {ClearedCell[]} cleared
+ * @property {ClearedCell[]} cleared       color = palette index 0..7
  * @property {{1:number, 2:number, 3:number}} gemsCollected
- * @property {number} combo
+ * @property {number} combo               after this placement
+ * @property {number} comboBefore
+ * @property {boolean} comboBroken        a combo >= 1 broke on this placement
+ * @property {number} movesSinceClear
+ * @property {number} comboMovesLeft      combo > 0 ? COMBO_KEEP_MOVES - movesSinceClear : 0
  * @property {number} clearPoints
  * @property {boolean} allClear
  * @property {number} allClearBonus
  * @property {null|string} praise
  * @property {number} totalPoints
- * @property {number} score         score after this placement
- * @property {boolean} newBest      score passed bestScore (> 0) for the first time this run
+ * @property {number} score               score after this placement
+ * @property {boolean} newBest            classic: score passed bestScore (> 0) for the first time this run
  * @property {boolean} trayRefilled
- * @property {Array<Piece|null>} tray current tray (after a refill)
+ * @property {Array<Piece|null>} tray     current tray (after a refill)
+ * @property {boolean[]} placeable        per tray slot: the piece fits somewhere
+ * @property {Goals} goals
  * @property {Status} status
- * @property {number} tutorialStep  extra: current tutorial step (tutorial mode, else 0)
+ * @property {{ done: boolean, hasNext: boolean } | null} tutorialStep tutorial only
+ *
+ * @typedef {{ cleared: ClearedCell[], gemsCollected: Object, tray: Array<Piece|null>,
+ *   placeable: boolean[], goals: Goals, status: Status }} ReviveResult
+ * @typedef {{ cleared: ClearedCell[], gemsCollected: Object, placeable: boolean[], goals: Goals,
+ *   status: Status }} BoosterResult
  */
 
+/** Version of the toJSON() format; fromJSON() rejects other versions. */
+export const SESSION_VERSION = 1;
 export const MODES = Object.freeze(['classic', 'journey', 'daily', 'tutorial']);
-const BOOSTER_MODES = new Set(['journey', 'daily']);
-const SAVE_VERSION = 1;
+const LEVEL_MODES = new Set(['journey', 'daily']);
+const BOOSTERS = new Set(['hammer', 'shuffle']);
+const STATUSES = new Set(['playing', 'over', 'won']);
 const N = CONFIG.BOARD_SIZE;
 const TRAY_SIZE = CONFIG.TRAY_SIZE;
 const { COMBO_KEEP_MOVES, ALL_CLEAR_BONUS } = CONFIG.SCORING;
+const { MERCY_AFTER_REVIVE } = CONFIG.GENERATOR;
 
 /**
  * Scripted tutorial steps. Board rows: '.' = empty, digit = color index. The single tray piece
- * sits in the middle slot; `hint` is the move that clears: 1 line, then 2 lines at once, then a
- * row and a column together – an all-clear finale with the combo built up by the earlier steps.
+ * sits in the slot of `hint`, and only the hinted move is accepted. Step 1 clears a row, step 2 a
+ * column, step 3 a row and a column at once; step 3 keeps the combo of step 2 → "Combo x2".
  */
 const TUTORIAL = Object.freeze([
   {
     board: ['........', '........', '........', '........', '012..567', '..2345..', '........', '........'],
     piece: { shapeId: 'I2h', color: 3 },
     hint: { trayIndex: 1, r: 4, c: 3 },
+    keepCombo: false,
   },
   {
-    board: ['........', '........', '........', '........', '........', '...33...', '445..667', '445..667'],
-    piece: { shapeId: 'O2', color: 1 },
-    hint: { trayIndex: 1, r: 6, c: 3 },
+    board: ['...5....', '...5....', '........', '........', '........', '...5....', '..15....', '..15....'],
+    piece: { shapeId: 'I3v', color: 2 },
+    hint: { trayIndex: 1, r: 2, c: 3 },
+    keepCombo: false,
   },
   {
-    board: ['6.......', '6.......', '6.......', '6.......', '6.......', '........', '........', '...22222'],
+    board: ['6....33.', '6....33.', '6.......', '6.......', '6.......', '........', '........', '...22222'],
     piece: { shapeId: 'L5a', color: 4 },
     hint: { trayIndex: 1, r: 5, c: 0 },
+    keepCombo: true,
   },
 ]);
 
 /** Number of scripted tutorial steps. */
 export const TUTORIAL_STEP_COUNT = TUTORIAL.length;
 
+/** Numeric run state saved 1:1 by toJSON/fromJSON. */
+const COUNTER_KEYS = Object.freeze([
+  'score', 'combo', 'movesSinceClear', 'traysSinceClear', 'trayIndex', 'piecesPlaced', 'linesCleared',
+  'maxCombo', 'allClears', 'experience', 'bestScore', 'mercyTrays', 'tutorialStep',
+]);
+/** Boolean run state saved 1:1 by toJSON/fromJSON. */
+const FLAG_KEYS = Object.freeze(['reviveUsed', 'clearedThisTray', 'newBestReached', 'tutorialStepDone']);
+
 export class GameSession {
   /** Use `GameSession.create()` or `GameSession.fromJSON()`. */
   constructor() {
     /** @type {Mode} */
     this.mode = 'classic';
-    /** @type {number} uint32 seed of this run */
+    /** uint32 seed of this run */
     this.seed = 0;
     /** @type {LevelDef|null} */
     this.level = null;
     /** @type {Board} */
     this.board = new Board(N);
     /** @type {Array<Piece|null>} */
-    this.tray = [];
+    this.tray = new Array(TRAY_SIZE).fill(null);
     this.score = 0;
     this.combo = 0;
     this.movesSinceClear = 0;
+    /** completed trays in a row without any clear */
+    this.traysSinceClear = 0;
+    /** index of the current tray (0 = first) */
+    this.trayIndex = 0;
     this.piecesPlaced = 0;
     this.linesCleared = 0;
     this.maxCombo = 0;
-    /** extra: number of all-clears this run */
     this.allClears = 0;
-    /** index of the current tray (0 = first) */
-    this.trayIndex = 0;
-    /** extra: completed trays in a row without any clear */
-    this.traysSinceClear = 0;
-    /** extra: whether the current tray produced a clear so far */
-    this.clearedThisTray = false;
     this.reviveUsed = false;
-    /** @type {Status} */
-    this.status = 'playing';
+    /** finished games of the player when the run started (longer generous phase for new players) */
+    this.experience = 0;
     /** best score before this run (unchanged during the run) */
     this.bestScore = 0;
-    /** extra: true once the score passed bestScore in this run */
-    this.newBestReached = false;
+    /** @type {Status} */
+    this.status = 'playing';
     /** @type {Goals} */
     this.goals = {};
-    /** extra: tutorial step 0..TUTORIAL_STEP_COUNT-1 (tutorial mode) */
+    /** extra: trays of mercy left (after a revive) */
+    this.mercyTrays = 0;
+    /** extra: whether the current tray produced a clear so far */
+    this.clearedThisTray = false;
+    /** extra: true once the score passed bestScore in this run */
+    this.newBestReached = false;
+    /** extra: tutorial step index 0..TUTORIAL_STEP_COUNT-1 */
     this.tutorialStep = 0;
+    /** extra: the current tutorial step was completed (waiting for nextTutorialStep) */
+    this.tutorialStepDone = false;
     /** @type {RNG} */
     this.rng = new RNG(0);
     /** @type {PieceGenerator} */
@@ -124,20 +155,22 @@ export class GameSession {
    * @param {Mode} [opts.mode='classic']
    * @param {number} [opts.seed] uint32; random if omitted
    * @param {LevelDef} [opts.level] required for journey/daily
-   * @param {number} [opts.bestScore=0] best score so far (for `newBest`)
+   * @param {number} [opts.bestScore=0] classic best score so far (for `newBest`)
+   * @param {number} [opts.gamesPlayed=0] finished games of the player (→ `experience`)
    * @returns {GameSession}
    */
-  static create({ mode = 'classic', seed, level = null, bestScore = 0 } = {}) {
+  static create({ mode = 'classic', seed, level = null, bestScore = 0, gamesPlayed = 0 } = {}) {
     if (!MODES.includes(mode)) throw new Error(`GameSession.create: unknown mode ${mode}`);
-    const needsLevel = mode === 'journey' || mode === 'daily';
+    const needsLevel = LEVEL_MODES.has(mode);
     if (needsLevel && !level) throw new Error(`GameSession.create: mode ${mode} needs a level`);
     const s = new GameSession();
     s.mode = mode;
     s.seed = (seed === undefined || seed === null ? randomSeed() : seed) >>> 0;
     s.rng = new RNG(s.seed);
-    s.level = needsLevel ? level : null;
+    s.generator = new PieceGenerator({ rng: s.rng, mode });
+    s.level = needsLevel ? cloneData(level) : null;
     s.bestScore = Math.max(0, bestScore || 0);
-    s.generator = new PieceGenerator({ rng: s.rng, mode, difficulty: needsLevel ? level.difficulty || 0 : 0 });
+    s.experience = Math.max(0, gamesPlayed || 0);
 
     if (mode === 'tutorial') {
       s.loadTutorialStep();
@@ -155,7 +188,7 @@ export class GameSession {
       }
       if (score) s.goals.score = { need: score, have: 0 };
     }
-    s.tray = s.generator.nextTray(s.board, s.trayContext());
+    s.tray = s.dealTray();
     s.updateStatus();
     return s;
   }
@@ -164,30 +197,40 @@ export class GameSession {
    * Restores a run saved with `toJSON()`. Continuing produces exactly the same future trays.
    * @param {Object} json
    * @returns {GameSession}
-   * @throws {Error} on missing or corrupted data
+   * @throws {Error} on incompatible or corrupted data (the caller drops the run)
    */
   static fromJSON(json) {
-    if (!json || json.v !== SAVE_VERSION || !MODES.includes(json.mode)) {
-      throw new Error('GameSession.fromJSON: unsupported save data');
+    if (!json || json.v !== SESSION_VERSION || !MODES.includes(json.mode)) {
+      throw new Error('GameSession.fromJSON: incompatible save data');
     }
+    if (LEVEL_MODES.has(json.mode) && !(json.level && Array.isArray(json.level.prefilled))) {
+      throw new Error('GameSession.fromJSON: level missing');
+    }
+    if (!Array.isArray(json.tray) || json.tray.length !== TRAY_SIZE) throw new Error('GameSession.fromJSON: invalid tray');
+    if (!STATUSES.has(json.status)) throw new Error('GameSession.fromJSON: invalid status');
     const s = new GameSession();
     s.mode = json.mode;
     s.seed = json.seed >>> 0;
-    s.level = json.level ? structuredCloneJSON(json.level) : null;
+    s.level = LEVEL_MODES.has(json.mode) ? cloneData(json.level) : null;
     s.board = Board.fromJSON(json.board);
     s.tray = json.tray.map((p) => {
       if (p === null) return null;
-      if (!getShape(p.shapeId)) throw new Error(`GameSession.fromJSON: unknown shape ${p.shapeId}`);
-      return { uid: p.uid, shapeId: p.shapeId, color: p.color };
+      if (!p || !getShape(p.shapeId) || !Number.isInteger(p.uid) || !Number.isInteger(p.color)) {
+        throw new Error('GameSession.fromJSON: invalid piece');
+      }
+      return Object.freeze({ uid: p.uid, shapeId: p.shapeId, color: p.color });
     });
-    if (s.tray.length !== TRAY_SIZE) throw new Error('GameSession.fromJSON: invalid tray');
-    for (const key of COUNTER_KEYS) s[key] = Number(json[key]) || 0;
-    s.tutorialStep = Math.min(Math.max(0, s.tutorialStep), TUTORIAL.length - 1);
-    s.clearedThisTray = !!json.clearedThisTray;
-    s.reviveUsed = !!json.reviveUsed;
-    s.newBestReached = !!json.newBestReached;
-    s.status = ['playing', 'over', 'won'].includes(json.status) ? json.status : 'playing';
-    s.goals = structuredCloneJSON(json.goals || {});
+    for (const key of COUNTER_KEYS) {
+      const v = json[key];
+      if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`GameSession.fromJSON: invalid ${key}`);
+      s[key] = v;
+    }
+    for (const key of FLAG_KEYS) s[key] = !!json[key];
+    if (s.mode === 'tutorial' && !(s.tutorialStep >= 0 && s.tutorialStep < TUTORIAL.length)) {
+      throw new Error('GameSession.fromJSON: invalid tutorial step');
+    }
+    s.status = json.status;
+    s.goals = cloneData(json.goals || {});
     s.rng = new RNG(0);
     s.rng.setState(json.rng);
     s.generator = PieceGenerator.fromJSON(json.generator, s.rng);
@@ -197,21 +240,19 @@ export class GameSession {
   /** @returns {Object} plain JSON-safe snapshot of everything needed to resume exactly */
   toJSON() {
     const out = {
-      v: SAVE_VERSION,
+      v: SESSION_VERSION,
       mode: this.mode,
       seed: this.seed,
-      level: this.level ? structuredCloneJSON(this.level) : null,
+      level: this.level ? cloneData(this.level) : null,
       board: this.board.toJSON(),
-      tray: this.tray.map((p) => (p ? { uid: p.uid, shapeId: p.shapeId, color: p.color } : null)),
-      clearedThisTray: this.clearedThisTray,
-      reviveUsed: this.reviveUsed,
-      newBestReached: this.newBestReached,
+      tray: this.trayCopy(),
       status: this.status,
-      goals: structuredCloneJSON(this.goals),
+      goals: cloneData(this.goals),
       rng: this.rng.getState(),
       generator: this.generator.toJSON(),
     };
     for (const key of COUNTER_KEYS) out[key] = this[key];
+    for (const key of FLAG_KEYS) out[key] = this[key];
     return out;
   }
 
@@ -228,30 +269,39 @@ export class GameSession {
     return piece ? getShape(piece.shapeId) : null;
   }
 
-  /** @returns {boolean} whether tray piece `trayIndex` fits with its top-left at (r, c) */
+  /**
+   * Whether tray piece `trayIndex` may be placed with its top-left at (r, c) right now. In the
+   * tutorial only the hinted move is allowed.
+   * @returns {boolean}
+   */
   canPlace(trayIndex, r, c) {
-    if (this.status !== 'playing') return false;
-    const shape = this.shapeAt(trayIndex);
-    return !!shape && this.board.canPlace(shape, r, c);
+    return this.status === 'playing' && this.fits(trayIndex, r, c);
   }
 
   /**
    * Ghost preview for drag & drop.
-   * @returns {{ valid: boolean, rows: number[], cols: number[], cells: Array<[number, number]> }}
+   * @returns {{ valid: boolean, rows: number[], cols: number[] }}
    */
   preview(trayIndex, r, c) {
-    const shape = this.shapeAt(trayIndex);
-    if (!shape) return { valid: false, rows: [], cols: [], cells: [] };
-    const cells = shape.cells.map(([dr, dc]) => [r + dr, c + dc]);
-    if (!this.canPlace(trayIndex, r, c)) return { valid: false, rows: [], cols: [], cells };
-    const { rows, cols } = this.board.previewLines(shape, r, c);
-    return { valid: true, rows, cols, cells };
+    if (!this.canPlace(trayIndex, r, c)) return { valid: false, rows: [], cols: [] };
+    const { rows, cols } = this.board.previewLines(this.shapeAt(trayIndex), r, c);
+    return { valid: true, rows, cols };
   }
 
   /** @returns {boolean} whether the tray piece fits anywhere (false for empty slots) */
   isPiecePlaceable(trayIndex) {
     const shape = this.shapeAt(trayIndex);
-    return !!shape && this.board.anyPlacement(shape);
+    if (!shape) return false;
+    if (this.mode === 'tutorial') {
+      const { hint } = TUTORIAL[this.tutorialStep];
+      return this.fits(trayIndex, hint.r, hint.c);
+    }
+    return this.board.anyPlacement(shape);
+  }
+
+  /** @returns {boolean[]} per tray slot: the piece fits somewhere */
+  placeable() {
+    return this.tray.map((_, i) => this.isPiecePlaceable(i));
   }
 
   /** @returns {boolean} status 'over' && !reviveUsed && mode !== 'tutorial' */
@@ -260,16 +310,17 @@ export class GameSession {
   }
 
   /**
-   * Tutorial: the scripted move of the current step, or – if the player used the piece
-   * elsewhere – any move that clears a line. Null outside the tutorial.
-   * @returns {{ trayIndex: number, r: number, c: number } | null}
+   * @param {'hammer'|'shuffle'} type
+   * @returns {boolean} journey/daily run that is playing or lost (boosters can rescue it)
    */
+  canUseBooster(type) {
+    return BOOSTERS.has(type) && LEVEL_MODES.has(this.mode) && (this.status === 'playing' || this.status === 'over');
+  }
+
+  /** @returns {{ trayIndex: number, r: number, c: number } | null} the scripted tutorial move */
   tutorialHint() {
-    if (this.mode !== 'tutorial' || this.status !== 'playing') return null;
-    const { hint } = TUTORIAL[this.tutorialStep];
-    if (this.canPlace(hint.trayIndex, hint.r, hint.c)) return { ...hint };
-    const move = listValidMoves(this).find((m) => m.lines > 0);
-    return move ? { trayIndex: move.trayIndex, r: move.r, c: move.c } : null;
+    if (this.mode !== 'tutorial' || this.status !== 'playing' || this.tutorialStepDone) return null;
+    return { ...TUTORIAL[this.tutorialStep].hint };
   }
 
   /** @returns {0|1|2|3} stars of a won journey/daily run (0 otherwise) */
@@ -287,7 +338,8 @@ export class GameSession {
 
   /**
    * Places tray piece `trayIndex` with its top-left cell at (r, c).
-   * @returns {PlaceResult | null} null if the move is invalid
+   * Order: place → clear lines → score/combo → goals → won (no refill) | refill → game over.
+   * @returns {PlaceResult | null} null unless status is 'playing' and the move is valid
    */
   placePiece(trayIndex, r, c) {
     if (!this.canPlace(trayIndex, r, c)) return null;
@@ -300,39 +352,54 @@ export class GameSession {
     const lines = this.board.findFullLines();
     const linesCount = lines.rows.length + lines.cols.length;
     const { cells: cleared, gems: gemsCollected } = this.board.clearLines(lines.rows, lines.cols);
-    this.collectGems(gemsCollected);
 
-    const placePts = placementPoints(shape.size);
+    const comboBefore = this.combo;
+    let comboBroken = false;
     let clearPts = 0;
     let allClear = false;
     if (linesCount > 0) {
       this.combo++;
       this.movesSinceClear = 0;
-      this.linesCleared += linesCount;
+      this.traysSinceClear = 0;
       this.clearedThisTray = true;
+      this.linesCleared += linesCount;
       clearPts = clearPoints(linesCount, this.combo);
       allClear = this.board.isBoardEmpty();
       if (allClear) this.allClears++;
     } else {
       this.movesSinceClear++;
-      if (this.movesSinceClear >= COMBO_KEEP_MOVES) this.combo = 0;
+      if (this.movesSinceClear >= COMBO_KEEP_MOVES && this.combo > 0) {
+        this.combo = 0;
+        comboBroken = true;
+      }
     }
     this.maxCombo = Math.max(this.maxCombo, this.combo);
+    const placePts = placementPoints(shape.size);
     const allClearBonus = allClear ? ALL_CLEAR_BONUS : 0;
     const totalPoints = placePts + clearPts + allClearBonus;
     this.score += totalPoints;
-    if (this.goals.score) this.goals.score.have = Math.min(this.score, this.goals.score.need);
 
     let newBest = false;
-    if (!this.newBestReached && this.bestScore > 0 && this.score > this.bestScore) {
+    if (this.mode === 'classic' && !this.newBestReached && this.bestScore > 0 && this.score > this.bestScore) {
       this.newBestReached = true;
       newBest = true;
     }
 
-    const trayRefilled = this.mode === 'tutorial'
-      ? this.advanceTutorial(linesCount > 0)
-      : this.refillIfEmpty();
-    if (this.mode !== 'tutorial') this.updateStatus();
+    this.collectGems(gemsCollected);
+    let trayRefilled = false;
+    let tutorialStep = null;
+    if (this.mode === 'tutorial') {
+      // Only the hinted (clearing) move is accepted, so every tutorial placement completes its step.
+      this.tutorialStepDone = true;
+      const hasNext = this.tutorialStep + 1 < TUTORIAL.length;
+      if (!hasNext) this.status = 'won';
+      tutorialStep = { done: true, hasNext };
+    } else if (this.goalsMet()) {
+      this.status = 'won';
+    } else {
+      trayRefilled = this.refillIfEmpty();
+      this.updateStatus();
+    }
 
     return {
       trayIndex,
@@ -346,25 +413,31 @@ export class GameSession {
       cleared,
       gemsCollected,
       combo: this.combo,
+      comboBefore,
+      comboBroken,
+      movesSinceClear: this.movesSinceClear,
+      comboMovesLeft: this.comboMovesLeft(),
       clearPoints: clearPts,
       allClear,
       allClearBonus,
-      praise: praiseFor(linesCount, this.combo, allClear),
+      praise: praiseFor(linesCount, comboBefore, this.combo, allClear),
       totalPoints,
       score: this.score,
       newBest,
       trayRefilled,
-      tray: this.tray.slice(),
+      tray: this.trayCopy(),
+      placeable: this.placeable(),
+      goals: cloneData(this.goals),
       status: this.status,
-      tutorialStep: this.tutorialStep,
+      tutorialStep,
     };
   }
 
   /**
-   * Second chance after game over (once per run): clears the 2 fullest rows and the 2 fullest
-   * columns and deals a tray of small/medium pieces that fit together. Gems removed this way
-   * count toward the goals.
-   * @returns {{ cleared: ClearedCell[], tray: Array<Piece|null>, gemsCollected: Object, status: Status } | null}
+   * Second chance after game over (once per run, not in the tutorial): clears the 2 fullest rows
+   * and the 2 fullest columns (no points), resets the combo, grants MERCY_AFTER_REVIVE mercy trays
+   * and deals small/medium pieces that fit together. Gems cleared count toward the goals.
+   * @returns {ReviveResult | null}
    */
   revive() {
     if (!this.canRevive()) return null;
@@ -372,63 +445,114 @@ export class GameSession {
     const cols = fullestLines(this.board, false);
     const { cells, gems } = this.board.clearLines(rows, cols);
     this.collectGems(gems);
+    this.combo = 0;
+    this.movesSinceClear = 0;
+    this.traysSinceClear = 0;
     this.reviveUsed = true;
-    this.trayIndex++;
+    this.mercyTrays = MERCY_AFTER_REVIVE;
     this.tray = this.generator.reviveTray(this.board);
-    this.status = 'playing';
     this.updateStatus();
-    return { cleared: cells, tray: this.tray.slice(), gemsCollected: gems, status: this.status };
+    return {
+      cleared: cells,
+      gemsCollected: gems,
+      tray: this.trayCopy(),
+      placeable: this.placeable(),
+      goals: cloneData(this.goals),
+      status: this.status,
+    };
   }
 
   /**
-   * Hammer booster (journey/daily): clears the 3x3 area around (r, c), no score. Gems count
-   * toward the goals. Also usable on a lost board (status 'over') as a rescue.
-   * @returns {{ cleared: ClearedCell[], gemsCollected: Object, status: Status } | null}
+   * Hammer booster (journey/daily): clears the filled cells of the 3x3 area around (r, c), no
+   * score, combo untouched. Gems count toward the goals. Can rescue a lost run.
+   * @returns {BoosterResult | null} null if not allowed or no filled cell in the area (the caller
+   *   then does not consume the booster)
    */
   useHammer(r, c) {
-    if (!this.canUseBooster() || this.board.get(r, c) === OUT_OF_BOUNDS) return null;
+    if (!this.canUseBooster('hammer') || this.board.get(r, c) === OUT_OF_BOUNDS) return null;
     const area = [];
-    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) area.push([r + dr, c + dc]);
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const v = this.board.get(r + dr, c + dc);
+        if (v !== 0 && v !== OUT_OF_BOUNDS) area.push([r + dr, c + dc]);
+      }
+    }
+    if (area.length === 0) return null;
     const { cells, gems } = this.board.clearCells(area);
     this.collectGems(gems);
     this.updateStatus();
-    return { cleared: cells, gemsCollected: gems, status: this.status };
+    return { cleared: cells, gemsCollected: gems, placeable: this.placeable(), goals: cloneData(this.goals), status: this.status };
   }
 
   /**
    * Shuffle booster (journey/daily): replaces the remaining tray pieces with new ones that fit
-   * together if at all possible. Also usable on a lost board (status 'over') as a rescue.
-   * @returns {{ tray: Array<Piece|null>, status: Status } | null}
+   * together if at all possible. Can rescue a lost run.
+   * @returns {{ tray: Array<Piece|null>, placeable: boolean[], status: Status } | null}
    */
   useShuffle() {
-    if (!this.canUseBooster()) return null;
+    if (!this.canUseBooster('shuffle')) return null;
     const slots = [];
     this.tray.forEach((p, i) => { if (p) slots.push(i); });
     if (slots.length === 0) return null;
     const pieces = this.generator.shuffleTray(this.board, slots.length);
     slots.forEach((slot, k) => { this.tray[slot] = pieces[k]; });
     this.updateStatus();
-    return { tray: this.tray.slice(), status: this.status };
+    return { tray: this.trayCopy(), placeable: this.placeable(), status: this.status };
+  }
+
+  /**
+   * Tutorial: loads the next scripted step after the current one was completed.
+   * @returns {{ board: Board, tray: Array<Piece|null> } | null} copies of the new board and tray,
+   *   or null if there is no next step (or the current one is not done yet)
+   */
+  nextTutorialStep() {
+    if (this.mode !== 'tutorial' || !this.tutorialStepDone || this.tutorialStep + 1 >= TUTORIAL.length) return null;
+    this.tutorialStep++;
+    this.loadTutorialStep();
+    return { board: this.board.clone(), tray: this.trayCopy() };
   }
 
   // -------------------------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------------------------
 
-  /** @returns {boolean} */
-  canUseBooster() {
-    return BOOSTER_MODES.has(this.mode) && this.status !== 'won';
+  /**
+   * Like canPlace but independent of the status (used for the game-over check).
+   * @returns {boolean}
+   */
+  fits(trayIndex, r, c) {
+    const shape = this.shapeAt(trayIndex);
+    if (!shape || !this.board.canPlace(shape, r, c)) return false;
+    if (this.mode !== 'tutorial') return true;
+    const { hint } = TUTORIAL[this.tutorialStep];
+    return !this.tutorialStepDone && hint.trayIndex === trayIndex && hint.r === r && hint.c === c;
   }
 
-  /** @returns {import('./generator.js').TrayContext} */
-  trayContext() {
-    return {
+  /** @returns {number} pips left before the combo breaks */
+  comboMovesLeft() {
+    return this.combo > 0 ? COMBO_KEEP_MOVES - this.movesSinceClear : 0;
+  }
+
+  /** @returns {Array<Piece|null>} */
+  trayCopy() {
+    return this.tray.slice();
+  }
+
+  /** @returns {Piece[]} next tray from the generator (consumes one mercy tray) */
+  dealTray() {
+    const tray = this.generator.nextTray(this.board, {
       score: this.score,
       trayIndex: this.trayIndex,
       traysSinceClear: this.traysSinceClear,
       combo: this.combo,
+      fill: this.board.fillRatio(),
+      experience: this.experience,
+      mercyTrays: this.mercyTrays,
+      level: this.level || undefined,
       goals: this.goals,
-    };
+    });
+    if (this.mercyTrays > 0) this.mercyTrays--;
+    return tray;
   }
 
   /** @param {{1:number, 2:number, 3:number}} gems collected gems per type */
@@ -443,26 +567,25 @@ export class GameSession {
   /** @returns {boolean} true if a new tray was dealt */
   refillIfEmpty() {
     if (this.tray.some((p) => p !== null)) return false;
-    if (BOOSTER_MODES.has(this.mode) && this.goalsMet()) return false; // won – no new tray needed
-    this.traysSinceClear = this.clearedThisTray ? 0 : this.traysSinceClear + 1;
+    if (!this.clearedThisTray) this.traysSinceClear++;
     this.clearedThisTray = false;
     this.trayIndex++;
-    this.tray = this.generator.nextTray(this.board, this.trayContext());
+    this.tray = this.dealTray();
     return true;
   }
 
-  /** @returns {boolean} all journey/daily goals reached */
+  /** @returns {boolean} all journey/daily goals reached (updates the score goal first) */
   goalsMet() {
     const { gems, score } = this.goals;
+    if (score) score.have = Math.min(this.score, score.need);
     if (!gems && !score) return false;
     if (gems && Object.values(gems).some((g) => g.have < g.need)) return false;
-    if (score && score.have < score.need) return false;
-    return true;
+    return !score || score.have >= score.need;
   }
 
-  /** Re-evaluates the status: 'won' (goals) is checked before 'over' (no piece fits). */
+  /** Re-evaluates the status: 'won' (goals) before 'over' (no tray piece fits anywhere). */
   updateStatus() {
-    if (BOOSTER_MODES.has(this.mode) && this.goalsMet()) this.status = 'won';
+    if (LEVEL_MODES.has(this.mode) && this.goalsMet()) this.status = 'won';
     else if (!this.tray.some((p, i) => p && this.isPiecePlaceable(i))) this.status = 'over';
     else this.status = 'playing';
   }
@@ -476,36 +599,14 @@ export class GameSession {
     });
     this.tray = new Array(TRAY_SIZE).fill(null);
     this.tray[step.hint.trayIndex] = this.generator.createPiece(step.piece.shapeId, step.piece.color);
+    if (!step.keepCombo) {
+      this.combo = 0;
+      this.movesSinceClear = 0;
+    }
+    this.tutorialStepDone = false;
     this.status = 'playing';
   }
-
-  /**
-   * Tutorial progression after a placement: a clear advances to the next step (or wins after the
-   * last one); if no clearing move is left the step is re-issued, so the player can't get stuck.
-   * @param {boolean} cleared
-   * @returns {boolean} true if a new tray (step) was loaded
-   */
-  advanceTutorial(cleared) {
-    if (cleared) {
-      if (this.tutorialStep + 1 >= TUTORIAL.length) {
-        this.status = 'won';
-        return false;
-      }
-      this.tutorialStep++;
-      this.loadTutorialStep();
-      return true;
-    }
-    if (listValidMoves(this).some((m) => m.lines > 0)) return false;
-    this.loadTutorialStep();
-    return true;
-  }
 }
-
-/** Numeric run counters saved 1:1 by toJSON/fromJSON. */
-const COUNTER_KEYS = Object.freeze([
-  'score', 'combo', 'movesSinceClear', 'piecesPlaced', 'linesCleared', 'maxCombo', 'allClears',
-  'trayIndex', 'traysSinceClear', 'bestScore', 'tutorialStep',
-]);
 
 /**
  * Indices of the 2 fullest rows (or columns); ties go to the lower index.
@@ -526,7 +627,7 @@ function fullestLines(board, rows) {
 }
 
 /** @template T @param {T} obj @returns {T} deep copy of plain JSON data */
-function structuredCloneJSON(obj) {
+function cloneData(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
@@ -538,11 +639,11 @@ function structuredCloneJSON(obj) {
  */
 export function listValidMoves(session) {
   const out = [];
-  if (session.status !== 'playing') return out;
   session.tray.forEach((piece, trayIndex) => {
     if (!piece) return;
     const shape = getShape(piece.shapeId);
     for (const [r, c] of session.board.placements(shape)) {
+      if (!session.canPlace(trayIndex, r, c)) continue;
       const { rows, cols } = session.board.previewLines(shape, r, c);
       out.push({ trayIndex, r, c, lines: rows.length + cols.length, cells: shape.size });
     }

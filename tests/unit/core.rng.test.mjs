@@ -70,9 +70,11 @@ test('shuffle() permutes in place', () => {
   assert.notDeepEqual(arr, Array.from({ length: 20 }, (_, i) => i));
 });
 
-test('hashString is stable, uint32 and spreads similar strings', () => {
+test('hashString is 32-bit FNV-1a, stable and spreads similar strings', () => {
+  assert.equal(hashString(''), 0x811c9dc5);
+  assert.equal(hashString('a'), 0xe40c292c);
+  assert.equal(hashString('foobar'), 0xbf9cf968);
   assert.equal(hashString('L1'), hashString('L1'));
-  assert.equal(hashString('blocko'), 2662732609); // pinned: level seeds depend on it
   const h = new Set(['L1', 'L2', 'L3', 'L10', 'D2026-10-18', 'D2026-10-19'].map(hashString));
   assert.equal(h.size, 6);
   for (const v of h) assert.equal(v, v >>> 0);
