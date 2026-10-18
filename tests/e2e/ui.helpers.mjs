@@ -19,13 +19,23 @@ export function makeSave(patch = {}) {
   return deepMerge(defaultSave(), patch);
 }
 
-/** A returning player: tutorial done, a few games, some coins. */
+/** Local day key 'YYYY-MM-DD' (same as the game's dayKey; browser and node share the TZ). */
+export function todayKey(date = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}
+
+/**
+ * A returning player: tutorial done, a few games, some coins. Today's login reward is already
+ * claimed, so no daily-reward popup covers home (meta specs reset `daily` to test it).
+ */
 export function veteranSave(patch = {}) {
   return makeSave(deepMerge({
     flags: { tutorialDone: true },
     stats: { gamesPlayed: 4, classicGames: 4, bestScore: 1500, playSec: 300 },
     coins: 600,
     xp: 150,
+    daily: { lastClaimDay: todayKey(), day: 1, streak: 1 },
   }, patch));
 }
 

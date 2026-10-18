@@ -1,13 +1,17 @@
 // Reusable UI components of the design system (markup builders + small DOM behaviours).
-// Styles live in css/style.css under the same class names.
+// Styles live in css/style.css (meta screens: css/meta.css) under the same class names.
 //
 //   btn({ action, label, icon, variant, size })   chunky 3D button (primary|secondary|ad|ghost|danger)
 //   iconBtn({ action, icon, aria, badge })         round icon button
 //   coinPill()                                    coin balance pill (updated by App.refreshCoins)
 //   bar(cls) / setBar(el, ratio)                  progress bar
 //   starsRow(count, of)                           star rating icons
-//   switchBtn({ action, on, label, icon })         settings toggle row
+//   switchRow({ action, on, labelKey, icon })      settings toggle row (setSwitch to update)
+//   navRow({ action, icon, labelKey, value })      settings navigation row (chevron / external mark)
+//   tabBar(prefix, items, active) / setTab(root)   segmented tabs (shop)
+//   screenHeader(titleKey, { right })              back button + title (+ coin pill)
 //   flyCoins(from, to, count)                     coins flying to a pill (effects layer #fx)
+//   formatDuration(ms) / msUntilMidnight(now)     "5 h 12 min" countdowns (missions, daily reward)
 //
 // Every interactive element carries data-action="<screen|modal>.<action>"; App dispatches clicks.
 
@@ -169,4 +173,48 @@ export function screenHeader(titleKey, { right = '' } = {}) {
     <h1 class="screen-header__title" data-i18n="${titleKey}">${esc(t(titleKey))}</h1>
     <div class="screen-header__right">${right}</div>
   </header>`;
+}
+
+/**
+ * Settings-style navigation row (label, optional value text, chevron or external-link mark).
+ * @param {{ action: string, icon: string, labelKey: string, value?: string, external?: boolean,
+ *   cls?: string, attrs?: string }} o value = already translated text (escaped here)
+ */
+export function navRow({ action, icon: ic, labelKey, value = '', external = false, cls = '', attrs = '' }) {
+  return `<button type="button" class="row row--nav${cls ? ` ${cls}` : ''}" data-action="${action}" ${attrs}>
+    ${icon(ic, 'row__icon')}<span class="row__label" data-i18n="${labelKey}">${esc(t(labelKey))}</span>
+    ${value ? `<span class="row__value">${esc(value)}</span>` : ''}${icon(external ? 'external' : 'next', 'row__chev')}</button>`;
+}
+
+/**
+ * Segmented tab bar (role=tablist). Buttons carry data-action="<prefix>.<id>".
+ * @param {string} prefix action prefix, e.g. 'shop.tab'
+ * @param {Array<{ id: string, labelKey: string, icon?: string }>} items
+ * @param {string} active id
+ */
+export function tabBar(prefix, items, active) {
+  return `<div class="tabs" role="tablist">${items.map((it) => `<button type="button" class="tabs__tab" role="tab" data-tab="${it.id}" aria-selected="${it.id === active}" data-action="${prefix}.${it.id}">
+      ${it.icon ? icon(it.icon, 'tabs__icon') : ''}<span class="tabs__label" data-i18n="${it.labelKey}">${esc(t(it.labelKey))}</span></button>`).join('')}</div>`;
+}
+
+/** Marks the active tab of a tabBar. */
+export function setTab(root, id) {
+  for (const b of root.querySelectorAll('.tabs__tab')) b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === id));
+}
+
+/**
+ * Duration until `targetMs` as a short localized text ("5 h 12 min", "12 min").
+ * @param {number} ms remaining milliseconds
+ */
+export function formatDuration(ms) {
+  const mins = Math.max(1, Math.ceil(ms / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? t('time.hm', { h, m }) : t('time.m', { m: mins });
+}
+
+/** Milliseconds until the next local midnight of `now`. */
+export function msUntilMidnight(now) {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return next.getTime() - now.getTime();
 }

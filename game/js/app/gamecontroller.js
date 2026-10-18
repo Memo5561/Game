@@ -321,6 +321,8 @@ export class GameController {
       doubled: false,
     };
     if (missions.length) app.announceMissions(missions);
+    // level-up celebration on the next arrival at home (the result screen shows a level-up line)
+    if (levels.length && app.retention) app.retention.queueLevelUp({ levels, coins: levelUpCoins, themes: unlockedThemes });
     return this.summary;
   }
 

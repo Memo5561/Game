@@ -20,6 +20,10 @@ export default {
 
   'mode.journey': 'Journey',
   'mode.daily': 'Daily Challenge',
+  'common.locked': 'Locked',
+  'common.open': 'Open',
+  'time.hm': '{h} h {m} min',
+  'time.m': '{m} min',
 
   // --- canvas texts (renderer) ---------------------------------------------------------------
   'praise.good': 'Good!',
@@ -43,6 +47,35 @@ export default {
   'home.dailyDone': 'Done – see you tomorrow!',
   'home.locked.games': { one: 'Unlocks after {n} more game', other: 'Unlocks after {n} more games' },
   'home.locked.journeyLevel': 'Unlocks at journey level {n}',
+  'home.levelAria': 'Player level {n}: {xp} of {next} XP',
+  'home.starsAria': 'Stars: {n} of {max}',
+
+  // --- daily reward (login calendar) ----------------------------------------------------------
+  'daily.title': 'Daily reward',
+  'daily.sub.first': 'Come back every day – rewards grow!',
+  'daily.sub.streak': { one: '{n} day in a row – keep it up!', other: '{n} days in a row – keep it up!' },
+  'daily.sub.grace': 'You missed a day – your streak is safe!',
+  'daily.sub.next': 'Next reward in {time}',
+  'daily.claim': 'Claim',
+  'daily.double': 'Watch ad: ×2',
+  'daily.day': 'Day {n}',
+  'daily.streakSaved': 'Streak saved!',
+  'daily.boosterGift': '+{hammer} Hammer, +{shuffle} Shuffle',
+
+  // --- level up -------------------------------------------------------------------------------
+  'levelUp.title': 'Level up!',
+  'levelUp.reached': 'You reached level {n}.',
+  'levelUp.newTheme': 'New theme unlocked',
+  'levelUp.useNow': 'Use now',
+
+  // --- journey map + level start sheet --------------------------------------------------------
+  'journey.lockedToast': 'Complete level {n} first',
+  'journey.more': 'More levels unlock as you play',
+  'journey.starsAria': { one: '{n} star', other: '{n} stars' },
+  'journey.chapter': 'Chapter {n}',
+  'levelStart.goal': 'Collect',
+  'levelStart.par': { one: '≤ {n} piece', other: '≤ {n} pieces' },
+  'levelStart.finish': 'Complete the level',
 
   // --- game HUD -------------------------------------------------------------------------------
   'hud.pause': 'Pause',
@@ -124,7 +157,7 @@ export default {
   'toast.purchasePending': 'Purchase pending – it completes automatically.',
   'toast.purchaseError': 'The purchase didn’t go through.',
   'toast.purchaseUnavailable': 'Purchases aren’t available right now.',
-  'toast.alreadyOwned': 'You already own this – restoring it.',
+  'toast.alreadyOwned': 'Previous purchase delivered',
   'toast.restoreError': 'Couldn’t reach Google Play.',
   'toast.restored': 'Purchases restored.',
   'toast.restoreNone': 'No purchases to restore.',
@@ -132,9 +165,10 @@ export default {
   'toast.noReward': 'No reward – the video didn’t finish.',
   'toast.missionDone': 'Mission complete: {text}',
   'toast.notEnoughCoins': 'Not enough coins',
+  'toast.reminderOn': 'Reminder on – see you tomorrow!',
 
   // --- missions -------------------------------------------------------------------------------
-  'missions.bonus': 'Bonus: complete all 3 missions',
+  'missions.bonus': 'Claim all 3 missions',
   'mission.clear_lines': 'Clear {n} lines',
   'mission.score_single': 'Score {n} points in one game',
   'mission.play_games': { one: 'Finish {n} game', other: 'Finish {n} games' },
@@ -145,6 +179,13 @@ export default {
   'mission.journey_levels': { one: 'Complete {n} journey level', other: 'Complete {n} journey levels' },
   'mission.daily_challenge': 'Complete the daily challenge',
   'mission.use_booster': { one: 'Use {n} booster', other: 'Use {n} boosters' },
+  'missions.easy': 'Easy',
+  'missions.medium': 'Medium',
+  'missions.hard': 'Hard',
+  'missions.resets': 'New missions in {time}',
+  'missions.lockedTitle': 'Daily missions',
+  'missions.bonusTitle': 'Bonus chest',
+  'missions.bonusDone': 'Opened – new missions tomorrow!',
 
   // --- themes ---------------------------------------------------------------------------------
   'theme.jewel': 'Jewel',
@@ -165,6 +206,31 @@ export default {
   'shop.bestValue': 'Best value',
   'shop.freeCoins': 'Watch ad: +{n} coins',
   'shop.unavailable': 'The shop isn’t available right now.',
+  'shop.tab.coins': 'Coins',
+  'shop.tab.themes': 'Themes',
+  'shop.tab.boosters': 'Boosters',
+  'shop.removeAds.giftLine': 'Gift: +{coins} coins, +{hammer} Hammer, +{shuffle} Shuffle',
+  'shop.adFree': 'Ad-free',
+  'shop.free.title': 'Free coins',
+  'shop.free.left': { one: '{n} video left today', other: '{n} videos left today' },
+  'shop.free.none': 'Come back tomorrow for more.',
+  'shop.theme.selected': 'In use',
+  'shop.theme.select': 'Use',
+  'shop.theme.level': 'Level {n}',
+  'shop.theme.need': 'Need {n} more',
+  'shop.theme.short': 'You need {n} more coins',
+  'shop.theme.lockedToast': 'Unlocks at player level {n}',
+  'shop.theme.confirmTitle': 'Unlock this theme?',
+  'shop.theme.confirmBody': '{name} for {n} coins',
+  'shop.theme.unlock': 'Unlock',
+  'shop.theme.unlocked': '{name} unlocked!',
+  'shop.theme.applied': 'Theme: {name}',
+  'shop.booster.got': '+1 {name}',
+  'shop.booster.watch': 'Watch ad: +1 free',
+  'shop.removeAds.giftLabel': 'Gift:',
+  'shop.booster.hint': 'Boosters help in Journey levels and Daily Challenges.',
+  'pending.title': 'Payment pending',
+  'pending.body': 'Google Play is still processing your payment. Once it completes, your purchase arrives automatically – even if you close the game.',
 
   // --- settings -------------------------------------------------------------------------------
   'settings.sound': 'Sound effects',
@@ -185,12 +251,27 @@ export default {
   'settings.reset': 'Reset progress',
   'settings.resetConfirm': 'All progress, coins and themes will be deleted. Purchases are kept.',
   'settings.version': 'Version {v}',
+  'settings.notifOn': 'On – one reminder a day',
+  'settings.notifOff': 'Off',
+  'settings.purchases': 'Purchases',
+  'settings.about': 'About',
+  'settings.resetTitle': 'Reset progress?',
+  'settings.resetOk': 'Reset',
 
   // --- legal ----------------------------------------------------------------------------------
   'legal.title': 'Legal notice',
   'legal.email': 'Email',
   'legal.phone': 'Phone',
   'legal.vat': 'VAT ID',
+  'legal.heading': 'Information according to § 5 DDG',
+  'legal.contact': 'Contact',
+  'legal.online': 'Legal notice online',
+  'legal.licenses': 'Open-source licenses',
+  'legal.font': 'font by The Nunito Project Authors',
+  'legal.sounds': 'All sound effects and music are synthesized in the app.',
+  'legal.about': 'About this app',
+  'legal.ads': 'Contains ads',
+  'legal.iap': 'In-app purchases',
 
   // --- notifications --------------------------------------------------------------------------
   'notify.title': 'Blocko',
@@ -198,4 +279,6 @@ export default {
   'notifAsk.text': 'Tomorrow: +{n} coins. Remind me?',
   'notifAsk.yes': 'Yes',
   'notifAsk.no': 'Not now',
+  'notifAsk.title': 'Daily reminder',
+  'notifAsk.hint': 'One friendly reminder a day. You can turn it off in Settings.',
 };

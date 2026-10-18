@@ -13,7 +13,7 @@ export const confirmModal = {
 
   build(p) {
     return `<div class="modal__icon modal__icon--warn">${icon(p.icon || 'info')}</div>
-      <h2 class="modal__title" data-i18n="${p.titleKey}">${esc(t(p.titleKey, p.params))}</h2>
+      <h2 class="modal__title" data-i18n="${p.titleKey}"${p.params ? ` data-i18n-params='${esc(JSON.stringify(p.params))}'` : ''}>${esc(t(p.titleKey, p.params))}</h2>
       ${p.bodyKey ? `<p class="modal__text">${esc(t(p.bodyKey, p.params))}</p>` : ''}
       <div class="modal__actions">
         ${btn({ action: 'confirm.ok', labelKey: p.okKey || 'common.ok', icon: p.okIcon, variant: p.okVariant || 'primary', size: 'lg' })}

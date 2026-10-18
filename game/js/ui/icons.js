@@ -135,6 +135,43 @@ const SYMBOLS = {
     <path d="M10 11.6v6M14 11.6v6" stroke="${CUT}" stroke-width="1.8" stroke-linecap="round"/>`,
   flame: `<path d="M12 2.6c.6 3-1.6 4.6-3 6.4C7.5 10.9 6 12.8 6 15.4a6 6 0 0 0 12 0c0-2.8-1.5-4.6-2.6-5.6.1 1.6-.5 2.8-1.6 3.4.4-3.9-.4-7.6-1.8-10.6z" fill="currentColor"/>
     <path d="M12 21.4a3.2 3.2 0 0 1-3.2-3.2c0-1.8 1.3-2.8 2.2-4 .2 1.4 1.4 1.8 2 1.4.4 1.2 2.2 1.6 2.2 2.8a3.2 3.2 0 0 1-3.2 3z" fill="#fff" fill-opacity="0.55"/>`,
+  // --- meta screens (part B) -------------------------------------------------------------------
+  skull: `<path d="M12 2.6c-5 0-8.6 3.5-8.6 8.2 0 2.8 1.3 4.8 3.2 6v2.6c0 .9.7 1.6 1.6 1.6h7.6c.9 0 1.6-.7 1.6-1.6v-2.6c1.9-1.2 3.2-3.2 3.2-6 0-4.7-3.6-8.2-8.6-8.2z" fill="currentColor"/>
+    <circle cx="8.7" cy="11.4" r="2.3" fill="${CUT}"/><circle cx="15.3" cy="11.4" r="2.3" fill="${CUT}"/>
+    <path d="M12 14l-1.3 2.2h2.6z" fill="${CUT}"/><path d="M10.1 18.2v2.6M12 18.2v2.6M13.9 18.2v2.6" stroke="${CUT}" stroke-width="1.2"/>`,
+  chest: `<path d="M3 10.2h18v9.4a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 19.6z" fill="url(#g-wood)"/>
+    <path d="M3 10.2V8.4a4.6 4.6 0 0 1 4.6-4.6h8.8A4.6 4.6 0 0 1 21 8.4v1.8z" fill="url(#g-wood)"/>
+    <path d="M3 8.6v1.6h18V8.6z" fill="rgba(60,25,0,0.38)"/>
+    <path d="M6 3.9h2.4v17.5H6zM15.6 3.9H18v17.5h-2.4z" style="fill:var(--coin)"/><path d="M6 3.9h2.4v17.5H6zM15.6 3.9H18v17.5h-2.4z" fill="rgba(120,60,0,0.18)"/>
+    <rect x="9.6" y="8" width="4.8" height="5.4" rx="1.2" style="fill:var(--coin)" stroke="rgba(90,40,0,0.45)" stroke-width="0.9"/>
+    <circle cx="12" cy="10.4" r="0.9" fill="rgba(90,40,0,0.6)"/>
+    <path d="M5 5.6a3.6 3.6 0 0 1 2.2-1.2" stroke="#fff" stroke-opacity="0.55" stroke-width="1.2" stroke-linecap="round" fill="none"/>`,
+  'chest-open': `<path d="M5.6 1.2h12.8l2 5.6H3.6z" fill="url(#g-wood)"/><path d="M5.6 1.2h12.8l.6 1.8H5z" fill="rgba(255,255,255,0.22)"/>
+    <path d="M3.6 6.8h16.8l-.4 1.4H4z" fill="rgba(60,25,0,0.45)"/>
+    <path d="M8.4 1.2h2.2l-.8 5.6H7.4zM13.4 1.2h2.2l1 5.6h-2.2z" style="fill:var(--coin)"/>
+    <ellipse cx="12" cy="10.6" rx="8.4" ry="2.2" fill="rgba(40,15,0,0.7)"/>
+    <circle cx="8.4" cy="9.6" r="2.3" style="fill:var(--coin)"/><circle cx="15.6" cy="9.6" r="2.3" style="fill:var(--coin)"/>
+    <circle cx="12" cy="8.4" r="2.6" style="fill:var(--coin)"/><circle cx="10.2" cy="7.2" r="1.9" style="fill:var(--coin)"/>
+    <circle cx="8.4" cy="9.6" r="2.3" fill="rgba(120,60,0,0.25)"/><circle cx="15.6" cy="9.6" r="2.3" fill="rgba(120,60,0,0.25)"/>
+    <path d="M11 7.4a1.6 1.6 0 0 1 1.8-.8M9.4 6.4a1.2 1.2 0 0 1 1.2-.6" stroke="#fff" stroke-opacity="0.75" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+    <path d="M3 10.6h18v9a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 19.6z" fill="url(#g-wood)"/>
+    <path d="M3 10.6h18v1.4H3z" fill="rgba(255,255,255,0.2)"/>
+    <path d="M6 10.6h2.4v10.8H6zM15.6 10.6H18v10.8h-2.4z" style="fill:var(--coin)"/><path d="M6 10.6h2.4v10.8H6zM15.6 10.6H18v10.8h-2.4z" fill="rgba(120,60,0,0.18)"/>
+    <rect x="9.6" y="10.6" width="4.8" height="4" rx="1" style="fill:var(--coin)" stroke="rgba(90,40,0,0.45)" stroke-width="0.9"/>`,
+  palette: `<path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.9-.9 1.9-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.9 1.9-1.9h2.2A4 4 0 0 0 21 10.6C21 6.4 17 3 12 3z" fill="currentColor"/>
+    <circle cx="7.2" cy="12" r="1.9" fill="url(#g-red)"/><circle cx="9.2" cy="7.6" r="1.9" fill="url(#g-yellow)"/>
+    <circle cx="14.4" cy="7" r="1.9" fill="url(#g-cyan)"/><circle cx="17.6" cy="10.8" r="1.7" fill="url(#g-purple)"/>`,
+  bag: `<path d="M9 2.8h6l-1.4 3.4h-3.2z" fill="url(#g-wood)"/><path d="M9.6 6.2h4.8" stroke="rgba(60,25,0,0.5)" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M10.4 6.8h3.2c4.8 2.4 7.4 6.6 7.4 9.8 0 3.4-2.8 4.8-9 4.8s-9-1.4-9-4.8c0-3.2 2.6-7.4 7.4-9.8z" fill="url(#g-wood)"/>
+    <path d="M6.4 12.4c.6-1.4 1.6-2.6 2.8-3.6" stroke="#fff" stroke-opacity="0.45" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+    <circle cx="12" cy="15.4" r="3.8" style="fill:var(--coin)" stroke="rgba(90,40,0,0.4)" stroke-width="0.9"/>
+    <path d="${STAR}" transform="translate(12 15.4) scale(0.2) translate(-12 -12)" fill="rgba(255,255,255,0.65)"/>`,
+  external: `<path d="M14 3.8h6.2V10M20 4l-8.2 8.2" ${STROKE} stroke-width="2.4"/>
+    <path d="M18.2 13.8v4.4a2 2 0 0 1-2 2H5.8a2 2 0 0 1-2-2V7.8a2 2 0 0 1 2-2h4.4" ${STROKE} stroke-width="2.4"/>`,
+  mail: `<rect x="2.6" y="4.8" width="18.8" height="14.4" rx="3" fill="currentColor"/>
+    <path d="M5 8l7 5.2L19 8" fill="none" stroke="${CUT}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  clock: `<circle cx="12" cy="12" r="9.2" ${STROKE} stroke-width="2.4"/><path d="M12 6.8v5.4l3.6 2.2" ${STROKE} stroke-width="2.4"/>`,
+  star2: `<path d="${STAR}" fill="currentColor"/>`,
   // --- brand ---------------------------------------------------------------------------------
   logo: `<rect x="1.5" y="1.5" width="10" height="10" rx="2.4" fill="url(#g-red)"/><rect x="12.5" y="1.5" width="10" height="10" rx="2.4" fill="url(#g-yellow)"/>
     <rect x="1.5" y="12.5" width="10" height="10" rx="2.4" fill="url(#g-cyan)"/><rect x="12.5" y="12.5" width="10" height="10" rx="2.4" fill="url(#g-purple)"/>

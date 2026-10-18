@@ -12,7 +12,8 @@
 //          js/ui/modals/index.js, open with app.modals.open(id, props). Buttons inside use
 //          data-action="<id>.<name>" and are routed to the definition's `actions` while on top.
 // Popup:   app.popups.register(kind, { priority, check(app) → props|null, modal }) – drained on
-//          arrival at home (js/app/popups.js).
+//          arrival at home (js/app/popups.js). The meta layer's kinds (dailyReward, levelUp) and
+//          the reminder soft ask live in js/app/retention.js (app.retention).
 // Strings: add keys to js/ui/strings/en.js and de.js; use t(key, params) or data-i18n="key".
 // Icons:   js/ui/icons.js (icon(name)); colors follow the theme CSS variables.
 // Events:  app.on('coins' | 'adState' | 'settings' | 'lang' | 'theme' | 'day' | 'entitlements', fn).
@@ -27,6 +28,7 @@ import { AdPolicy } from '../meta/adpolicy.js';
 import { getTheme, themeCssVars } from '../render/theme.js';
 import { clock } from './clock.js';
 import { PopupQueue } from './popups.js';
+import { installRetention } from './retention.js';
 import { GameController } from './gamecontroller.js';
 import { installDebug, debugAllowed } from './debug.js';
 import { Router } from '../ui/router.js';
@@ -77,6 +79,8 @@ export class App {
     /** @type {string[]} recent toast texts (debug / tests) */
     this.toastLog = [];
     this._pausedAtMs = 0;
+    /** resetProgress() is reloading the page – never flush the old state again */
+    this._resetting = false;
     this._dayKey = '';
     this._dayTimer = 0;
     /** @type {Map<string, Function>} */
@@ -202,6 +206,7 @@ export class App {
     Sfx.startMusic();
     this.applyTheme(this.progression.selectedTheme);
     this.registerGlobalActions();
+    installRetention(this);
   }
 
   async initGame() {
@@ -341,6 +346,7 @@ export class App {
     Sfx.suspend();
     if (this.game && this.game.drag) this.game.onAppPause();
     if (this.modals) this.modals.pauseTimers();
+    if (this._resetting) return;
     flushSave(this.save);
     const g = this.game;
     if (this.router && !Platform.isBusy() && this.router.current === 'game' && !this.modals.isOpen
@@ -434,10 +440,17 @@ export class App {
       Sfx.resume();
       this.lastPurchaseAt = performance.now();
     }
+    if (status === 'pending' && this.modals.defs.has('purchasePending') && !this.modals.isOpen) {
+      // nothing is granted yet – explain instead of a fleeting toast
+      this.modals.open('purchasePending', { productId });
+      return status;
+    }
     const msg = {
       pending: 'toast.purchasePending', error: 'toast.purchaseError', unavailable: 'toast.purchaseUnavailable', already_owned: 'toast.alreadyOwned',
     }[status];
-    if (msg) this.toast(t(msg), { icon: status === 'pending' ? 'info' : 'close', tone: status === 'pending' || status === 'already_owned' ? 'info' : 'warn' });
+    if (msg) this.toast(t(msg), { icon: status === 'pending' ? 'info' : status === 'already_owned' ? 'check' : 'close', tone: status === 'pending' || status === 'already_owned' ? 'info' : 'warn' });
+    // an earlier purchase of this product is still open: re-query so native delivers it
+    // (remove_ads → entitlements; coins → the pending grant)
     if (status === 'already_owned') Platform.restorePurchases();
     return status;
   }
@@ -560,6 +573,7 @@ export class App {
     }
     this.router.refresh('lang');
     this.modals.refresh('lang');
+    this.refreshCoins({ instant: true }); // number format of the coin pills
     this.emit('lang', setting);
   }
 
@@ -649,10 +663,30 @@ export class App {
     if (this.game && this.game.renderer) this.game.renderer.timeScale = x;
   }
 
-  /** Settings → reset progress (after confirm): wipes the save and reloads. */
+  /**
+   * Settings → reset progress (after confirm): starts over with a fresh save and reloads.
+   * Kept: purchases (save.iap – so ads stay removed and the remove-ads gift is not granted twice;
+   * granted purchase tokens stay idempotent), settings (sound, music, vibration, language) and the
+   * one-time flags that must never repeat (tutorial, reminder opt-in / asks, review request).
+   * The fresh data replaces the shared save object in place, so a late pause/flush can only ever
+   * write the reset state.
+   */
   resetProgress() {
+    const old = JSON.parse(JSON.stringify(this.save));
+    const fresh = defaultSave();
+    fresh.iap = {
+      adsRemoved: !!old.iap.adsRemoved,
+      adsGiftGranted: !!old.iap.adsGiftGranted,
+      grantedTokens: Array.isArray(old.iap.grantedTokens) ? old.iap.grantedTokens.slice() : [],
+    };
+    fresh.settings = { ...fresh.settings, ...old.settings };
+    for (const key of ['tutorialDone', 'notifAsked', 'notifOptIn', 'notifDeclines', 'reviewAsked']) fresh.flags[key] = old.flags[key];
+    if (this.game) this.game.discardRun();
+    for (const key of Object.keys(this.save)) delete this.save[key];
+    Object.assign(this.save, fresh);
+    this._resetting = true;
     clearSave();
-    flushSave(defaultSave());
+    flushSave(this.save);
     window.location.reload();
   }
 

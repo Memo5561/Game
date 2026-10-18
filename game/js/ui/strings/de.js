@@ -18,6 +18,10 @@ export default {
 
   'mode.journey': 'Abenteuer',
   'mode.daily': 'Tägliche Herausforderung',
+  'common.locked': 'Gesperrt',
+  'common.open': 'Öffnen',
+  'time.hm': '{h} Std. {m} Min.',
+  'time.m': '{m} Min.',
 
   // --- Canvas-Texte (Renderer) ----------------------------------------------------------------
   'praise.good': 'Gut!',
@@ -41,6 +45,35 @@ export default {
   'home.dailyDone': 'Geschafft – bis morgen!',
   'home.locked.games': { one: 'Frei nach {n} weiteren Spiel', other: 'Frei nach {n} weiteren Spielen' },
   'home.locked.journeyLevel': 'Frei ab Abenteuer-Level {n}',
+  'home.levelAria': 'Spielerlevel {n}: {xp} von {next} EP',
+  'home.starsAria': 'Sterne: {n} von {max}',
+
+  // --- Tägliche Belohnung (Login-Kalender) ----------------------------------------------------
+  'daily.title': 'Tägliche Belohnung',
+  'daily.sub.first': 'Komm jeden Tag wieder – die Belohnung wächst!',
+  'daily.sub.streak': { one: '{n} Tag in Folge – weiter so!', other: '{n} Tage in Folge – weiter so!' },
+  'daily.sub.grace': 'Einen Tag verpasst – deine Serie bleibt!',
+  'daily.sub.next': 'Nächste Belohnung in {time}',
+  'daily.claim': 'Abholen',
+  'daily.double': 'Video ansehen: ×2',
+  'daily.day': 'Tag {n}',
+  'daily.streakSaved': 'Serie gerettet!',
+  'daily.boosterGift': '+{hammer} Hammer, +{shuffle} Mischen',
+
+  // --- Level-Aufstieg -------------------------------------------------------------------------
+  'levelUp.title': 'Level-Aufstieg!',
+  'levelUp.reached': 'Du hast Level {n} erreicht.',
+  'levelUp.newTheme': 'Neues Design freigeschaltet',
+  'levelUp.useNow': 'Jetzt verwenden',
+
+  // --- Abenteuer-Karte + Level-Start ----------------------------------------------------------
+  'journey.lockedToast': 'Schaffe zuerst Level {n}',
+  'journey.more': 'Weitere Level werden beim Spielen frei',
+  'journey.starsAria': { one: '{n} Stern', other: '{n} Sterne' },
+  'journey.chapter': 'Kapitel {n}',
+  'levelStart.goal': 'Sammle',
+  'levelStart.par': { one: '≤ {n} Teil', other: '≤ {n} Teile' },
+  'levelStart.finish': 'Level schaffen',
 
   // --- Spiel-HUD ------------------------------------------------------------------------------
   'hud.pause': 'Pause',
@@ -122,7 +155,7 @@ export default {
   'toast.purchasePending': 'Kauf ausstehend – er wird automatisch abgeschlossen.',
   'toast.purchaseError': 'Der Kauf hat nicht geklappt.',
   'toast.purchaseUnavailable': 'Käufe sind gerade nicht möglich.',
-  'toast.alreadyOwned': 'Bereits gekauft – wird wiederhergestellt.',
+  'toast.alreadyOwned': 'Früherer Kauf zugestellt',
   'toast.restoreError': 'Google Play ist gerade nicht erreichbar.',
   'toast.restored': 'Käufe wiederhergestellt.',
   'toast.restoreNone': 'Keine Käufe zum Wiederherstellen.',
@@ -130,9 +163,10 @@ export default {
   'toast.noReward': 'Keine Belohnung – das Video wurde nicht beendet.',
   'toast.missionDone': 'Mission erfüllt: {text}',
   'toast.notEnoughCoins': 'Nicht genug Münzen',
+  'toast.reminderOn': 'Erinnerung an – bis morgen!',
 
   // --- Missionen ------------------------------------------------------------------------------
-  'missions.bonus': 'Bonus: alle 3 Missionen erfüllen',
+  'missions.bonus': 'Hol alle 3 Missionen ab',
   'mission.clear_lines': 'Räume {n} Linien ab',
   'mission.score_single': 'Erziele {n} Punkte in einem Spiel',
   'mission.play_games': { one: 'Beende {n} Spiel', other: 'Beende {n} Spiele' },
@@ -143,6 +177,13 @@ export default {
   'mission.journey_levels': { one: 'Schaffe {n} Abenteuer-Level', other: 'Schaffe {n} Abenteuer-Level' },
   'mission.daily_challenge': 'Schaffe die tägliche Herausforderung',
   'mission.use_booster': { one: 'Setze {n} Booster ein', other: 'Setze {n} Booster ein' },
+  'missions.easy': 'Leicht',
+  'missions.medium': 'Mittel',
+  'missions.hard': 'Schwer',
+  'missions.resets': 'Neue Missionen in {time}',
+  'missions.lockedTitle': 'Tägliche Missionen',
+  'missions.bonusTitle': 'Bonustruhe',
+  'missions.bonusDone': 'Geöffnet – morgen gibt es neue Missionen!',
 
   // --- Designs --------------------------------------------------------------------------------
   'theme.jewel': 'Juwel',
@@ -163,6 +204,31 @@ export default {
   'shop.bestValue': 'Bestes Angebot',
   'shop.freeCoins': 'Video ansehen: +{n} Münzen',
   'shop.unavailable': 'Der Shop ist gerade nicht verfügbar.',
+  'shop.tab.coins': 'Münzen',
+  'shop.tab.themes': 'Designs',
+  'shop.tab.boosters': 'Booster',
+  'shop.removeAds.giftLine': 'Geschenk: +{coins} Münzen, +{hammer} Hammer, +{shuffle} Mischen',
+  'shop.adFree': 'Werbefrei',
+  'shop.free.title': 'Gratis-Münzen',
+  'shop.free.left': { one: 'Heute noch {n} Video', other: 'Heute noch {n} Videos' },
+  'shop.free.none': 'Morgen gibt es neue.',
+  'shop.theme.selected': 'Aktiv',
+  'shop.theme.select': 'Verwenden',
+  'shop.theme.level': 'Level {n}',
+  'shop.theme.need': 'Noch {n} fehlen',
+  'shop.theme.short': 'Dir fehlen noch {n} Münzen',
+  'shop.theme.lockedToast': 'Frei ab Spielerlevel {n}',
+  'shop.theme.confirmTitle': 'Design freischalten?',
+  'shop.theme.confirmBody': '{name} für {n} Münzen',
+  'shop.theme.unlock': 'Freischalten',
+  'shop.theme.unlocked': '{name} freigeschaltet!',
+  'shop.theme.applied': 'Design: {name}',
+  'shop.booster.got': '+1 {name}',
+  'shop.booster.watch': 'Video ansehen: +1 gratis',
+  'shop.removeAds.giftLabel': 'Geschenk:',
+  'shop.booster.hint': 'Booster helfen in Abenteuer-Leveln und Täglichen Herausforderungen.',
+  'pending.title': 'Zahlung ausstehend',
+  'pending.body': 'Google Play bearbeitet deine Zahlung noch. Sobald sie abgeschlossen ist, kommt dein Kauf automatisch an – auch wenn du das Spiel schließt.',
 
   // --- Einstellungen --------------------------------------------------------------------------
   'settings.sound': 'Soundeffekte',
@@ -183,12 +249,27 @@ export default {
   'settings.reset': 'Fortschritt zurücksetzen',
   'settings.resetConfirm': 'Fortschritt, Münzen und Designs werden gelöscht. Käufe bleiben erhalten.',
   'settings.version': 'Version {v}',
+  'settings.notifOn': 'An – eine Erinnerung pro Tag',
+  'settings.notifOff': 'Aus',
+  'settings.purchases': 'Käufe',
+  'settings.about': 'Info',
+  'settings.resetTitle': 'Fortschritt zurücksetzen?',
+  'settings.resetOk': 'Zurücksetzen',
 
   // --- Impressum ------------------------------------------------------------------------------
   'legal.title': 'Impressum',
   'legal.email': 'E-Mail',
   'legal.phone': 'Telefon',
   'legal.vat': 'USt-IdNr.',
+  'legal.heading': 'Angaben gemäß § 5 DDG',
+  'legal.contact': 'Kontakt',
+  'legal.online': 'Impressum online',
+  'legal.licenses': 'Open-Source-Lizenzen',
+  'legal.font': 'Schriftart von The Nunito Project Authors',
+  'legal.sounds': 'Alle Soundeffekte und die Musik werden in der App erzeugt.',
+  'legal.about': 'Über diese App',
+  'legal.ads': 'Enthält Werbung',
+  'legal.iap': 'In-App-Käufe',
 
   // --- Benachrichtigungen ---------------------------------------------------------------------
   'notify.title': 'Blocko',
@@ -196,4 +277,6 @@ export default {
   'notifAsk.text': 'Morgen: +{n} Münzen. Erinnere mich?',
   'notifAsk.yes': 'Ja',
   'notifAsk.no': 'Nicht jetzt',
+  'notifAsk.title': 'Tägliche Erinnerung',
+  'notifAsk.hint': 'Eine freundliche Erinnerung pro Tag – abschaltbar in den Einstellungen.',
 };
