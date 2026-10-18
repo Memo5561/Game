@@ -241,6 +241,16 @@ class MainActivity : ComponentActivity() {
 
     // ------------------------------------------------------------------ window & layout
 
+    /**
+     * Tints the native areas around the WebView (inset padding, banner slot) with the active game
+     * theme's background so light themes don't get a dark strip at the bottom. Main thread only.
+     */
+    fun applyThemeBackground(color: Int) {
+        root.setBackgroundColor(color)
+        gameContainer.setBackgroundColor(color)
+        bannerContainer.setBackgroundColor(color)
+    }
+
     private fun buildLayout() {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

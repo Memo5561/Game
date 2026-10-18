@@ -29,7 +29,7 @@ const legal = CONFIG.LEGAL;
 if (!legal.OWNER_NAME || PLACEHOLDER.test(legal.OWNER_NAME)) errors.push('CONFIG.LEGAL.OWNER_NAME is a placeholder (Impressum!)');
 if (!legal.ADDRESS_LINES.length || legal.ADDRESS_LINES.some((l) => PLACEHOLDER.test(l))) errors.push('CONFIG.LEGAL.ADDRESS_LINES contains placeholders (Impressum needs a ladungsfähige Anschrift)');
 if (!legal.EMAIL || PLACEHOLDER.test(legal.EMAIL)) errors.push('CONFIG.LEGAL.EMAIL is a placeholder');
-if (!legal.PHONE) warnings.push('CONFIG.LEGAL.PHONE is empty (recommended for the Impressum: a fast second contact channel)');
+if (!legal.PHONE && !legal.CONTACT_FORM_URL) errors.push('CONFIG.LEGAL: set PHONE or CONTACT_FORM_URL – § 5 DDG requires a second fast contact channel besides e-mail');
 
 // --- site pages -------------------------------------------------------------
 for (const f of ['docs/site/privacy-policy.html', 'docs/site/impressum.html']) {

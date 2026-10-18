@@ -228,6 +228,13 @@ class GameBridge(
     @JavascriptInterface
     fun exitApp() = onMain { activity.moveTaskToBack(true) }
 
+    /** Matches the native strip around the WebView to the theme background ('#RRGGBB'); invalid input is ignored. */
+    @JavascriptInterface
+    fun setThemeColors(background: String?) {
+        val color = runCatching { android.graphics.Color.parseColor(background.orEmpty().trim()) }.getOrNull() ?: return
+        onMain { activity.applyThemeBackground(color) }
+    }
+
     @JavascriptInterface
     fun log(level: String?, message: String?) {
         val text = message.orEmpty()

@@ -20,7 +20,9 @@ export const CONFIG = Object.freeze({
     OWNER_NAME: 'Vorname Nachname',
     ADDRESS_LINES: Object.freeze(['Musterstraße 1', '12345 Musterstadt', 'Deutschland']),
     EMAIL: 'support@example.com',
+    // § 5 DDG needs a second fast, direct contact channel besides e-mail: a phone number OR a contact form.
     PHONE: '',
+    CONTACT_FORM_URL: '',
     VAT_ID: '',
   }),
 
@@ -88,30 +90,31 @@ export const CONFIG = Object.freeze({
   }),
 
   ECONOMY: Object.freeze({
-    COINS_PER_SCORE: 1 / 40,            // classic only: coins = max(MIN, floor(score * this))
-    COINS_MIN_PER_GAME: 5,
+    // classic only: coins = floor(RUN_COINS_FACTOR * sqrt(score)) – concave, so long combo-driven
+    // runs don't explode the economy (score 2,500 → 25, 10,000 → 50, 40,000 → 100)
+    RUN_COINS_FACTOR: 0.5,
     LEVEL_COMPLETE_COINS: 40,           // journey: first completion = base + 10 per star; replays: +10 per newly earned star
     LEVEL_STAR_COINS: 10,
     DAILY_CHALLENGE_COINS: 150,         // first completion of that day only
     DAILY_REWARDS: Object.freeze([50, 75, 100, 150, 200, 300, 500]), // 7-day login calendar
     DAILY_REWARD_DAY7_BOOSTERS: Object.freeze({ hammer: 1, shuffle: 1 }),
-    MISSION_REWARDS: Object.freeze([40, 60, 80]),  // easy / medium / hard slot
-    MISSION_BONUS_COINS: 150,           // all 3 daily missions claimed
+    MISSION_REWARDS: Object.freeze([30, 50, 70]),  // easy / medium / hard slot
+    MISSION_BONUS_COINS: 100,           // all 3 daily missions claimed
     STARTING_COINS: 100,
     STARTING_BOOSTERS: Object.freeze({ hammer: 2, shuffle: 2 }),
     BOOSTER_PRICES: Object.freeze({ hammer: 150, shuffle: 120 }),
-    REVIVE_COINS: 200,                  // alternative to the revive ad (still once per run)
+    REVIVE_COINS: 400,                  // alternative to the revive ad (still once per run)
     LEVEL_UP_COINS: 100,
-    FREE_COINS_AD_AMOUNT: 60,
+    FREE_COINS_AD_AMOUNT: 40,
     REMOVE_ADS_GIFT: Object.freeze({ coins: 500, hammer: 1, shuffle: 1 }), // once, when remove_ads is first owned
     // Each theme is either bought with coins (price) or unlocked by player level (unlockLevel).
     THEMES: Object.freeze({
       jewel: Object.freeze({ price: 0, unlockLevel: 0 }),
       neon: Object.freeze({ price: 0, unlockLevel: 3 }),
       candy: Object.freeze({ price: 1500, unlockLevel: 0 }),
-      wood: Object.freeze({ price: 2500, unlockLevel: 0 }),
-      pixel: Object.freeze({ price: 4000, unlockLevel: 0 }),
-      gold: Object.freeze({ price: 8000, unlockLevel: 0 }),
+      wood: Object.freeze({ price: 3000, unlockLevel: 0 }),
+      pixel: Object.freeze({ price: 5000, unlockLevel: 0 }),
+      gold: Object.freeze({ price: 10000, unlockLevel: 0 }),
     }),
   }),
 
@@ -122,11 +125,12 @@ export const CONFIG = Object.freeze({
     INTERSTITIAL_MIN_INTERVAL_SEC: 120,       // wall clock since any full-screen ad
     SKIP_FIRST_RUN_OF_SESSION: true,          // session = cold start or resume after >= SESSION_GAP_MIN
     SESSION_GAP_MIN: 30,
-    RUN_MIN_PIECES: 5,                        // shorter runs don't count for ad cadence / XP
+    RUN_MIN_PIECES: 8,                        // shorter runs don't count (games played, XP, ad cadence)
     RESULT_SCREEN_MIN_MS: 1000,               // result screen visible at least this long before an interstitial
     AD_BUTTON_ARM_MS: 500,                    // ad buttons in auto-opened modals ignore taps this long
     REVIVE_COUNTDOWN_SEC: 5,
-    FREE_COINS_ADS_PER_DAY: 5,
+    FREE_COINS_ADS_PER_DAY: 3,
+    FREE_BOOSTER_ADS_PER_DAY: 3,              // "Watch ad: free booster" (shop + in-run booster sheet), persisted
     UPSELL_AFTER_INTERSTITIALS: 3,            // soft "Ad-free" chip on the game-over screen (max once a day)
     BANNER_ENABLED: true,
   }),

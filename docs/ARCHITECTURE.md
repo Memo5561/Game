@@ -475,7 +475,7 @@ Native protocol (`android/…/GameBridge.kt`, interface name **`BlockoNative`**)
 `openUrl(url)` · `isPrivacyOptionsRequired(): Boolean` · `showPrivacyOptions(requestId)` ·
 `getNotificationPermission(): String` · `requestNotificationPermission(requestId)` ·
 `openNotificationSettings()` · `scheduleReminder(delayMinutes: Int, title, body)` · `cancelReminder()` ·
-`exitApp()` · `log(level, message)`.
+`exitApp()` · `setThemeColors(backgroundHex)` (tints the native strip around the WebView) · `log(level, message)`.
 
 `getInfo()` JSON: `{ platform:'android', appVersion, versionCode, sdkInt, webViewVersion, locale, debug,
 adsRemoved, canRequestAds, rewardedReady, interstitialReady, privacyOptionsRequired,
