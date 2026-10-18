@@ -1703,7 +1703,7 @@ export class Renderer {
     const pulse = 0.5 + 0.5 * Math.sin(T * 0.009);
     const img = sp.block[piece.color];
     const cells = shape.cells;
-    ctx.globalAlpha = 0.22 + 0.22 * pulse;
+    ctx.globalAlpha = 0.38 + 0.27 * pulse;
     for (let k = 0; k < cells.length; k++) ctx.drawImage(img, bx + (H.c + cells[k][1]) * cell, by + (H.r + cells[k][0]) * cell, cell, cell);
     ctx.globalAlpha = 1;
 

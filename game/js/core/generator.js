@@ -6,8 +6,8 @@
 // placements. The choice depends on the phase:
 //   - early (start of a classic run, longer for new players): the solvable candidate that allows
 //     the most line clears → quick, satisfying first clears; never a dead end. With probability
-//     EARLY_MULTI_P only candidates with a multi-line clear (one placement, >= 2 lines) count
-//     first, so "wow" moments come early
+//     EARLY_MULTI_P candidates offering a multi-line clear right away (one piece on the current
+//     board clears >= 2 lines) come first, so "wow" moments come early
 //   - mercy (crowded board, no clear for a while, right after a revive): a random solvable
 //     candidate that allows a clear (journey/daily: preferably one that collects gems)
 //   - otherwise: a random solvable candidate, or – with probability RAW_P_MAX × difficulty
@@ -45,6 +45,8 @@ import { SHAPES, getShape, shapeWeight } from './shapes.js';
  * @property {boolean} solvable  all pieces can be placed in some order
  * @property {number} maxLines   most lines cleared in total by one (possibly partial) sequence
  * @property {number} maxSingle  most lines cleared by a single placement
+ * @property {number} firstSingle extra: most lines one piece clears right now, on the current board
+ *                               (what the player can see; exact, not limited by the node budget)
  * @property {number} maxGems    extra: most gems collected by one sequence
  * @property {boolean} complete  extra: false if the node limit stopped the search early
  *                               (`solvable === false` then means "no solution found")
@@ -174,6 +176,34 @@ class TraySearch {
     this.targetLines = 0;
     this.targetSingle = 0;
     this.targetGems = 0;
+  }
+
+  /**
+   * Most lines a single piece clears when placed on the board as it is (depth 0 only).
+   * @param {number} lo
+   * @param {number} hi
+   * @returns {number}
+   */
+  firstSingle(lo, hi) {
+    const { rowLo, rowHi, colLo, colHi } = this.engine;
+    let best = 0;
+    for (let k = 0; k < this.count; k++) {
+      const pl = this.pl[k];
+      const h = this.h[k];
+      const w = this.w[k];
+      for (let p = 0; p < pl.length; p += 4) {
+        if ((lo & pl[p]) !== 0 || (hi & pl[p + 1]) !== 0) continue;
+        const nlo = lo | pl[p];
+        const nhi = hi | pl[p + 1];
+        const r = pl[p + 2];
+        const c = pl[p + 3];
+        let cnt = 0;
+        for (let rr = r; rr < r + h; rr++) if ((nlo & rowLo[rr]) === rowLo[rr] && (nhi & rowHi[rr]) === rowHi[rr]) cnt++;
+        for (let cc = c; cc < c + w; cc++) if ((nlo & colLo[cc]) === colLo[cc] && (nhi & colHi[cc]) === colHi[cc]) cnt++;
+        if (cnt > best) best = cnt;
+      }
+    }
+    return best;
   }
 
   /** @returns {boolean} true when every requested target is reached (search can stop) */
@@ -312,19 +342,22 @@ export function analyzeTray(board, shapes, opts = {}) {
   s.nodeLimit = nodeLimit;
   s.aborted = false;
   s.solvable = false;
-  s.maxLines = 0;
-  s.maxSingle = 0;
   s.maxGems = 0;
   s.targetLines = targetLines;
   s.targetSingle = targetSingle;
   s.targetGems = targetGems;
 
   boardBits(board, BOARD_BITS, GEM_BITS);
+  // A single placement is a (partial) sequence too, so it seeds the line counts.
+  const firstSingle = s.firstSingle(BOARD_BITS[0], BOARD_BITS[1]);
+  s.maxLines = firstSingle;
+  s.maxSingle = firstSingle;
   s.dfs(BOARD_BITS[0], BOARD_BITS[1], GEM_BITS[0], GEM_BITS[1], 0, 0, -1, 0, 0);
   return {
     solvable: s.solvable,
     maxLines: s.maxLines,
     maxSingle: s.maxSingle,
+    firstSingle,
     maxGems: s.maxGems,
     complete: !s.aborted,
   };
@@ -434,8 +467,8 @@ export class PieceGenerator {
 
     let chosen;
     if (phase === 'early') {
-      const minSingle = multiRoll < cfg.EARLY_MULTI_P ? 2 : 0;
-      chosen = this.bestForLines(board, fitting, minSingle) || this.rescue(board, 3) || fitting[0];
+      const minFirst = multiRoll < cfg.EARLY_MULTI_P ? 2 : 0;
+      chosen = this.bestForLines(board, fitting, minFirst) || this.rescue(board, 3) || fitting[0];
     } else if (phase === 'mercy') {
       const wantGems = this.mode !== 'classic' && hasGems(board) && gemRoll < 1 - d;
       const opts = { nodeLimit: cfg.NODE_LIMIT, targetLines: 1, targetGems: wantGems ? 1 : 0 };
@@ -502,21 +535,21 @@ export class PieceGenerator {
 
   /**
    * The solvable candidate with the highest min(maxLines, 3), ties by maxSingle, then by sample
-   * order. With `minSingle` >= 2, candidates whose best single placement clears at least that many
-   * lines are preferred (the plain rule applies if there is none).
+   * order. With `minFirst` >= 2, candidates where one piece clears at least that many lines right
+   * away (visible to the player) are preferred; the plain rule applies if there is none.
    * @param {Board} board
    * @param {Candidate[]} candidates
-   * @param {number} [minSingle=0]
+   * @param {number} [minFirst=0]
    * @returns {Candidate | null}
    */
-  bestForLines(board, candidates, minSingle = 0) {
+  bestForLines(board, candidates, minFirst = 0) {
     const opts = { nodeLimit: this.config.NODE_LIMIT, targetLines: 3, targetSingle: 3 };
     let best = null;
     let bestKey = -1;
     for (const cand of candidates) {
       const a = analyzeTray(board, cand.shapes, opts);
       if (!a.solvable) continue;
-      const key = (a.maxSingle >= minSingle ? 100 : 0) + Math.min(a.maxLines, 3) * 10 + a.maxSingle;
+      const key = (a.firstSingle >= minFirst ? 100 : 0) + Math.min(a.maxLines, 3) * 10 + a.maxSingle;
       if (key > bestKey) {
         best = cand;
         bestKey = key;

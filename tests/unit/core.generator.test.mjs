@@ -83,8 +83,10 @@ test('analyzeTray applies line clears between placements', () => {
   const a = analyzeTray(b, ['I3h', 'I1'], { nodeLimit: 1e7 });
   assert.equal(a.solvable, true, 'I1 completes a row first, then I3h fits');
   assert.equal(a.complete, true);
-  assert.deepEqual(a, { ...bruteForce(b, [i3, getShape('I1')]), complete: true });
+  const { firstSingle, complete, ...core } = a;
+  assert.deepEqual(core, bruteForce(b, [i3, getShape('I1')]));
   assert.equal(a.maxSingle, 2, 'I1 at (2,2) completes row 2 and column 2');
+  assert.equal(firstSingle, 2, 'that clear is available right away');
 });
 
 test('analyzeTray detects unsolvable trays', () => {
@@ -204,7 +206,7 @@ test('raw (unfiltered) trays: RAW_P_MAX for classic, RAW_P_MAX_LEVELS for journe
   assert.ok(classicDiffers > 0 && levelsDiffers > 0);
 });
 
-test('early multi-line preference (EARLY_MULTI_P) picks a tray with a 2-line single clear', () => {
+test('early multi-line preference (EARLY_MULTI_P) picks a tray with a 2-line clear available right away', () => {
   // Rows 6 and 7 miss only (6,3)/(7,3): I2v clears both at once. Row 0 misses (0,5),(0,6),(0,7).
   const board = boardFrom(['#####...', '........', '........', '........', '........', '........', '###.####', '###.####']);
   const multi = { shapes: ['I2v', 'I1', 'I1'].map(getShape), colors: [0, 1, 2] }; // 2 lines at once
@@ -212,11 +214,15 @@ test('early multi-line preference (EARLY_MULTI_P) picks a tray with a 2-line sin
   // exhaustive search, so that only the preference rule is tested
   const gen = new PieceGenerator({ rng: new RNG(1), mode: 'classic', config: { ...GEN, NODE_LIMIT: 1e6 } });
   const a = (shapes) => analyzeTray(board, shapes, { nodeLimit: 1e6 });
-  assert.deepEqual([a(multi.shapes).maxSingle, a(spread.shapes).maxSingle], [2, 1]);
+  assert.deepEqual([a(multi.shapes).firstSingle, a(spread.shapes).firstSingle], [2, 1]);
   assert.ok(a(spread.shapes).maxLines >= 3 && a(multi.shapes).maxLines === 2);
   assert.equal(gen.bestForLines(board, [spread, multi], 0), spread, 'plain rule: most lines');
   assert.equal(gen.bestForLines(board, [spread, multi], 2), multi, 'multi-line preference');
   assert.equal(gen.bestForLines(board, [spread], 2), spread, 'falls back to the plain rule');
+  // a 2-line clear that needs a set-up first does not count as "right away"
+  const setup = boardFrom(['........', '........', '........', '........', '........', '........', '###..###', '###.####']);
+  const later = analyzeTray(setup, ['I1', 'I2v'], { nodeLimit: 1e6 });
+  assert.deepEqual([later.maxSingle, later.firstSingle], [2, 1]);
   assert.ok(GEN.EARLY_MULTI_P > 0 && GEN.EARLY_MULTI_P <= 1);
 });
 
