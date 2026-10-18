@@ -1,0 +1,99 @@
+name: Release AAB (signed)
+
+# Manual workflow: builds the signed Android App Bundle (.aab) for Google Play.
+# Needs four repository secrets (Settings > Secrets and variables > Actions), see docs/SCHLUESSEL_ANLEITUNG.md:
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+
+on:
+  workflow_dispatch:
+    inputs:
+      ads_mode:
+        description: "test = Google test ads (closed test!), live = real AdMob ids from android/gradle.properties"
+        type: choice
+        options: [ test, live ]
+        default: test
+      version_code:
+        description: "versionCode (must be higher than the last upload to Google Play)"
+        type: string
+        default: "1"
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for v in KS KSP KA KP; do
+            if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing - see docs/SCHLUESSEL_ANLEITUNG.md"; exit 1; fi
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run logic tests
+        run: |
+          npm ci
+          npm test
+
+      - name: Release checklist (live builds only)
+        if: ${{ inputs.ads_mode == 'live' }}
+        run: node tools/check-release.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare Android SDK
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n 1)"
+          echo "sdk.dir=$SDK" > android/local.properties
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+
+      - name: Restore upload key
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          echo "$KS" | base64 -d > blocko-upload.jks
+          {
+            echo "storeFile=blocko-upload.jks"
+            echo "storePassword=$KSP"
+            echo "keyAlias=$KA"
+            echo "keyPassword=$KP"
+          } > keystore.properties
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build signed bundle
+        working-directory: android
+        run: >
+          ./gradlew bundleRelease --stacktrace
+          -PBLOCKO_ADS_MODE=${{ inputs.ads_mode }}
+          -PBLOCKO_VERSION_CODE=${{ inputs.version_code }}
+
+      - name: Verify the bundle is signed
+        run: |
+          AAB="$(ls android/app/build/outputs/bundle/release/*.aab)"
+          echo "Bundle: $AAB"
+          jarsigner -verify "$AAB" | head -3
+          unzip -l "$AAB" | grep -E "base/manifest/AndroidManifest.xml|base/assets/index.html" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blocko-release-aab-${{ inputs.ads_mode }}-v${{ inputs.version_code }}
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
