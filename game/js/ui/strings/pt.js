@@ -24,8 +24,8 @@ export default {
   'mode.daily': 'Desafio diário',
   'common.locked': 'Bloqueado',
   'common.open': 'Abrir',
-  'time.hm': '{h} h {m} min',
-  'time.m': '{m} min',
+  'time.hm': '{h}\u00A0h\u00A0{m}\u00A0min',
+  'time.m': '{m}\u00A0min',
 
   // --- canvas texts (renderer) ---------------------------------------------------------------
   'praise.good': 'Boa!',
@@ -77,7 +77,7 @@ export default {
   'journey.chapter': 'Capítulo {n}',
   'levelStart.goal': 'Colete',
   'levelStart.par': { one: '≤ {n} peça', other: '≤ {n} peças' },
-  'levelStart.finish': 'Complete o nível',
+  'levelStart.finish': 'Passe de nível',
 
   // --- game HUD -------------------------------------------------------------------------------
   'hud.pause': 'Pausa',
@@ -121,7 +121,7 @@ export default {
 
   // --- revive / stuck -------------------------------------------------------------------------
   'revive.title': 'Sem espaço!',
-  'revive.toBest': 'Faltam {n} para o recorde',
+  'revive.toBest': { one: 'Falta {n} para o recorde', other: 'Faltam {n} para o recorde' },
   'revive.hint': 'Limpa 2 linhas e 2 colunas',
   'revive.free': 'Reviver grátis!',
   'revive.watch': 'Ver anúncio: reviver',
@@ -219,8 +219,8 @@ export default {
   'shop.theme.selected': 'Em uso',
   'shop.theme.select': 'Usar',
   'shop.theme.level': 'Nível {n}',
-  'shop.theme.need': 'Faltam {n}',
-  'shop.theme.short': 'Faltam {n} moedas',
+  'shop.theme.need': { one: 'Falta {n}', other: 'Faltam {n}' },
+  'shop.theme.short': { one: 'Falta {n} moeda', other: 'Faltam {n} moedas' },
   'shop.theme.lockedToast': 'Desbloqueia no nível de jogador {n}',
   'shop.theme.confirmTitle': 'Desbloquear este tema?',
   'shop.theme.confirmBody': '{name} por {n} moedas',
@@ -265,7 +265,7 @@ export default {
   'legal.email': 'E-mail',
   'legal.phone': 'Telefone',
   'legal.vat': 'Nº de IVA',
-  'legal.heading': 'Informações conforme o § 5 DDG',
+  'legal.heading': 'Informações conforme o §\u00A05\u00A0DDG',
   'legal.contact': 'Contato',
   'legal.online': 'Aviso legal on-line',
   'legal.licenses': 'Licenças de código aberto',

@@ -27,8 +27,8 @@ export default {
   'mode.daily': 'Испытание дня',
   'common.locked': 'Закрыто',
   'common.open': 'Открыть',
-  'time.hm': '{h} ч {m} мин',
-  'time.m': '{m} мин',
+  'time.hm': '{h}\u00A0ч\u00A0{m}\u00A0мин',
+  'time.m': '{m}\u00A0мин',
 
   // --- canvas texts (renderer) ---------------------------------------------------------------
   'praise.good': 'Хорошо!',
@@ -67,7 +67,7 @@ export default {
   'daily.sub.next': 'Следующая награда через {time}',
   'daily.claim': 'Забрать',
   'daily.double': '×2 за рекламу',
-  'daily.day': 'День {n}',
+  'daily.day': '{n}-й день',
   'daily.streakSaved': 'Серия спасена!',
   'daily.boosterGift': 'Молот +{hammer}, Замена +{shuffle}',
 
@@ -153,13 +153,13 @@ export default {
   'result.upsell': 'Играть без рекламы',
   'result.levelComplete': 'Пройдено!',
   'result.dailyComplete': 'Испытание пройдено!',
-  'result.levelFailed': 'Ходов больше нет',
+  'result.levelFailed': 'Нет ходов',
   'result.missing': 'Не хватило',
   'result.streak': { one: '{n} день подряд', few: '{n} дня подряд', many: '{n} дней подряд', other: '{n} дней подряд' },
   'result.next': 'Дальше',
   'result.retry': 'Заново',
   'result.map': 'Карта',
-  'result.tryAgain': 'Попробовать снова',
+  'result.tryAgain': 'Ещё раз',
 
   // --- toasts ---------------------------------------------------------------------------------
   'toast.coins': { one: '+{n} монета', few: '+{n} монеты', many: '+{n} монет', other: '+{n} монет' },
@@ -290,7 +290,7 @@ export default {
   'legal.email': 'Эл. почта',
   'legal.phone': 'Телефон',
   'legal.vat': 'Номер НДС',
-  'legal.heading': 'Сведения согласно § 5 DDG',
+  'legal.heading': 'Сведения согласно §\u00A05\u00A0DDG',
   'legal.contact': 'Контакты',
   'legal.online': 'Правовая информация онлайн',
   'legal.licenses': 'Лицензии открытого ПО',

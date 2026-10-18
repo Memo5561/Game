@@ -23,8 +23,8 @@ export default {
   'mode.daily': 'Desafío diario',
   'common.locked': 'Bloqueado',
   'common.open': 'Abrir',
-  'time.hm': '{h} h {m} min',
-  'time.m': '{m} min',
+  'time.hm': '{h}\u00A0h\u00A0{m}\u00A0min',
+  'time.m': '{m}\u00A0min',
 
   // --- canvas texts (renderer) ---------------------------------------------------------------
   'praise.good': '¡Bien!',
@@ -55,7 +55,7 @@ export default {
   'daily.title': 'Recompensa diaria',
   'daily.sub.first': 'Vuelve cada día – ¡las recompensas crecen!',
   'daily.sub.streak': { one: '{n} día seguido – ¡sigue así!', other: '{n} días seguidos – ¡sigue así!' },
-  'daily.sub.grace': 'Te saltaste un día – ¡tu racha sigue!',
+  'daily.sub.grace': 'Un día perdido – ¡tu racha sigue!',
   'daily.sub.next': 'Próxima recompensa en {time}',
   'daily.claim': 'Recoger',
   'daily.double': 'Ver anuncio: ×2',
@@ -76,7 +76,7 @@ export default {
   'journey.chapter': 'Capítulo {n}',
   'levelStart.goal': 'Recoge',
   'levelStart.par': { one: '≤ {n} pieza', other: '≤ {n} piezas' },
-  'levelStart.finish': 'Completa el nivel',
+  'levelStart.finish': 'Supera el nivel',
 
   // --- game HUD -------------------------------------------------------------------------------
   'hud.pause': 'Pausa',
@@ -149,7 +149,7 @@ export default {
   'result.next': 'Siguiente',
   'result.retry': 'Reintentar',
   'result.map': 'Mapa',
-  'result.tryAgain': 'Inténtalo de nuevo',
+  'result.tryAgain': 'Reintentar',
 
   // --- toasts ---------------------------------------------------------------------------------
   'toast.coins': '+{n} monedas',
@@ -218,8 +218,8 @@ export default {
   'shop.theme.selected': 'En uso',
   'shop.theme.select': 'Usar',
   'shop.theme.level': 'Nivel {n}',
-  'shop.theme.need': 'Faltan {n}',
-  'shop.theme.short': 'Te faltan {n} monedas',
+  'shop.theme.need': { one: 'Falta {n}', other: 'Faltan {n}' },
+  'shop.theme.short': { one: 'Te falta {n} moneda', other: 'Te faltan {n} monedas' },
   'shop.theme.lockedToast': 'Disponible en el nivel de jugador {n}',
   'shop.theme.confirmTitle': '¿Desbloquear este tema?',
   'shop.theme.confirmBody': '{name} por {n} monedas',
@@ -264,7 +264,7 @@ export default {
   'legal.email': 'Correo',
   'legal.phone': 'Teléfono',
   'legal.vat': 'NIF-IVA',
-  'legal.heading': 'Información conforme al § 5 DDG',
+  'legal.heading': 'Información conforme al §\u00A05\u00A0DDG',
   'legal.contact': 'Contacto',
   'legal.online': 'Aviso legal en línea',
   'legal.licenses': 'Licencias de código abierto',

@@ -24,8 +24,8 @@ export default {
   'mode.daily': 'Défi du jour',
   'common.locked': 'Verrouillé',
   'common.open': 'Ouvrir',
-  'time.hm': '{h} h {m} min',
-  'time.m': '{m} min',
+  'time.hm': '{h}\u00A0h\u00A0{m}\u00A0min',
+  'time.m': '{m}\u00A0min',
 
   // --- canvas texts (renderer) ---------------------------------------------------------------
   'praise.good': 'Bien joué\u202F!',
@@ -77,7 +77,7 @@ export default {
   'journey.chapter': 'Chapitre {n}',
   'levelStart.goal': 'À collecter',
   'levelStart.par': { one: '≤ {n} bloc', other: '≤ {n} blocs' },
-  'levelStart.finish': 'Termine le niveau',
+  'levelStart.finish': 'Finis le niveau',
 
   // --- game HUD -------------------------------------------------------------------------------
   'hud.pause': 'Pause',
@@ -220,7 +220,7 @@ export default {
   'shop.theme.select': 'Utiliser',
   'shop.theme.level': 'Niveau {n}',
   'shop.theme.need': 'Encore {n}',
-  'shop.theme.short': 'Il te manque {n} pièces',
+  'shop.theme.short': { one: 'Il te manque {n} pièce', other: 'Il te manque {n} pièces' },
   'shop.theme.lockedToast': 'Débloqué au niveau de joueur {n}',
   'shop.theme.confirmTitle': 'Débloquer ce thème\u202F?',
   'shop.theme.confirmBody': '{name} pour {n} pièces',
@@ -265,7 +265,7 @@ export default {
   'legal.email': 'E-mail',
   'legal.phone': 'Téléphone',
   'legal.vat': 'N° de TVA',
-  'legal.heading': 'Informations selon le § 5 DDG',
+  'legal.heading': 'Informations selon le §\u00A05\u00A0DDG',
   'legal.contact': 'Contact',
   'legal.online': 'Mentions légales en ligne',
   'legal.licenses': 'Licences open source',

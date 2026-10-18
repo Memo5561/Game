@@ -1,6 +1,7 @@
 // Turkish strings (same keys as en.js). Informal "sen" (casual-game convention). Placeholders never
 // carry a case suffix (the vowel harmony of "{n}’e/’a" depends on the number) – ordinals ("{n}.
-// seviye") or a colon are used instead. Keep it short – everything must fit 320 px.
+// seviye") or a colon are used instead; the question particle is bound with a no-break space
+// ("…sın\u00A0mı?"). Keep it short – everything must fit 320 px.
 // Terms: jeton (coins) · joker = boosters (Çekiç, Karıştır) · Macera · Günlük Mücadele · ikinci şans
 // (revive) · kombo · rekor · seviye · tema · oyun · tahta · parça.
 
@@ -24,8 +25,8 @@ export default {
   'mode.daily': 'Günlük Mücadele',
   'common.locked': 'Kilitli',
   'common.open': 'Aç',
-  'time.hm': '{h} sa {m} dk',
-  'time.m': '{m} dk',
+  'time.hm': '{h}\u00A0sa\u00A0{m}\u00A0dk',
+  'time.m': '{m}\u00A0dk',
 
   // --- canvas texts (renderer) ---------------------------------------------------------------
   'praise.good': 'Güzel!',
@@ -77,7 +78,7 @@ export default {
   'journey.chapter': 'Bölüm {n}',
   'levelStart.goal': 'Topla',
   'levelStart.par': { one: '≤ {n} parça', other: '≤ {n} parça' },
-  'levelStart.finish': 'Seviyeyi tamamla',
+  'levelStart.finish': 'Seviyeyi geç',
 
   // --- game HUD -------------------------------------------------------------------------------
   'hud.pause': 'Duraklat',
@@ -111,9 +112,9 @@ export default {
   'pause.resume': 'Devam et',
   'pause.restart': 'Yeniden başlat',
   'pause.home': 'Ana menü',
-  'confirm.restart.title': 'Yeniden başlatılsın mı?',
+  'confirm.restart.title': 'Yeniden başlatılsın\u00A0mı?',
   'confirm.restart.body': 'Mevcut oyunun sona erecek.',
-  'confirm.abandon.title': 'Yeni oyun başlatılsın mı?',
+  'confirm.abandon.title': 'Yeni oyun başlatılsın\u00A0mı?',
   'confirm.abandon.body.classic': 'Kayıtlı oyunun sona erecek.',
   'confirm.abandon.body.journey': 'Kayıtlı Macera seviyen sona erecek.',
   'confirm.abandon.body.daily': 'Kayıtlı günlük mücadelen sona erecek.',
@@ -222,7 +223,7 @@ export default {
   'shop.theme.need': '{n} eksik',
   'shop.theme.short': '{n} jeton daha gerekiyor',
   'shop.theme.lockedToast': 'Oyuncu seviyesi {n} gerekli',
-  'shop.theme.confirmTitle': 'Bu tema açılsın mı?',
+  'shop.theme.confirmTitle': 'Bu tema açılsın\u00A0mı?',
   'shop.theme.confirmBody': '{name}: {n} jeton',
   'shop.theme.unlock': 'Kilidi aç',
   'shop.theme.unlocked': '{name} teması açıldı!',
@@ -257,7 +258,7 @@ export default {
   'settings.notifOff': 'Kapalı',
   'settings.purchases': 'Satın almalar',
   'settings.about': 'Hakkında',
-  'settings.resetTitle': 'İlerleme sıfırlansın mı?',
+  'settings.resetTitle': 'İlerleme sıfırlansın\u00A0mı?',
   'settings.resetOk': 'Sıfırla',
 
   // --- legal ----------------------------------------------------------------------------------
@@ -265,7 +266,7 @@ export default {
   'legal.email': 'E-posta',
   'legal.phone': 'Telefon',
   'legal.vat': 'KDV numarası',
-  'legal.heading': '§ 5 DDG uyarınca bilgiler',
+  'legal.heading': '§\u00A05\u00A0DDG uyarınca bilgiler',
   'legal.contact': 'İletişim',
   'legal.online': 'Çevrimiçi yasal bildirim',
   'legal.licenses': 'Açık kaynak lisansları',
@@ -278,7 +279,7 @@ export default {
   // --- notifications --------------------------------------------------------------------------
   'notify.title': 'Blocko',
   'notify.body': 'Günlük bulmacaların hazır.',
-  'notifAsk.text': 'Yarın: +{n} jeton. Hatırlatayım mı?',
+  'notifAsk.text': 'Yarın: +{n} jeton. Hatırlatayım\u00A0mı?',
   'notifAsk.yes': 'Evet',
   'notifAsk.no': 'Şimdi değil',
   'notifAsk.title': 'Günlük hatırlatıcı',
