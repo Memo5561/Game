@@ -46,11 +46,19 @@
   --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
-  --shade: rgba(0, 0, 0, 0.26);          /* recessed tracks / chips on any theme */
+  --shade: rgba(0, 0, 0, 0.26);          /* recessed tracks (bars, switches) on panels and backgrounds */
+  --chip: rgba(0, 0, 0, 0.26);           /* pills / chips sitting on the screen background */
   --depth: rgba(0, 0, 0, 0.24);          /* 3D bottom edge of raised elements */
   --text-depth: 0 3px 0 rgba(0, 0, 0, 0.2);
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-spring: cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+/* light block themes (candy): soft white chips, lighter tracks */
+:root[data-scheme="light"] {
+  --shade: rgba(90, 50, 130, 0.14);
+  --chip: rgba(255, 255, 255, 0.62);
+  --depth: rgba(90, 50, 130, 0.22);
 }
 
 /* --- base ---------------------------------------------------------------------------------- */
@@ -243,7 +251,7 @@ button:disabled { cursor: default; }
   gap: 6px;
   padding: 7px 14px;
   border-radius: 99px;
-  background: var(--shade);
+  background: var(--chip);
   color: var(--text);
   font-size: 14px;
 }
@@ -308,7 +316,7 @@ button:disabled { cursor: default; }
   height: 38px;
   padding: 0 5px 0 4px;
   border-radius: 19px;
-  background: var(--shade);
+  background: var(--chip);
   color: var(--text);
   font-size: 18px;
   font-weight: 900;

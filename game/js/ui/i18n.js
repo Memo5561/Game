@@ -25,15 +25,14 @@ export const LANG_NAMES = Object.freeze({
   en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano', pt: 'Português', tr: 'Türkçe', ru: 'Русский',
 });
 
-/** @type {Record<string, Record<string, any>>} */
-const TABLES = { en, de };
+/** @type {Readonly<Record<string, Record<string, any>>>} */
+const TABLES = Object.freeze({ en, de });
 
 let lang = 'en';
 let debug = false;
 let numberFormat = null;
 let pluralRules = null;
 const missing = new Set();
-const listeners = new Set();
 
 /**
  * Resolves a setting ('auto' or a code) to a supported language.
@@ -49,7 +48,7 @@ export function resolveLang(setting, deviceLang) {
 }
 
 /**
- * Switches the active language and notifies listeners.
+ * Switches the active language.
  * @param {string} code supported code (anything else → 'en')
  * @returns {string} the active code
  */
@@ -58,19 +57,12 @@ export function setLang(code) {
   numberFormat = null;
   pluralRules = null;
   if (typeof document !== 'undefined') document.documentElement.lang = lang;
-  for (const fn of [...listeners]) fn(lang);
   return lang;
 }
 
 /** @returns {string} active language code */
 export function getLang() {
   return lang;
-}
-
-/** @param {(lang: string) => void} fn @returns {() => void} unsubscribe */
-export function onLangChange(fn) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
 }
 
 /** Missing-key warnings on/off (debug builds). */
@@ -81,16 +73,6 @@ export function setDebug(on) {
 /** @returns {string[]} keys that were looked up but missing (debug mode only) */
 export function missingKeys() {
   return [...missing];
-}
-
-/** Registers / replaces a string table at runtime (tests, translator previews). */
-export function registerStrings(code, table) {
-  if (LANGS.includes(code) && table && typeof table === 'object') TABLES[code] = table;
-}
-
-/** @returns {boolean} the key exists in English */
-export function hasKey(key) {
-  return Object.prototype.hasOwnProperty.call(en, key);
 }
 
 /**

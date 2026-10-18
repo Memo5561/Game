@@ -139,7 +139,9 @@ function reviveButtons(app) {
     html += btn({ action: 'revive.free', labelKey: 'revive.free', icon: 'play', size: 'lg' });
   } else {
     if (o.ad) html += btn({ action: 'revive.watch', labelKey: 'revive.watch', icon: 'ad', variant: 'ad', size: 'lg', cls: 'is-arming', attrs: ARMING });
-    html += btn({ action: 'revive.coins', labelKey: 'revive.coins', params: { n: o.price }, icon: 'coin', variant: 'secondary', size: o.ad ? 'md' : 'lg' });
+    html += btn({
+      action: 'revive.coins', labelKey: 'revive.coins', params: { n: o.price }, icon: 'coin', variant: 'secondary', size: o.ad ? 'md' : 'lg', cls: o.coins ? '' : 'is-short',
+    });
   }
   return html;
 }

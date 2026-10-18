@@ -12,11 +12,6 @@ export function setAnimScale(x) {
   scale = Number.isFinite(x) && x >= 0 ? x : 1;
 }
 
-/** @returns {number} */
-export function animScale() {
-  return scale;
-}
-
 /** Scaled duration in ms (0 when instant). */
 export function dur(ms) {
   return scale <= 0 ? 0 : ms / scale;

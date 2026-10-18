@@ -51,7 +51,7 @@ function render(app) {
           ${got ? starsRow(got, 3, 'level-row__stars') : ''}
         </span>
         ${open
-    ? `<button type="button" class="btn btn--${n === unlocked ? 'primary' : 'secondary'} btn--sm" data-action="journey.play.${n}">${icon('play', 'btn__icon')}<span class="btn__label">${esc(t('common.play'))}</span></button>`
+    ? `<button type="button" class="level-row__play" data-action="journey.play.${n}" aria-label="${esc(t('common.play'))}">${icon('play')}</button>`
     : icon('lock', 'level-row__lock')}
       </li>`;
   }

@@ -484,7 +484,7 @@ export class GameController {
   }
 
   /**
-   * Second chance. The revive modal closes itself after success.
+   * Second chance. On success the revive modal is closed before the revive animation starts.
    * @param {'free'|'ad'|'coins'} source
    * @returns {Promise<boolean>}
    */
@@ -506,7 +506,6 @@ export class GameController {
     if (modal) app.modals.close(modal);
     this.stuck = false;
     this.persist();
-    this.renderer.clearGameOver();
     const anim = this.track(this.renderer.animateRevive(rr));
     Sfx.play('revive');
     app.haptic('success');

@@ -106,7 +106,7 @@ export class App {
     };
     try {
       step('save', () => this.initSave());
-      if (!this.save) this.initSave(defaultSave());
+      if (!this.progression || !this.adPolicy) this.initSave(true);
       step('platform events', () => this.wirePlatform());
       try {
         await Platform.init();
@@ -114,6 +114,7 @@ export class App {
         console.error('[boot] Platform.init failed', e);
       }
       step('entitlements', () => this.syncEntitlements());
+      step('notification permission', () => { this.notifPermission = Platform.getNotificationPermission(); });
       step('i18n', () => this.initI18n());
       step('shell', () => this.initShell());
       try {
@@ -133,10 +134,19 @@ export class App {
     }
   }
 
-  /** Save + meta objects (Progression / AdPolicy share the one save object). */
-  initSave(preset) {
-    setStorageBackend({ saveData: (json) => Platform.saveData(json) });
-    this.save = preset || loadSave(Platform.loadData());
+  /**
+   * Save + meta objects (Progression / AdPolicy share the one save object).
+   * @param {boolean} [memoryOnly] boot fallback: play on defaults without ever overwriting the
+   *   stored save (used only if loading the real save failed)
+   */
+  initSave(memoryOnly = false) {
+    if (memoryOnly) {
+      setStorageBackend({ getItem: () => null, setItem: () => {}, removeItem: () => {}, saveData: () => {} });
+      this.save = defaultSave();
+    } else {
+      setStorageBackend({ saveData: (json) => Platform.saveData(json) });
+      this.save = loadSave(Platform.loadData());
+    }
     this.firstLaunch = !this.save.flags.tutorialDone;
     const onChange = (save) => requestSave(save);
     this.progression = new Progression(this.save, { now: () => clock.now(), onChange });
@@ -566,6 +576,7 @@ export class App {
     for (const k of Object.keys(vars)) root.style.setProperty(k, vars[k]);
     root.style.colorScheme = vars['--scheme'];
     root.setAttribute('data-theme', theme.id);
+    root.setAttribute('data-scheme', vars['--scheme']);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', vars['--bg-top']);
     if (this.game && this.game.renderer) this.game.renderer.setTheme(theme);

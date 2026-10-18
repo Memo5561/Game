@@ -33,7 +33,7 @@
 }
 .screen-header__title {
   min-width: 0;
-  font-size: 24px;
+  font-size: clamp(19px, 6vw, 24px);
   font-weight: 900;
   line-height: 1.1;
   text-align: center;
@@ -86,7 +86,7 @@
   gap: 6px;
   padding: 4px 14px 4px 8px;
   border-radius: 99px;
-  background: var(--shade);
+  background: var(--chip);
   color: var(--coin);
   font-size: 19px;
   font-weight: 900;
@@ -203,7 +203,7 @@
   gap: 3px;
   padding: 3px 12px 3px 5px;
   border-radius: 99px;
-  background: var(--shade);
+  background: var(--chip);
   font-size: 20px;
   font-weight: 900;
 }
@@ -325,7 +325,7 @@ body.landscape .coach__skip { justify-self: start; margin-top: 6px; }
   gap: 8px;
   padding: 3px 12px 3px 3px;
   border-radius: 99px;
-  background: var(--shade);
+  background: var(--chip);
 }
 .level-chip__badge {
   display: grid;
@@ -375,7 +375,7 @@ body.landscape .coach__skip { justify-self: start; margin-top: 6px; }
   gap: 6px;
   padding: 5px 16px 5px 8px;
   border-radius: 99px;
-  background: var(--shade);
+  background: var(--chip);
   font-size: 19px;
 }
 .home__crown { font-size: 24px; }
@@ -525,7 +525,22 @@ body.landscape .dock { grid-area: dock; margin-top: 8px; }
 .level-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .level-row__title { font-size: 16px; overflow-wrap: break-word; }
 .level-row__stars { font-size: 16px; }
-.level-row__lock { margin: 0 10px; color: var(--text-dim); font-size: 22px; }
+.level-row__lock { margin: 0 12px; color: var(--text-dim); font-size: 22px; }
+.level-row__play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--btn-2);
+  color: var(--btn-2-text);
+  font-size: 20px;
+  box-shadow: 0 4px 0 var(--btn-2-shadow);
+  transition: transform 0.09s var(--ease-out), box-shadow 0.09s var(--ease-out);
+}
+.level-row.is-current .level-row__play { background: var(--btn); color: var(--btn-text); box-shadow: 0 4px 0 var(--btn-shadow); }
+.level-row__play:active { transform: translateY(3px); box-shadow: none; }
 
 .shop-list, .mission-list { display: flex; flex-direction: column; gap: 12px; }
 .shop-tile {
@@ -680,7 +695,7 @@ body.landscape .dock { grid-area: dock; margin-top: 8px; }
 .result__stars .star:nth-child(2) { font-size: 1.22em; transform: translateY(-12px); }
 .result__missing { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; }
 .result__missing-label { width: 100%; color: var(--text-dim); font-size: 14px; text-align: center; }
-.result__goal { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px 4px 6px; border-radius: 99px; background: var(--shade); font-size: 20px; }
+.result__goal { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px 4px 6px; border-radius: 99px; background: var(--chip); font-size: 20px; }
 .result__goal .ico { font-size: 28px; }
 .result--level.is-failed .result__title { color: var(--text); }
 
@@ -711,4 +726,11 @@ body.landscape .dock { grid-area: dock; margin-top: 8px; }
 @media (max-width: 360px) {
   .result__pair .btn { font-size: 17px; }
   .result__pair .btn__icon { display: none; }
+}
+
+/* --- tablets: scale the DOM UI (never the canvas or the landscape HUD column width) --------- */
+@media (min-width: 700px) and (min-height: 700px) {
+  .screen--home > *, .screen-header, .screen-body, .modal--sheet .modal__dialog, .result, #toasts, .hud > * { zoom: 1.3; }
+  :root { --hud-h: clamp(130px, 14vh, 190px); }
+  .hud { padding-top: 14px; }
 }

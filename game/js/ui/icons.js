@@ -142,9 +142,6 @@ const SYMBOLS = {
     <rect x="2.6" y="13.3" width="7.8" height="3.8" rx="1.6" fill="url(#g-shine)"/><rect x="13.6" y="13.3" width="7.8" height="3.8" rx="1.6" fill="url(#g-shine)"/>`,
 };
 
-/** Every icon name (for tests / part-B pickers). */
-export const ICON_NAMES = Object.freeze(Object.keys(SYMBOLS));
-
 /**
  * Inserts the sprite once (call at boot, before any icon is shown). The sprite is kept in the
  * render tree (zero-size, not display:none) so gradient references resolve everywhere.

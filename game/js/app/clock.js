@@ -35,9 +35,4 @@ export const clock = {
     if (!Number.isFinite(ms)) throw new Error(`clock.setNow: invalid time ${iso}`);
     offsetMs = ms - Date.now();
   },
-
-  /** @returns {number} current offset to real time in ms (0 = real time) */
-  get offsetMs() {
-    return offsetMs;
-  },
 };

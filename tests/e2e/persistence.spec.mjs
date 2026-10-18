@@ -67,8 +67,14 @@ export default async function persistenceSpec() {
     await reload(page);
     await tap(page, 'home.journeyPlay');
     s = await waitState(page, '(st) => st.screen === "game" && st.session.mode === "journey"');
-    await playMoves(page, 2);
+    // non-clearing moves only: the level can't be won by accident
+    for (let i = 0; i < 2; i++) {
+      const m = (await ev(page, () => window.__blocko.validMoves())).find((x) => x.lines === 0);
+      assert(m, 'a non-clearing move exists');
+      await ev(page, (x) => window.__blocko.place(x.trayIndex, x.r, x.c), m);
+    }
     const j = await state(page);
+    assert(j.session.status === 'playing', 'journey run still in progress');
     await reload(page);
     const sub = await ev(page, () => document.querySelector('[data-ref="journeySub"]').textContent);
     assert(/Continue level 3/.test(sub), `journey card offers Continue (${sub})`);
