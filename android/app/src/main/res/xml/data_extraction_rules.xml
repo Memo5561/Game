@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 12+ (API 31+): Auto Backup to Google Drive and device-to-device transfer.
-     Backs up the durable save file (files/blocko_save.json, written by SaveStore) and all
-     SharedPreferences (purchase ledger, ads-removed flag, notification flags, consent state). -->
+     Backs up the durable save file (files/blocko_save.json, written by SaveStore) and the
+     SharedPreferences (purchase ledger + ads-removed flag, consent state). Excluded:
+     blocko_prefs.xml (NotificationPermission's "asked once" flag) - the runtime permission itself is
+     reset by a reinstall, so a restored flag would report 'denied' and block the system dialog. -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="file" path="blocko_save.json" />
         <include domain="sharedpref" path="." />
+        <exclude domain="sharedpref" path="blocko_prefs.xml" />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="blocko_save.json" />
         <include domain="sharedpref" path="." />
+        <exclude domain="sharedpref" path="blocko_prefs.xml" />
     </device-transfer>
 </data-extraction-rules>

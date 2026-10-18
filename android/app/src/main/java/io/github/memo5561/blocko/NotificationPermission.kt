@@ -120,6 +120,10 @@ class NotificationPermission(private val activity: MainActivity, private val eve
 
     private companion object {
         const val TAG = "BlockoNotify"
+        /**
+         * Excluded from Auto Backup (res/xml/data_extraction_rules.xml, backup_rules.xml): a reinstall
+         * resets the runtime permission, so a restored [KEY_ASKED_ONCE] would wrongly report 'denied'.
+         */
         const val PREFS_NAME = "blocko_prefs"
         const val KEY_ASKED_ONCE = "notificationPermissionAsked"
         const val GRANTED = "granted"

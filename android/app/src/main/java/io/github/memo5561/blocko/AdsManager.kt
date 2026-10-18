@@ -39,7 +39,8 @@ import kotlin.math.roundToInt
  *   initialized once (background thread) as soon as canRequestAds() is true. No ad request before that.
  * - Interstitial + rewarded are preloaded, reloaded after every show and retried with backoff
  *   30 s / 60 s / 120 s / 240 s / 5 min. Results are sent only after the ad was dismissed,
- *   exactly once per requestId.
+ *   exactly once per requestId. A loaded ad expires after [AD_MAX_AGE_MS]: it is then dropped and
+ *   reloaded, and never reported as ready meanwhile.
  * - Banner: large anchored adaptive size in a fixed slot below the WebView; INVISIBLE when hidden,
  *   destroyed + GONE once ads are removed. adsRemoved is enforced here, whatever JS asks for.
  */
@@ -94,6 +95,13 @@ class AdsManager(
     private val retryRewarded = Runnable { loadRewarded() }
 
     private var fullScreenShowing = false
+
+    // Expiry timers (foreground). Handler time stops in deep sleep, so onStart/onResume check too.
+    private val expireInterstitial = Runnable { dropExpiredAds() }
+    private val expireRewarded = Runnable { dropExpiredAds() }
+
+    /** Incremented on every renderer crash: ads from loads started before it are dead. */
+    private var rendererGeneration = 0
 
     // banner
     private var adView: AdView? = null
@@ -205,6 +213,7 @@ class AdsManager(
         if (interstitial != null || interstitialLoading) return
         handler.removeCallbacks(retryInterstitial)
         interstitialLoading = true
+        val generation = rendererGeneration
         InterstitialAd.load(
             activity,
             BuildConfig.ADMOB_INTERSTITIAL_ID,
@@ -213,9 +222,15 @@ class AdsManager(
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialLoading = false
                     if (destroyed || adsRemoved) return
+                    if (generation != rendererGeneration) {
+                        loadInterstitial() // loaded through the renderer that crashed meanwhile
+                        return
+                    }
                     interstitial = ad
                     interstitialLoadedAt = SystemClock.elapsedRealtime()
                     interstitialFailures = 0
+                    handler.removeCallbacks(expireInterstitial)
+                    handler.postDelayed(expireInterstitial, AD_MAX_AGE_MS + EXPIRY_SLACK_MS)
                     publishState()
                 }
 
@@ -275,6 +290,7 @@ class AdsManager(
         if (rewarded != null || rewardedLoading) return
         handler.removeCallbacks(retryRewarded)
         rewardedLoading = true
+        val generation = rendererGeneration
         RewardedAd.load(
             activity,
             BuildConfig.ADMOB_REWARDED_ID,
@@ -283,9 +299,15 @@ class AdsManager(
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewardedLoading = false
                     if (destroyed) return
+                    if (generation != rendererGeneration) {
+                        loadRewarded() // loaded through the renderer that crashed meanwhile
+                        return
+                    }
                     rewarded = ad
                     rewardedLoadedAt = SystemClock.elapsedRealtime()
                     rewardedFailures = 0
+                    handler.removeCallbacks(expireRewarded)
+                    handler.postDelayed(expireRewarded, AD_MAX_AGE_MS + EXPIRY_SLACK_MS)
                     publishState()
                 }
 
@@ -484,6 +506,7 @@ class AdsManager(
     fun onResume() {
         activityResumed = true
         if (bannerWanted) adView?.resume()
+        dropExpiredAds()
     }
 
     fun onPause() {
@@ -491,13 +514,17 @@ class AdsManager(
         adView?.pause()
     }
 
-    /** All WebViews of the app share the renderer: loaded ads died with it. Start over. */
+    /**
+     * All WebViews of the app share the renderer: every loaded ad died with it, so both preloaded
+     * full-screen ads are always dropped, and ads from loads still in flight are discarded when they
+     * arrive ([rendererGeneration]). An ad being shown right now is already detached from these
+     * fields; it settles its own request exactly once through its callback. Start over.
+     */
     fun onRendererGone() {
         if (destroyed) return
-        if (!fullScreenShowing) {
-            interstitial = null
-            rewarded = null
-        }
+        rendererGeneration++
+        interstitial = null
+        rewarded = null
         destroyBanner()
         publishState()
         loadInterstitial()
@@ -526,13 +553,13 @@ class AdsManager(
         )
     }
 
-    /** Recomputes the state and sends `adState` when it changed. */
+    /** Recomputes the state and sends `adState` when it changed. An expired ad is never ready. */
     private fun publishState() {
         val canRequest = canRequestAds()
         val next = State(
             canRequestAds = canRequest,
-            rewardedReady = canRequest && rewarded != null,
-            interstitialReady = canRequest && !adsRemoved && interstitial != null,
+            rewardedReady = canRequest && rewarded != null && !isStale(rewardedLoadedAt),
+            interstitialReady = canRequest && !adsRemoved && interstitial != null && !isStale(interstitialLoadedAt),
             privacyOptionsRequired = privacyOptionsRequired,
         )
         if (next == state) return
@@ -540,12 +567,39 @@ class AdsManager(
         events.emit(stateEvent())
     }
 
-    private fun isStale(loadedAt: Long): Boolean = SystemClock.elapsedRealtime() - loadedAt > AD_MAX_AGE_MS
+    /**
+     * Drops expired interstitial/rewarded ads (adState turns not-ready) and loads fresh ones.
+     * Runs from the expiry timers (foreground) and on every activity start/resume (Handler timers
+     * stall in deep sleep while the app is in the background); a no-op while nothing expired.
+     */
+    fun dropExpiredAds() {
+        if (destroyed) return
+        var dropped = false
+        if (interstitial != null && isStale(interstitialLoadedAt)) {
+            interstitial = null
+            dropped = true
+        }
+        if (rewarded != null && isStale(rewardedLoadedAt)) {
+            rewarded = null
+            dropped = true
+        }
+        if (!dropped) return
+        publishState()
+        loadInterstitial()
+        loadRewarded()
+    }
+
+    private fun isStale(loadedAt: Long): Boolean = SystemClock.elapsedRealtime() - loadedAt >= AD_MAX_AGE_MS
 
     private companion object {
         const val TAG = "BlockoAds"
         const val FALLBACK_BANNER_HEIGHT_DP = 60
-        const val AD_MAX_AGE_MS = 55 * 60_000L // loaded full-screen ads expire after about an hour
+
+        /** Loaded interstitial / rewarded ads count as expired after one hour (Google's guidance). */
+        const val AD_MAX_AGE_MS = 60 * 60_000L
+
+        /** The expiry timer fires slightly after the ad's age is reached (isStale() is then true). */
+        const val EXPIRY_SLACK_MS = 1_000L
 
         /** 30 s, 60 s, 120 s, 240 s, then 5 min. */
         fun backoffMs(failures: Int): Long {

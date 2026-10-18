@@ -3,7 +3,6 @@ package io.github.memo5561.blocko
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
@@ -154,6 +153,8 @@ class MainActivity : ComponentActivity() {
         started = true
         notifications.refresh()
         billing.onStart()
+        // Before 'resume': expired full-screen ads must not be offered (Handler timers stall in deep sleep).
+        ads.dropExpiredAds()
         if (pauseSent) {
             pauseSent = false
             webView?.onResume()
@@ -209,7 +210,14 @@ class MainActivity : ComponentActivity() {
     /** JS called ready(): hide the splash and let the game handle the back button. */
     fun onJsReady() {
         keepSplash = false
-        backCallback.isEnabled = true
+        // A late ready() from a WebView that was destroyed meanwhile must not capture back
+        // on a native fallback screen.
+        backCallback.isEnabled = webView != null
+    }
+
+    /** The page is unloading (JS 'pagehide'): back goes to the system until the next ready(). */
+    fun onPageUnloading() {
+        backCallback.isEnabled = false
     }
 
     /** An ad, billing sheet, permission dialog, review card or consent form is about to cover the game. */
@@ -399,12 +407,10 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
-        override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-            if (view !== webView) return
-            // New document: the old page's listeners and pending requests are gone.
-            events.reset()
-            backCallback.isEnabled = false
-        }
+        // No onPageStarted() reset: it is posted when the new document commits and can arrive AFTER
+        // that document's ready(), which would leave the event channel dead. createWebView() and
+        // handleRendererGone() reset before every document native loads; a JS reload resets through
+        // GameBridge.pageUnloading() ('pagehide').
 
         override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
             if (view === webView) {

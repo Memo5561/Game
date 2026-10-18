@@ -467,7 +467,8 @@ Mock: active only when `location.hostname !== 'appassets.androidplatform.net'` (
 
 Native protocol (`android/…/GameBridge.kt`, interface name **`BlockoNative`**). JS → native methods
 (primitive args; return String/Boolean/void; called on WebView's background thread):
-`getInfo(): String` · `ready()` · `loadData(): String` · `saveData(json)` · `initAds()` ·
+`getInfo(): String` · `ready()` · `pageUnloading()` (from a `pagehide` listener) · `loadData(): String` ·
+`saveData(json)` · `initAds()` ·
 `showInterstitial(requestId)` · `showRewarded(requestId, placement)` · `isRewardedReady(): Boolean` ·
 `setBannerVisible(Boolean)` · `queryProducts(requestId)` · `purchase(requestId, productId)` ·
 `restorePurchases(requestId)` · `ackGrant(token)` · `haptic(kind)` · `share(text)` · `requestReview()` ·
@@ -489,10 +490,11 @@ Native → JS: `window.__blockoNative.dispatch(event)`:
 - `{type:'restoreResult', requestId, ok, adsRemoved}`
 - `{type:'privacyOptionsResult', requestId}` / `{type:'notificationPermissionResult', requestId, granted}`
 - `{type:'entitlements', adsRemoved}` – after every successful purchase query (true OR false), never on errors/offline
-- `{type:'grant', token, productId}` – native keeps a durable ledger; re-sends all grants of the last 7 days after
-  every `ready()`. JS: token already in `save.iap.grantedTokens` → only `ackGrant`; unknown product → no ack;
-  else add coins + token in one save object → `flushSave` → `ackGrant` (native applies the ack after the
-  pending `saveData` snapshot is on disk).
+- `{type:'grant', token, productId}` – native keeps a durable ledger; after every `ready()` it re-sends every
+  unacknowledged grant (no age limit) and the acknowledged ones of the last 7 days. JS: token already in
+  `save.iap.grantedTokens` → only `ackGrant`; unknown product → no ack; else add coins + token in one save
+  object → `flushSave` → `ackGrant` (native records the ack only once the pending `saveData` snapshot was
+  written successfully; otherwise the grant stays unacknowledged and is re-sent).
 - `{type:'adState', canRequestAds, rewardedReady, interstitialReady, privacyOptionsRequired}` on every change
 - `{type:'insets', top, right, bottom, left, gestureLeft, gestureRight}` (CSS px)
 - `{type:'pause', reason?}`, `{type:'resume', reason?}` (from onStop/onStart; suppressed while a native overlay
@@ -653,14 +655,16 @@ navigates in-app; https/http/market/mailto open externally; other schemes are bl
 
 **Bridge**: all `@JavascriptInterface` work that touches Views/ads/billing/permissions runs via
 `runOnUiThread`; sync getters return `@Volatile` cached state. One main-thread `emit(JSONObject)`
-queues while `!jsReady` (`jsReady=false` on page start / renderer crash); `ready()` flushes,
-enables the back callback, re-sends entitlements, adState and all ledger grants. Payloads only via
+queues while `!jsReady` (`jsReady=false` before every `loadUrl`, on `pageUnloading()` from the old
+document's `pagehide`, and on renderer crash – never in `onPageStarted`, which is posted at commit and
+can run after the new document's `ready()`); `ready()` (idempotent) flushes, enables the back callback,
+re-sends entitlements, adState, insets and the ledger grants (unacknowledged + last 7 days). Payloads only via
 org.json. Durable save: `saveData` keeps the latest snapshot and writes it with `AtomicFile` on a
 single-thread executor; `ackGrant` runs on the same executor.
 
 **Lifecycle**: `pause`/`resume` from onStop/onStart, suppressed while a native overlay is in front;
 `webView.onPause()/onResume()` there; never `pauseTimers()`. Back: `OnBackPressedCallback(false)`
-enabled in `ready()`, disabled on page start/crash; never override onBackPressed. `exitApp()` →
+enabled in `ready()`, disabled on `pageUnloading()`/crash; never override onBackPressed. `exitApp()` →
 `moveTaskToBack(true)`.
 
 **Ads**: `initAds()` → each launch `requestConsentInfoUpdate` → `loadAndShowConsentFormIfRequired`
@@ -668,7 +672,9 @@ enabled in `ready()`, disabled on page start/crash; never override onBackPressed
 rewarded, banner; also init immediately if consent from a previous session allows it. No ad request
 before `canRequestAds()`. `RequestConfiguration`: max ad content rating T, test device ids from
 gradle property. Debug: `ConsentDebugSettings` EEA. Results only after dismissal; reload after every
-show; retry 30 s/60 s/120 s…max 5 min. Banner: `AdSize.getLargeAnchoredAdaptiveBannerAdSize`, container
+show; retry 30 s/60 s/120 s…max 5 min. Interstitial/rewarded expire 1 h after loading (timer + check on
+every start/resume): dropped, reloaded, never reported ready meanwhile; a renderer crash drops both
+(and ads from loads still in flight). Banner: `AdSize.getLargeAnchoredAdaptiveBannerAdSize`, container
 min height set before load, INVISIBLE when hidden (never GONE during a run), destroyed + GONE once
 when ads are removed. Native enforces adsRemoved (no banner/interstitial even if JS asks).
 
@@ -676,7 +682,10 @@ when ads are removed. Native enforces adsRemoved (no banner/interstitial even if
 `enableAutoServiceReconnection()`; `queryPurchasesAsync(INAPP)` on connect and every onStart;
 remove_ads: PURCHASED → acknowledge if needed, persist adsRemoved (commit); refunds flip it to false
 only after a successful query without it. Coins: ledger entry (commit) BEFORE consume → consume →
-`grant`. Pending purchases never granted. Status mapping per §4.14. Offer token from
+`grant`; if the commit fails the purchase stays unconsumed (retried by the next query). Only an update
+carrying the product being bought (or a non-OK flow result) answers an open `purchase`; other updates
+(pending purchase completed, purchase outside the app) are processed in the background + re-query.
+Pending purchases never granted. Status mapping per §4.14. Offer token from
 `oneTimePurchaseOfferDetailsList`.
 
 **Other**: reminders via WorkManager unique work (`REPLACE`) + channel `reminders` + monochrome

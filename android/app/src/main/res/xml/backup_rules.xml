@@ -3,4 +3,5 @@
 <full-backup-content>
     <include domain="file" path="blocko_save.json" />
     <include domain="sharedpref" path="." />
+    <exclude domain="sharedpref" path="blocko_prefs.xml" />
 </full-backup-content>

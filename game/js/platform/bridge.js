@@ -258,6 +258,9 @@ export const Platform = {
         window.__blockoNative = { dispatch };
       }
       if (native) {
+        // This document goes away (e.g. reload): native queues events for the next one and
+        // disables back until that document calls ready() (GameBridge.pageUnloading).
+        window.addEventListener('pagehide', () => callNative('pageUnloading'));
         try {
           info = JSON.parse(native.getInfo());
         } catch (e) {

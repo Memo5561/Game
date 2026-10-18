@@ -15,14 +15,15 @@ private const val JS_TAG = "BlockoJS"
  * Native -> JS event channel: `window.__blockoNative.dispatch(event)` (docs/ARCHITECTURE.md §4.14).
  *
  * Main thread only (calls from other threads are re-posted). While the page is not ready
- * (`ready()` not called yet, new document, renderer crash) events are queued and flushed by [markReady].
+ * (`ready()` not called yet, page unloading, new WebView after a renderer crash) events are queued
+ * and flushed by [markReady].
  */
 class JsEvents(private val webViewProvider: () -> WebView?) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val queue = ArrayList<JSONObject>()
 
-    /** True between `ready()` and the next page start / renderer crash. */
+    /** True between `ready()` and the next `pageUnloading()` / new WebView (renderer crash). */
     var isReady = false
         private set
 
@@ -38,13 +39,16 @@ class JsEvents(private val webViewProvider: () -> WebView?) {
         dispatch(event)
     }
 
-    /** A new document starts (or the renderer died): queued events belonged to the old page. */
+    /** The document goes away (or the renderer died): queued events belonged to the old page. */
     fun reset() {
         isReady = false
         queue.clear()
     }
 
-    /** The page installed its dispatcher and called `ready()`: deliver everything queued, in order. */
+    /**
+     * The page installed its dispatcher and called `ready()`: deliver everything queued, in order.
+     * Idempotent: a second call only flushes what is queued (nothing, while ready).
+     */
     fun markReady() {
         isReady = true
         val pending = ArrayList(queue)
@@ -118,7 +122,10 @@ class GameBridge(
 
     /**
      * JS installed `window.__blockoNative` and its listeners: flush the queue, enable the back
-     * callback, then re-send entitlements, ad state, insets and every ledger grant of the last 7 days.
+     * callback, then re-send entitlements, ad state, insets and the ledger grants (every
+     * unacknowledged one + acknowledged ones of the last 7 days). Idempotent: calling it again
+     * (whatever state the channel is in) re-enables back, flushes and re-sends the same state,
+     * which JS applies idempotently (grants are deduplicated by token).
      */
     @JavascriptInterface
     fun ready() = onMain {
@@ -127,9 +134,23 @@ class GameBridge(
         events.emit(billing.entitlementsEvent())
         events.emit(ads.stateEvent())
         events.emit(activity.insetsCss.toEvent())
-        for (grant in ledger.recentGrants()) {
+        for (grant in ledger.grantsToResend()) {
             events.emit(BillingManager.grantEvent(grant.token, grant.productId))
         }
+    }
+
+    /**
+     * The page fires `pagehide` (reload / navigation): from now on events are queued for the next
+     * document and back is disabled until that document calls [ready]. Readiness is reset here and
+     * not in WebViewClient.onPageStarted, which is posted to the main thread only when the new
+     * document commits and can therefore run AFTER that document's ready(). Bridge calls of the old
+     * and the new document run one after another on the JavaBridge thread and are posted to the
+     * main thread in that order, so this reset always lands before the next ready().
+     */
+    @JavascriptInterface
+    fun pageUnloading() = onMain {
+        events.reset()
+        activity.onPageUnloading()
     }
 
     // ---------------------------------------------------------------- save
@@ -144,7 +165,10 @@ class GameBridge(
         if (json != null) saveStore.save(json)
     }
 
-    /** Applied on the save thread after every snapshot received so far is on disk. */
+    /**
+     * Applied on the save thread after every snapshot received so far is on disk. Dropped if that
+     * write fails: the grant stays unacknowledged and is re-sent after the next ready().
+     */
     @JavascriptInterface
     fun ackGrant(token: String?) {
         if (token.isNullOrEmpty()) return

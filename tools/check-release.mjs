@@ -16,7 +16,8 @@ function readProps(file) {
   if (!fs.existsSync(file)) return props;
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Za-z0-9_.]+)\s*=\s*(.*?)\s*$/);
-    if (m && !line.trim().startsWith('#')) props[m[1]] = m[2];
+    // Like blockoProperty() in android/app/build.gradle.kts: a trailing " # ..." is not part of the value.
+    if (m && !line.trim().startsWith('#')) props[m[1]] = m[2].replace(/(^|\s)#.*$/, '').trim();
   }
   return props;
 }

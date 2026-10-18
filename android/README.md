@@ -33,15 +33,21 @@ Kommandozeile (im Ordner `android/`): `./gradlew assembleDebug` (Windows: `gradl
 ## 3. Werbe-IDs und Version (`android/gradle.properties`)
 
 ```properties
-BLOCKO_VERSION_CODE=1          # bei JEDEM Upload um 1 erhöhen
+# bei JEDEM Upload um 1 erhöhen
+BLOCKO_VERSION_CODE=1
 BLOCKO_VERSION_NAME=1.0.0
-BLOCKO_ADS_MODE=test           # test = Testanzeigen, live = echte IDs (nur release)
+# test = Testanzeigen, live = echte IDs (nur release)
+BLOCKO_ADS_MODE=test
 BLOCKO_ADMOB_APP_ID=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
 BLOCKO_ADMOB_BANNER_ID=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
 BLOCKO_ADMOB_INTERSTITIAL_ID=...
 BLOCKO_ADMOB_REWARDED_ID=...
-BLOCKO_TEST_DEVICE_IDS=        # optional, Hash aus Logcat ("setTestDeviceIds")
+# optional, Hash aus Logcat ("setTestDeviceIds")
+BLOCKO_TEST_DEVICE_IDS=
 ```
+
+Kommentare (`#`) in `gradle.properties` immer in eine **eigene Zeile** schreiben – ein `#` hinter
+einem Wert wäre sonst Teil des Werts.
 
 - Für den **geschlossenen Test** (12 Tester / 14 Tage) `BLOCKO_ADS_MODE=test` lassen.
 - Für die **Produktion** `BLOCKO_ADS_MODE=live` + echte IDs. Ein Release-Build mit `live` und leeren,

@@ -57,11 +57,18 @@ class SaveStore(context: Context) {
         submit { writeLatest() }
     }
 
-    /** Runs [action] on the save thread once every snapshot received so far is on disk. */
+    /**
+     * Runs [action] on the save thread once every snapshot received so far is on disk. If that
+     * write fails (or no snapshot was received at all), [action] is skipped: a grant ack must never
+     * be recorded for a save that is not durable (the grant is then re-sent after the next ready()).
+     */
     fun afterPendingWrites(action: () -> Unit) {
         submit {
-            writeLatest()
-            action()
+            if (writeLatest()) {
+                action()
+            } else {
+                Log.w(TAG, "Latest snapshot is not on disk: pending action skipped")
+            }
         }
     }
 
@@ -78,22 +85,32 @@ class SaveStore(context: Context) {
         }
     }
 
-    private fun writeLatest() {
+    /**
+     * Writes the newest snapshot unless it is already on disk. Returns true only if the newest
+     * snapshot handed over by JS in this process is on disk: false if JS never sent one (nothing
+     * here can contain a new grant) or if the write failed.
+     */
+    private fun writeLatest(): Boolean {
         val (seq, data) = synchronized(lock) { latestSeq to latest }
-        if (data == null || seq <= writtenSeq) return
+        if (data == null) return false
+        if (seq <= writtenSeq) return writtenSeq > 0
         val stream = try {
             file.startWrite()
         } catch (e: IOException) {
             Log.e(TAG, "Save failed (open)", e)
-            return
+            return false
         }
-        try {
+        return try {
             stream.write(data.toByteArray(Charsets.UTF_8))
+            // finishWrite() only logs a failed fsync; syncing here first makes that failure count.
+            stream.fd.sync()
             file.finishWrite(stream)
             writtenSeq = seq
+            true
         } catch (e: IOException) {
             Log.e(TAG, "Save failed (write)", e)
             file.failWrite(stream)
+            false
         }
     }
 
@@ -115,8 +132,10 @@ class SaveStore(context: Context) {
 
 /**
  * Durable ledger of coin purchases (SharedPreferences, written with commit()).
- * An entry is recorded BEFORE the purchase is consumed; all entries of the last 7 days are re-sent
- * to JS as `grant` events after every `ready()`. Thread-safe (billing on main, acks on the save thread).
+ * An entry must be on disk BEFORE the purchase is consumed ([ensureDurable]). After every `ready()`
+ * JS receives a `grant` event for every entry it has not acknowledged yet (whatever its age) and for
+ * every acknowledged entry of the last 7 days (JS deduplicates by token; this also repairs a save
+ * that never reached the disk). Thread-safe (billing on main, acks on the save thread).
  */
 class GrantLedger(context: Context) {
 
@@ -131,24 +150,32 @@ class GrantLedger(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val lock = Any()
 
-    /** Adds a grant once per purchase token. Returns false if the token is already known. */
-    fun record(token: String, productId: String): Boolean = synchronized(lock) {
+    /**
+     * Records the grant for [token] (once per token) and makes sure the ledger is on disk.
+     * Returns true only if commit() succeeded. Also commits again when the token is already known,
+     * because an earlier commit() may have failed while the entry stayed in SharedPreferences' memory.
+     * The purchase may be consumed only after a true result.
+     */
+    fun ensureDurable(token: String, productId: String): Boolean = synchronized(lock) {
         val grants = read()
-        if (grants.any { it.token == token }) return@synchronized false
-        grants.add(Grant(token, productId, System.currentTimeMillis(), consumed = false, acked = false))
+        if (grants.none { it.token == token }) {
+            grants.add(Grant(token, productId, System.currentTimeMillis(), consumed = false, acked = false))
+        }
         write(grants)
-        true
     }
 
     fun markConsumed(token: String) = update(token) { it.copy(consumed = true) }
 
-    /** JS applied the grant and its save snapshot is on disk. */
+    /** JS applied the grant and the save snapshot containing it is on disk. */
     fun markAcked(token: String) = update(token) { it.copy(acked = true) }
 
-    /** Grants recorded within [maxAgeMs] (future timestamps after a clock change count as recent). */
-    fun recentGrants(maxAgeMs: Long = RESEND_WINDOW_MS): List<Grant> = synchronized(lock) {
+    /**
+     * Grants to re-send after `ready()`: every unacknowledged one (never expires) plus the acknowledged
+     * ones of the last 7 days (future timestamps after a clock change count as recent).
+     */
+    fun grantsToResend(): List<Grant> = synchronized(lock) {
         val now = System.currentTimeMillis()
-        read().filter { now - it.time <= maxAgeMs }
+        read().filter { !it.acked || now - it.time <= RESEND_WINDOW_MS }
     }
 
     private fun update(token: String, change: (Grant) -> Grant) {
@@ -187,11 +214,17 @@ class GrantLedger(context: Context) {
         }
     }
 
+    /** Returns the commit() result: true only if the ledger is on disk. */
     @SuppressLint("ApplySharedPref") // the ledger must be on disk before the purchase is consumed
-    private fun write(grants: List<Grant>) {
+    private fun write(grants: List<Grant>): Boolean {
         val now = System.currentTimeMillis()
-        // Keep entries for 60 days (well beyond the 7-day re-send window), at most 200.
-        val kept = grants.filter { now - it.time <= KEEP_MS || now < it.time }.takeLast(MAX_ENTRIES)
+        // Unacknowledged grants are never dropped: they are re-sent until JS acknowledges them.
+        // Acknowledged ones are kept for 60 days (well beyond the 7-day re-send window), at most 200.
+        val keptAcked = grants
+            .filter { it.acked && (now - it.time <= KEEP_MS || now < it.time) }
+            .takeLast(MAX_ENTRIES)
+            .mapTo(HashSet()) { it.token }
+        val kept = grants.filter { !it.acked || it.token in keptAcked }
         val array = JSONArray()
         for (g in kept) {
             array.put(
@@ -203,9 +236,14 @@ class GrantLedger(context: Context) {
                     .put("acked", g.acked),
             )
         }
-        if (!prefs.edit().putString(KEY_LEDGER, array.toString()).commit()) {
-            Log.e(TAG, "Grant ledger could not be written")
-        }
+        // A new revision with every write: commit() then always really writes the file, even when the
+        // ledger itself is unchanged (a retry after a failed commit; Android 7 skips unchanged maps).
+        val written = prefs.edit()
+            .putString(KEY_LEDGER, array.toString())
+            .putLong(KEY_REVISION, prefs.getLong(KEY_REVISION, 0L) + 1)
+            .commit()
+        if (!written) Log.e(TAG, "Grant ledger could not be written")
+        return written
     }
 
     companion object {
@@ -213,6 +251,7 @@ class GrantLedger(context: Context) {
         const val PREFS_NAME = "blocko_billing"
         private const val TAG = "BlockoLedger"
         private const val KEY_LEDGER = "grantLedger"
+        private const val KEY_REVISION = "grantLedgerRevision"
         private const val RESEND_WINDOW_MS = 7L * 24 * 60 * 60 * 1000
         private const val KEEP_MS = 60L * 24 * 60 * 60 * 1000
         private const val MAX_ENTRIES = 200

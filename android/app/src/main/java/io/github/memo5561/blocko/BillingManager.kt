@@ -28,8 +28,13 @@ import org.json.JSONObject
  * - Native is the entitlement authority for `remove_ads` (persisted with commit()). It turns true on a
  *   PURCHASED purchase and false only after a *successful* purchase query without it (refund).
  * - Coins (`coins_small`, `coins_large`): durable ledger entry (commit) BEFORE consume -> consume ->
- *   `grant` event (before the `purchaseResult` success). The ledger is re-sent after every `ready()`,
- *   JS deduplicates by token, so a crash at any point never loses or doubles coins.
+ *   `grant` event (before the `purchaseResult` success). If the ledger cannot be committed, the
+ *   purchase stays unconsumed and the next purchase query retries. Unacknowledged ledger grants are
+ *   re-sent after every `ready()` until JS acks them, JS deduplicates by token, so a crash at any
+ *   point never loses or doubles coins.
+ * - Only an update that carries the product being bought (or a non-OK flow result) answers an open
+ *   purchase request; other updates (a pending purchase completed, a purchase made outside the app)
+ *   are processed in the background.
  * - Pending purchases are never granted; they complete later via onPurchasesUpdated or the purchase
  *   query on every start.
  */
@@ -224,14 +229,20 @@ class BillingManager(
         val request = pending
         when (result.responseCode) {
             BillingResponseCode.OK -> {
-                var requestHandled = false
-                for (purchase in purchases.orEmpty()) {
-                    val forRequest = request != null && !requestHandled && request.productId in purchase.products.orEmpty()
-                    if (forRequest) requestHandled = true
-                    val onDone: ((String) -> Unit)? = if (forRequest) ::finishPending else null
-                    processPurchase(purchase, onDone)
+                // PBL also reports purchases that are unrelated to the open flow (a pending purchase
+                // completed, a purchase made outside the app). Only a purchase of the product being
+                // bought answers the request; everything else is granted in the background.
+                val list = purchases.orEmpty()
+                val forRequest = request?.let { r -> list.firstOrNull { r.productId in it.products.orEmpty() } }
+                for (purchase in list) {
+                    processPurchase(purchase, if (request != null && purchase === forRequest) settle(request) else null)
                 }
-                if (request != null && !requestHandled) finishPending(STATUS_ERROR)
+                if (forRequest == null && (request != null || list.isEmpty())) {
+                    // No matching purchase: re-query so nothing paid is missed. An unrelated update keeps
+                    // the request open (the flow's own result is still to come). OK without any purchase
+                    // data (Google's sample treats it as an error) is answered from Play's purchase list.
+                    refreshPurchases(answer = if (list.isEmpty()) request else null)
+                }
             }
             BillingResponseCode.ITEM_ALREADY_OWNED -> {
                 finishPending(STATUS_ALREADY_OWNED)
@@ -244,6 +255,11 @@ class BillingManager(
                 finishPending(statusFor(result.responseCode))
             }
         }
+    }
+
+    /** Settles [request] unless it is no longer the open request (already answered). */
+    private fun settle(request: PendingPurchase): (String) -> Unit = { status ->
+        if (pending === request) finishPending(status)
     }
 
     private fun finishPending(status: String) {
@@ -291,7 +307,16 @@ class BillingManager(
             onDone?.invoke(STATUS_ERROR)
             return
         }
-        ledger.record(token, productId) // durable (commit) BEFORE consuming
+        if (!ledger.ensureDurable(token, productId)) {
+            // The ledger is not on disk (e.g. storage full), so the purchase must NOT be consumed: once
+            // consumed, Play never returns it again. Deliver the coins (JS deduplicates by token) and
+            // leave the purchase to the next purchase query (connect / every onStart), which retries.
+            Log.w(TAG, "Grant ledger not written: purchase left unconsumed for a retry")
+            events.emit(grantEvent(token, productId))
+            onDone?.invoke(STATUS_SUCCESS)
+            return
+        }
+        // The ledger entry is on disk: consuming is safe now.
         if (!consuming.add(token)) {
             // Already being consumed (purchase update and purchase query raced): grant is idempotent.
             events.emit(grantEvent(token, productId))
@@ -309,8 +334,8 @@ class BillingManager(
                     // Paid but not consumed yet: retried by the next purchase query (every start).
                     Log.w(TAG, "Consume failed: $code ${billingResult.debugMessage}")
                 }
-                // The ledger entry already exists, so the coins are delivered now (and re-sent after
-                // every ready()); JS ignores tokens it has already applied.
+                // The ledger entry is on disk, so the coins are delivered now (and re-sent after every
+                // ready() until JS acknowledges them); JS ignores tokens it has already applied.
                 events.emit(grantEvent(token, productId))
                 onDone?.invoke(STATUS_SUCCESS)
             }
@@ -337,20 +362,31 @@ class BillingManager(
         }
     }
 
-    /** queryPurchasesAsync(INAPP): updates the entitlement (+ `entitlements` event) only on success. */
-    private fun refreshPurchases(done: ((ok: Boolean) -> Unit)?) {
+    /**
+     * queryPurchasesAsync(INAPP): updates the entitlement (+ `entitlements` event) only on success.
+     * [answer]: an open purchase request to settle from the result (with its product's purchase if
+     * Play lists one, else 'error').
+     */
+    private fun refreshPurchases(answer: PendingPurchase? = null, done: ((ok: Boolean) -> Unit)? = null) {
         whenConnected {
             val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
             client.queryPurchasesAsync(params) { billingResult, purchases ->
-                handler.post { onPurchasesQueried(billingResult, purchases, done) }
+                handler.post { onPurchasesQueried(billingResult, purchases, done, answer) }
             }
         }
     }
 
-    private fun onPurchasesQueried(result: BillingResult, purchases: List<Purchase>?, done: ((Boolean) -> Unit)?) {
+    private fun onPurchasesQueried(
+        result: BillingResult,
+        purchases: List<Purchase>?,
+        done: ((Boolean) -> Unit)?,
+        answer: PendingPurchase?,
+    ) {
         if (destroyed) return
+        val request = answer?.takeIf { it === pending }
         if (result.responseCode != BillingResponseCode.OK) {
             Log.w(TAG, "Purchase query: ${result.responseCode} ${result.debugMessage}")
+            request?.let { settle(it)(STATUS_ERROR) }
             done?.invoke(false) // offline / error: keep the persisted entitlement, no event
             return
         }
@@ -360,7 +396,11 @@ class BillingManager(
         }
         setAdsRemoved(ownsRemoveAds) // a refund turns it off again
         events.emit(entitlementsEvent())
-        for (purchase in list) processPurchase(purchase, null)
+        val forRequest = request?.let { r -> list.firstOrNull { r.productId in it.products.orEmpty() } }
+        for (purchase in list) {
+            processPurchase(purchase, if (request != null && purchase === forRequest) settle(request) else null)
+        }
+        if (request != null && forRequest == null) settle(request)(STATUS_ERROR)
         done?.invoke(true)
     }
 

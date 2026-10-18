@@ -10,8 +10,10 @@ plugins {
 // ---------------------------------------------------------------------------
 // Settings from ../gradle.properties (each one can be overridden with -PNAME=value)
 // ---------------------------------------------------------------------------
+// gradle.properties only knows whole-line comments; a trailing " # ..." (e.g. pasted from an old
+// README) would become part of the value, so it is stripped here (tools/check-release.mjs does the same).
 fun blockoProperty(name: String, default: String = ""): String =
-    providers.gradleProperty(name).getOrElse(default).trim()
+    providers.gradleProperty(name).getOrElse(default).replace(Regex("""(^|\s)#.*"""), "").trim()
 
 val blockoVersionCode: Int = blockoProperty("BLOCKO_VERSION_CODE", "1").toIntOrNull()
     ?: throw GradleException("BLOCKO_VERSION_CODE in gradle.properties must be a whole number")
