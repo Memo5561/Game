@@ -145,7 +145,8 @@ export class Progression {
 
   /**
    * Records a finished or abandoned run (call once per run, never for the tutorial).
-   * - stats for every mode; bestScore, run coins and `newBest` only in classic
+   * - stats for every mode (gamesPlayed/classicGames only for counted runs); bestScore, run coins
+   *   and `newBest` only in classic
    * - classic coins = max(COINS_MIN_PER_GAME, floor(score × COINS_PER_SCORE)); the minimum only
    *   applies to counted runs, so instantly abandoned runs can't farm it
    * - XP = min(XP_RUN_CAP, XP_RUN_BASE + lines × XP_PER_LINE), only for counted runs
@@ -163,8 +164,12 @@ export class Progression {
     const counted = runPieces >= ADS.RUN_MIN_PIECES;
     const classic = mode === 'classic';
 
-    st.gamesPlayed += 1;
-    if (classic) st.classicGames += 1;
+    // Only counted runs advance the game counters: they drive feature unlocks, the newbie
+    // generator phase and the free first revive, so abandoning runs early must not farm them.
+    if (counted) {
+      st.gamesPlayed += 1;
+      if (classic) st.classicGames += 1;
+    }
     st.totalScore += runScore;
     st.totalLines += runLines;
     st.bestCombo = Math.max(st.bestCombo, toCount(maxCombo));

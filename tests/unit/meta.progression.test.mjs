@@ -233,7 +233,8 @@ test('recordGame: minimum coins, XP cap and short runs', () => {
   assert.equal(short.counted, false);
   assert.equal(short.coinsEarned, Math.floor(80 * ECONOMY.COINS_PER_SCORE), 'no minimum for uncounted runs');
   assert.equal(save.xp, xp1, 'no XP for uncounted runs');
-  assert.equal(save.stats.gamesPlayed, 3, 'stats still count the run');
+  assert.equal(save.stats.gamesPlayed, 2, 'uncounted runs do not advance gamesPlayed (unlock farming)');
+  assert.equal(save.stats.totalScore, 40 + 100000 + 80, 'but other stats still include the run');
 });
 
 test('recordGame: journey/daily runs earn XP but no run coins and never touch the best score', () => {
