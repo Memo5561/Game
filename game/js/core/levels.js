@@ -62,7 +62,7 @@ const TEMPLATE_WINDOW = 4;
 /** Coins for completing a journey level, as a multiple of LEVEL_COMPLETE_COINS. */
 const REWARD_FACTOR = Object.freeze({ normal: 1, hard: 1.5, superhard: 2 });
 
-/** Star threshold model, calibrated with tools/simulate.mjs (planner bot). */
+/** Star threshold model, calibrated with tools/simulate.mjs (greedy reference bot). */
 const PAR = Object.freeze({
   // expected pieces to collect all gems = base + Σ feature·weight (see gemClearCost)
   base: 4.5,
@@ -76,6 +76,7 @@ const PAR = Object.freeze({
   dailyBase: 13,
   dailyPointsPerPiece: 62,
   dailyPar3Factor: 0.88,
+  dailyPar2Factor: 1.25,
 });
 
 /**
@@ -295,7 +296,7 @@ function gemTypes(count, typesAvailable, rng) {
  * @param {Array<{r:number, c:number}>} prefilled
  * @param {Array<{r:number, c:number}>} gems
  * @returns {{ cells: number, segments: number, holes: number, lines: number, pieces: number }}
- *   `pieces` = estimated pieces a decent player needs (model calibrated with the simulator)
+ *   `pieces` = estimated pieces the reference bot needs (model calibrated with the simulator)
  */
 function gemClearCost(prefilled, gems) {
   if (gems.length === 0) return { cells: 0, segments: 0, holes: 0, lines: 0, pieces: 0 };
@@ -552,7 +553,7 @@ function par3For(pieces) {
 }
 
 /**
- * Estimated effort of a level (extra export for tools/simulate.mjs and tests).
+ * Estimated effort of a level (extra export for balancing tools and tests).
  * @param {LevelDef} level
  * @returns {{ cells: number, segments: number, holes: number, lines: number, pieces: number }}
  */
@@ -616,7 +617,7 @@ export function generateDailyLevel(dayKey) {
     prefilled,
     gems,
     goals,
-    par: [par3, par2For(par3)],
+    par: [par3, Math.round(par3 * PAR.dailyPar2Factor)],
     rewardCoins: CONFIG.ECONOMY.DAILY_CHALLENGE_COINS,
     pattern: tpl.name,
   };
