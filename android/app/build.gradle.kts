@@ -66,12 +66,12 @@ fun ApplicationBuildType.blockoAds(live: Boolean) {
 }
 
 android {
-    namespace = "io.github.memo5561.blocko"
+    namespace = "com.makdigitalstudio.blocko"
     compileSdk = 37
 
     defaultConfig {
         // Must match CONFIG.PACKAGE_ID in game/js/config.js. Never change it after the first upload.
-        applicationId = "io.github.memo5561.blocko"
+        applicationId = "com.makdigitalstudio.blocko"
         minSdk = 24
         targetSdk = 36
         versionCode = blockoVersionCode

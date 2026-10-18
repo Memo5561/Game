@@ -1,4 +1,4 @@
-package io.github.memo5561.blocko
+package com.makdigitalstudio.blocko
 
 import android.app.Activity
 import android.content.ActivityNotFoundException

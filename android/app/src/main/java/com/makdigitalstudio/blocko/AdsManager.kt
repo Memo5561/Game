@@ -1,4 +1,4 @@
-package io.github.memo5561.blocko
+package com.makdigitalstudio.blocko
 
 import android.os.Handler
 import android.os.Looper

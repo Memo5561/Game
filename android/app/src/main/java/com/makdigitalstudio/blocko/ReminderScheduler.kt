@@ -1,4 +1,4 @@
-package io.github.memo5561.blocko
+package com.makdigitalstudio.blocko
 
 import android.Manifest
 import android.annotation.SuppressLint

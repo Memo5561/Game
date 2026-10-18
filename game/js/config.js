@@ -7,24 +7,25 @@ export const CONFIG = Object.freeze({
   VERSION: '1.0.0',
 
   // Change the package id together with android/app/build.gradle.kts (applicationId) BEFORE the first upload.
-  PACKAGE_ID: 'io.github.memo5561.blocko',
-  PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=io.github.memo5561.blocko',
-  PLAY_STORE_MARKET_URL: 'market://details?id=io.github.memo5561.blocko',
+  PACKAGE_ID: 'com.makdigitalstudio.blocko',
+  PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.makdigitalstudio.blocko',
+  PLAY_STORE_MARKET_URL: 'market://details?id=com.makdigitalstudio.blocko',
   // Host docs/site/* on a GitHub Pages *user site* (repo "memo5561.github.io") – see docs/VEROEFFENTLICHUNG.md.
   PRIVACY_POLICY_URL: 'https://memo5561.github.io/blocko/privacy-policy.html',
   IMPRINT_URL: 'https://memo5561.github.io/blocko/impressum.html',
 
-  // Legal notice (Impressum, § 5 DDG) – REQUIRED for a commercial app from Germany.
+  // Legal notice (Impressum) – REQUIRED for a commercial app. Austria: § 5 ECG, § 14 UGB, § 63 GewO.
   // tools/check-release.mjs refuses a release while placeholders are left here.
   LEGAL: Object.freeze({
-    OWNER_NAME: 'Vorname Nachname',
-    ADDRESS_LINES: Object.freeze(['Musterstraße 1', '12345 Musterstadt', 'Deutschland']),
-    EMAIL: 'support@example.com',
-    // § 5 DDG needs a second fast, direct contact channel besides e-mail: a phone number OR a contact form.
-    PHONE: '',
+    OWNER_NAME: 'Mehmet Ali Köse',
+    // TODO(owner): the house number is missing – tools/check-release.mjs fails while 'Hausnummer fehlt' is here.
+    ADDRESS_LINES: Object.freeze(['Quellenstraße Hausnummer fehlt', '1100 Wien', 'Österreich']),
+    EMAIL: '1makdigital55@gmail.com',
+    PHONE: '+43 664 1517640',
     CONTACT_FORM_URL: '',
     VAT_ID: '',
   }),
+
 
   BOARD_SIZE: 8,
   TRAY_SIZE: 3,

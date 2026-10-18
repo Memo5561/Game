@@ -111,7 +111,7 @@ Nur wenn Android Studio AGP 9.4 nicht unterstützt oder ein Fehler nicht lösbar
       „Käufe wiederherstellen“ nach Neuinstallation stellt es wieder her.
 - [ ] **Erstattung**: Kauf in der Play Console (Bestellverwaltung) erstatten → App neu öffnen (mit Internet)
       → Werbung ist wieder aktiv. Offline-Start ändert den Status nicht.
-- [ ] **Prozess-Ende während des Kaufs**: Kaufdialog offen lassen, `adb shell am kill io.github.memo5561.blocko`
+- [ ] **Prozess-Ende während des Kaufs**: Kaufdialog offen lassen, `adb shell am kill com.makdigitalstudio.blocko`
       (oder Entwickleroptionen „Aktivitäten nicht speichern“), Kauf abschließen, App öffnen → Münzen kommen
       **genau einmal** an.
 - [ ] **Zurück-Taste**: jede Ansicht laut Zurück-Tabelle; auf dem Startbildschirm geht die App in den

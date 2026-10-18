@@ -42,7 +42,7 @@ Rechne realistisch mit **4–6 Wochen** bis zur öffentlichen App.
 ## Schritt 0 – Endgültigen App-Namen und Paket-ID festlegen
 
 Die **Paket-ID** (Package Name, `applicationId`) ist die eindeutige Kennung deiner App, z. B.
-`io.github.memo5561.blocko`.
+`com.makdigitalstudio.blocko`.
 
 **⚠ Die Paket-ID kann nach dem ersten Upload in die Play Console NIE mehr geändert werden. Sie ist
 auch dann für immer verbraucht, wenn du die App löschst.** Der angezeigte App-Name im Store lässt
@@ -71,7 +71,7 @@ Unsicherheit: kurze Erstberatung bei einem Anwalt für Markenrecht. Mehr dazu in
 
 ### 0.2 Paket-ID wählen
 
-Die Paket-ID folgt der Form „umgedrehte Domain + App“. `io.github.memo5561.blocko` passt, wenn
+Die Paket-ID folgt der Form „umgedrehte Domain + App“. `com.makdigitalstudio.blocko` passt, wenn
 dein GitHub-Benutzername **memo5561** ist und du die Webseite `memo5561.github.io` nutzt (Schritt 2).
 Hast du einen anderen Benutzernamen oder eine eigene Domain, ändere die Paket-ID **jetzt**:
 
@@ -82,7 +82,7 @@ Hast du einen anderen Benutzernamen oder eine eigene Domain, ändere die Paket-I
 2. `android/app/build.gradle.kts`: `applicationId = "io.github.DEINNAME.blocko"`.
    **Das ist der Wert, der für Google Play zählt.**
 3. Optional, aber sauberer: `namespace` in derselben Datei und den Kotlin-Paketordner
-   (`android/app/src/main/java/io/github/memo5561/blocko/`) anpassen. Am einfachsten geht das in
+   (`android/app/src/main/java/com/makdigitalstudio/blocko/`) anpassen. Am einfachsten geht das in
    Android Studio: Rechtsklick auf das Paket → **Refactor → Rename**. `namespace` und
    `applicationId` dürfen sich technisch auch unterscheiden.
 4. `docs/site/index.html`: den Google-Play-Link (enthält die Paket-ID) anpassen.

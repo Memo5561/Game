@@ -22,7 +22,7 @@ function readProps(file) {
   return props;
 }
 
-const PLACEHOLDER = /example\.com|Vorname|Nachname|Musterstra|Musterstadt|12345|XXXX/i;
+const PLACEHOLDER = /example\.com|Vorname|Nachname|Musterstra|Musterstadt|12345|Hausnummer fehlt|XXXX/i;
 
 // --- legal / contact -------------------------------------------------------
 const legal = CONFIG.LEGAL;
