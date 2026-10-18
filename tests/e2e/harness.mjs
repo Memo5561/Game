@@ -2,10 +2,11 @@
 import { chromium } from 'playwright';
 import { startServer } from '../../tools/serve.mjs';
 
+// Sizes describe the WebView area ABOVE the native banner slot (~50-60 dp) and nav bar.
 export const VIEWPORTS = {
-  phone: { width: 360, height: 780, deviceScaleFactor: 3 },      // typical modern Android
-  phoneSmall: { width: 320, height: 568, deviceScaleFactor: 2 }, // very small / old
-  phoneTall: { width: 412, height: 915, deviceScaleFactor: 2.625 },
+  phone: { width: 360, height: 700, deviceScaleFactor: 3 },      // typical modern Android
+  phoneSmall: { width: 320, height: 518, deviceScaleFactor: 2 }, // very small / old
+  phoneTall: { width: 412, height: 830, deviceScaleFactor: 2.625 },
   tabletLandscape: { width: 1280, height: 800, deviceScaleFactor: 2 },
   tabletPortrait: { width: 800, height: 1280, deviceScaleFactor: 2 },
 };

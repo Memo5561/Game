@@ -6,21 +6,30 @@ import { CONFIG } from '../config.js';
 
 const hasWindow = typeof window !== 'undefined';
 const native = hasWindow && window.BlockoNative ? window.BlockoNative : null;
+const APP_HOST = 'appassets.androidplatform.net';
+const onAppHost = hasWindow && window.location.hostname === APP_HOST;
+// The browser mock (free purchases, test ad overlays) must never be active inside the app.
+const mockEnabled = !native && !onAppHost;
 const params = hasWindow ? new URLSearchParams(window.location.search) : new URLSearchParams();
 const mockMode = params.get('mock') || ''; // '' | 'fast' | 'nofill'
 
-const MOCK_STORE_KEY = 'blocko.mock.adsRemoved';
+const MOCK_ADS_REMOVED_KEY = 'blocko.mock.adsRemoved';
+const MOCK_SAVE_KEY = 'blocko.mock.nativeSave';
+const LONG_TIMEOUT = 30 * 60 * 1000; // safety net only – native answers every request exactly once
 
 /** @type {Map<string, Set<Function>>} */
 const listeners = new Map();
-/** events that arrived before anyone listened (delivered on first subscription) */
-const STICKY_TYPES = new Set(['grant', 'entitlements']);
+/** events that arrive before anyone listens are buffered and flushed to the first subscriber */
+const STICKY_TYPES = new Set(['grant', 'entitlements', 'adState', 'insets']);
 /** @type {Map<string, any[]>} */
 const queued = new Map();
 /** @type {Map<string, {resolve: Function, timer: any, fallback: any}>} */
 const pending = new Map();
 let requestCounter = 0;
+let mockOverlayVisible = false;
 let adsRemoved = false;
+let adsInitRequested = false;
+let adState = { canRequestAds: false, rewardedReady: false, interstitialReady: false, privacyOptionsRequired: false };
 let info = null;
 let initPromise = null;
 
@@ -75,6 +84,16 @@ function settle(requestId, value) {
   p.resolve(value);
 }
 
+function applyAdState(evt) {
+  adState = {
+    canRequestAds: !!evt.canRequestAds,
+    rewardedReady: !!evt.rewardedReady,
+    interstitialReady: !!evt.interstitialReady,
+    privacyOptionsRequired: !!evt.privacyOptionsRequired,
+  };
+  if (info) info.privacyOptionsRequired = adState.privacyOptionsRequired;
+}
+
 /** Entry point for native → JS events. */
 function dispatch(evt) {
   if (!evt || typeof evt !== 'object' || typeof evt.type !== 'string') return;
@@ -106,6 +125,14 @@ function dispatch(evt) {
       adsRemoved = !!evt.adsRemoved;
       emit('entitlements', { adsRemoved });
       break;
+    case 'adState':
+      applyAdState(evt);
+      emit('adState', { ...adState });
+      break;
+    case 'insets':
+      if (info) info.insets = { ...evt };
+      emit('insets', evt);
+      break;
     default:
       // 'pause' | 'resume' | 'back' | 'grant' | future events
       emit(evt.type, evt);
@@ -120,27 +147,50 @@ function mockDelay(normalMs) {
   return mockMode === 'fast' ? 50 : normalMs;
 }
 
-function readMockAdsRemoved() {
+function storageGet(key) {
   try {
-    return hasWindow && window.localStorage.getItem(MOCK_STORE_KEY) === '1';
+    return window.localStorage.getItem(key);
   } catch {
-    return false;
+    return null;
   }
 }
 
-function writeMockAdsRemoved(v) {
+function storageSet(key, value) {
   try {
-    window.localStorage.setItem(MOCK_STORE_KEY, v ? '1' : '0');
+    window.localStorage.setItem(key, value);
   } catch {
-    /* private mode */
+    /* private mode / quota */
   }
+}
+
+function mockAdsAvailable() {
+  return mockEnabled && mockMode !== 'nofill' && adsInitRequested;
+}
+
+function refreshMockAdState() {
+  if (!mockEnabled) return;
+  const available = mockAdsAvailable();
+  applyAdState({
+    canRequestAds: adsInitRequested,
+    rewardedReady: available,
+    interstitialReady: available && !adsRemoved,
+    privacyOptionsRequired: params.get('privacy') === '1',
+  });
+  emit('adState', { ...adState });
 }
 
 /** Shows a simple full-screen "TEST AD" overlay for `ms` milliseconds. */
 function mockAdOverlay(label, ms) {
+  mockOverlayVisible = true;
+  emit('pause', { type: 'pause', reason: 'ad' });
   return new Promise((resolve) => {
+    const finish = () => {
+      mockOverlayVisible = false;
+      emit('resume', { type: 'resume', reason: 'ad' });
+      resolve();
+    };
     if (!hasWindow || !document.body) {
-      setTimeout(resolve, ms);
+      setTimeout(finish, ms);
       return;
     }
     const el = document.createElement('div');
@@ -159,13 +209,13 @@ function mockAdOverlay(label, ms) {
     document.body.appendChild(el);
     setTimeout(() => {
       el.remove();
-      resolve();
+      finish();
     }, ms);
   });
 }
 
 const MOCK_PRODUCTS = [
-  { id: 'remove_ads', title: 'Remove ads', price: '2,99 €' },
+  { id: 'remove_ads', title: 'Remove ads', price: '4,99 €' },
   { id: 'coins_small', title: '1.500 coins', price: '1,99 €' },
   { id: 'coins_large', title: '6.000 coins', price: '4,99 €' },
 ];
@@ -178,12 +228,22 @@ const HAPTIC_PATTERNS = {
   error: [30, 40, 30],
 };
 
+function callNative(name, ...args) {
+  try {
+    return native[name](...args);
+  } catch (e) {
+    console.error(`[Platform] ${name} failed`, e);
+    return undefined;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 export const Platform = {
   isNative: !!native,
+  isMock: mockEnabled,
 
   get info() {
     return info;
@@ -203,39 +263,47 @@ export const Platform = {
           console.error('[Platform] getInfo failed', e);
           info = { platform: 'android' };
         }
-        adsRemoved = !!(info && info.adsRemoved);
-        try {
-          native.ready();
-        } catch (e) {
-          console.error('[Platform] ready failed', e);
-        }
-      } else {
-        adsRemoved = readMockAdsRemoved();
-        info = {
-          platform: 'web',
-          appVersion: CONFIG.VERSION,
-          versionCode: 0,
-          sdkInt: 0,
-          locale: hasWindow ? navigator.language : 'en',
-          adsRemoved,
-          privacyOptionsRequired: params.get('privacy') === '1',
-          notificationPermission: 'prompt',
-        };
-        if (hasWindow) {
-          // Desktop convenience: Escape behaves like the Android back button.
-          window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') emit('back', { type: 'back' });
-          });
-          document.addEventListener('visibilitychange', () => {
-            emit(document.hidden ? 'pause' : 'resume', { type: document.hidden ? 'pause' : 'resume' });
-          });
-        }
+        adsRemoved = !!info.adsRemoved;
+        applyAdState(info);
+        callNative('ready');
+        return;
+      }
+      if (!mockEnabled) {
+        console.error('[Platform] running on the app host without BlockoNative – ads and purchases disabled');
+      }
+      adsRemoved = mockEnabled && storageGet(MOCK_ADS_REMOVED_KEY) === '1';
+      info = {
+        platform: mockEnabled ? 'web' : 'android-nobridge',
+        appVersion: CONFIG.VERSION,
+        versionCode: 0,
+        sdkInt: 0,
+        webViewVersion: '',
+        locale: hasWindow ? navigator.language : 'en',
+        debug: mockEnabled,
+        adsRemoved,
+        canRequestAds: false,
+        rewardedReady: false,
+        interstitialReady: false,
+        privacyOptionsRequired: mockEnabled && params.get('privacy') === '1',
+        notificationPermission: mockEnabled ? 'prompt' : 'unsupported',
+        bannerHeightDp: 0,
+        insets: { top: 0, right: 0, bottom: 0, left: 0, gestureLeft: 0, gestureRight: 0 },
+      };
+      applyAdState(info);
+      if (hasWindow && mockEnabled) {
+        // Desktop convenience: Escape behaves like the Android back button.
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') emit('back', { type: 'back' });
+        });
+        document.addEventListener('visibilitychange', () => {
+          emit(document.hidden ? 'pause' : 'resume', { type: document.hidden ? 'pause' : 'resume' });
+        });
       }
     })();
     return initPromise;
   },
 
-  /** Subscribe to 'pause' | 'resume' | 'back' | 'entitlements' | 'grant'. Returns an unsubscribe fn. */
+  /** Subscribe to 'pause'|'resume'|'back'|'entitlements'|'grant'|'adState'|'insets'. Returns an unsubscribe fn. */
   on(type, fn) {
     if (!listeners.has(type)) listeners.set(type, new Set());
     listeners.get(type).add(fn);
@@ -248,53 +316,82 @@ export const Platform = {
     return () => listeners.get(type)?.delete(fn);
   },
 
+  /** True while a native request (ad, purchase, dialog…) is pending or a mock ad is visible. */
+  isBusy() {
+    return pending.size > 0 || mockOverlayVisible;
+  },
+
   get adsRemoved() {
     return adsRemoved;
   },
 
+  get adState() {
+    return { ...adState };
+  },
+
+  /** Durable native save snapshot ('' if none). */
+  loadData() {
+    if (native) {
+      const v = callNative('loadData');
+      return typeof v === 'string' ? v : '';
+    }
+    return mockEnabled ? storageGet(MOCK_SAVE_KEY) || '' : '';
+  },
+
+  /** Hands the latest save snapshot to native, which writes it atomically in the background. */
+  saveData(json) {
+    if (native) {
+      callNative('saveData', String(json));
+      return;
+    }
+    if (mockEnabled) storageSet(MOCK_SAVE_KEY, String(json));
+  },
+
+  /** Starts consent + ads SDK (idempotent). Called after the first game-over screen, or at boot later on. */
+  initAds() {
+    if (adsInitRequested) return;
+    adsInitRequested = true;
+    if (native) {
+      callNative('initAds');
+      return;
+    }
+    refreshMockAdState();
+  },
+
   showInterstitial() {
     if (adsRemoved) return Promise.resolve(false);
-    if (native) return request((id) => native.showInterstitial(id), 90000, false);
-    if (mockMode === 'nofill') return Promise.resolve(false);
+    if (native) return request((id) => native.showInterstitial(id), LONG_TIMEOUT, false);
+    if (!mockAdsAvailable()) return Promise.resolve(false);
     return mockAdOverlay('Interstitial', mockDelay(1500)).then(() => true);
   },
 
   /** Resolves true only if the user earned the reward. */
   showRewarded(placement) {
-    if (native) return request((id) => native.showRewarded(id, String(placement || '')), 150000, false);
-    if (mockMode === 'nofill') return Promise.resolve(false);
+    if (native) return request((id) => native.showRewarded(id, String(placement || '')), LONG_TIMEOUT, false);
+    if (!mockAdsAvailable()) return Promise.resolve(false);
     return mockAdOverlay(`Rewarded (${placement})`, mockDelay(1500)).then(() => true);
   },
 
   isRewardedReady() {
-    if (native) {
-      try {
-        return !!native.isRewardedReady();
-      } catch {
-        return false;
-      }
-    }
-    return mockMode !== 'nofill';
+    if (native) return !!callNative('isRewardedReady');
+    return mockAdsAvailable();
   },
 
   setBannerVisible(visible) {
-    if (!native) return;
-    try {
-      native.setBannerVisible(!!visible);
-    } catch (e) {
-      console.error('[Platform] setBannerVisible failed', e);
-    }
+    if (native) callNative('setBannerVisible', !!visible);
   },
 
   /** @returns {Promise<Array<{id: string, title: string, price: string}>>} */
   getProducts() {
     if (native) return request((id) => native.queryProducts(id), 15000, []);
+    if (!mockEnabled) return Promise.resolve([]);
     return Promise.resolve(MOCK_PRODUCTS.map((p) => ({ ...p })));
   },
 
   /** @returns {Promise<'success'|'cancelled'|'pending'|'error'|'already_owned'|'unavailable'>} */
   purchase(productId) {
-    if (native) return request((id) => native.purchase(id, String(productId)), 600000, 'error');
+    if (native) return request((id) => native.purchase(id, String(productId)), LONG_TIMEOUT, 'error');
+    if (!mockEnabled) return Promise.resolve('unavailable');
     const product = CONFIG.PRODUCTS[productId];
     if (!product) return Promise.resolve('unavailable');
     return new Promise((resolve) => {
@@ -305,12 +402,14 @@ export const Platform = {
             return;
           }
           adsRemoved = true;
-          writeMockAdsRemoved(true);
-          resolve('success');
+          storageSet(MOCK_ADS_REMOVED_KEY, '1');
           emit('entitlements', { adsRemoved: true });
-        } else {
+          refreshMockAdState();
           resolve('success');
+        } else {
+          // like native: the grant is dispatched before the success result
           emit('grant', { type: 'grant', token: `mock-${productId}-${Date.now().toString(36)}`, productId });
+          resolve('success');
         }
       }, mockDelay(400));
     });
@@ -319,27 +418,19 @@ export const Platform = {
   /** @returns {Promise<{ok: boolean, adsRemoved: boolean}>} */
   restorePurchases() {
     if (native) return request((id) => native.restorePurchases(id), 30000, { ok: false, adsRemoved });
-    adsRemoved = readMockAdsRemoved();
+    if (!mockEnabled) return Promise.resolve({ ok: false, adsRemoved });
+    adsRemoved = storageGet(MOCK_ADS_REMOVED_KEY) === '1';
     emit('entitlements', { adsRemoved });
     return Promise.resolve({ ok: true, adsRemoved });
   },
 
   ackGrant(token) {
-    if (!native) return;
-    try {
-      native.ackGrant(String(token));
-    } catch (e) {
-      console.error('[Platform] ackGrant failed', e);
-    }
+    if (native) callNative('ackGrant', String(token));
   },
 
   haptic(kind) {
     if (native) {
-      try {
-        native.haptic(String(kind));
-      } catch {
-        /* ignore */
-      }
+      callNative('haptic', String(kind));
       return;
     }
     if (hasWindow && navigator.vibrate) {
@@ -353,11 +444,7 @@ export const Platform = {
 
   share(text) {
     if (native) {
-      try {
-        native.share(String(text));
-      } catch (e) {
-        console.error('[Platform] share failed', e);
-      }
+      callNative('share', String(text));
       return;
     }
     if (!hasWindow) return;
@@ -370,11 +457,7 @@ export const Platform = {
 
   requestReview() {
     if (native) {
-      try {
-        native.requestReview();
-      } catch {
-        /* ignore */
-      }
+      callNative('requestReview');
       return;
     }
     console.info('[Platform mock] requestReview');
@@ -382,29 +465,20 @@ export const Platform = {
 
   openUrl(url) {
     if (native) {
-      try {
-        native.openUrl(String(url));
-      } catch (e) {
-        console.error('[Platform] openUrl failed', e);
-      }
+      callNative('openUrl', String(url));
       return;
     }
-    if (hasWindow) window.open(url, '_blank', 'noopener');
+    if (hasWindow && !/^market:/i.test(url)) window.open(url, '_blank', 'noopener');
+    else console.info('[Platform mock] openUrl', url);
   },
 
   isPrivacyOptionsRequired() {
-    if (native) {
-      try {
-        return !!native.isPrivacyOptionsRequired();
-      } catch {
-        return false;
-      }
-    }
-    return !!(info && info.privacyOptionsRequired);
+    if (native) return !!callNative('isPrivacyOptionsRequired');
+    return adState.privacyOptionsRequired;
   },
 
   showPrivacyOptions() {
-    if (native) return request((id) => native.showPrivacyOptions(id), 600000, undefined);
+    if (native) return request((id) => native.showPrivacyOptions(id), LONG_TIMEOUT, undefined);
     console.info('[Platform mock] showPrivacyOptions');
     return Promise.resolve();
   },
@@ -412,56 +486,40 @@ export const Platform = {
   /** @returns {'granted'|'denied'|'prompt'|'unsupported'} */
   getNotificationPermission() {
     if (native) {
-      try {
-        const v = String(native.getNotificationPermission());
-        return ['granted', 'denied', 'prompt', 'unsupported'].includes(v) ? v : 'unsupported';
-      } catch {
-        return 'unsupported';
-      }
+      const v = String(callNative('getNotificationPermission'));
+      return ['granted', 'denied', 'prompt', 'unsupported'].includes(v) ? v : 'unsupported';
     }
-    return (info && info.notificationPermission) || 'prompt';
+    return (info && info.notificationPermission) || 'unsupported';
   },
 
   requestNotificationPermission() {
-    if (native) return request((id) => native.requestNotificationPermission(id), 300000, false);
+    if (native) return request((id) => native.requestNotificationPermission(id), LONG_TIMEOUT, false);
+    if (!mockEnabled) return Promise.resolve(false);
     if (info) info.notificationPermission = 'granted';
     return Promise.resolve(true);
   },
 
+  openNotificationSettings() {
+    if (native) callNative('openNotificationSettings');
+    else console.info('[Platform mock] openNotificationSettings');
+  },
+
   scheduleReminder(delayMinutes, title, body) {
     if (native) {
-      try {
-        native.scheduleReminder(Math.max(1, Math.round(delayMinutes)), String(title), String(body));
-      } catch (e) {
-        console.error('[Platform] scheduleReminder failed', e);
-      }
+      callNative('scheduleReminder', Math.max(1, Math.round(delayMinutes)), String(title), String(body));
       return;
     }
     console.info('[Platform mock] scheduleReminder', delayMinutes, title, body);
   },
 
   cancelReminder() {
-    if (native) {
-      try {
-        native.cancelReminder();
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
-    console.info('[Platform mock] cancelReminder');
+    if (native) callNative('cancelReminder');
+    else console.info('[Platform mock] cancelReminder');
   },
 
   exitApp() {
-    if (native) {
-      try {
-        native.exitApp();
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
-    console.info('[Platform mock] exitApp');
+    if (native) callNative('exitApp');
+    else console.info('[Platform mock] exitApp');
   },
 
   /** Test/debug helper: inject a platform event as if it came from native. */
