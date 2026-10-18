@@ -509,9 +509,14 @@ update Android System WebView" message if `__blockoBooted` is not set within 8 s
 
 **Screens** (`data-screen`): `home`, `game`, `journey` (map), `shop`, `missions`, `settings`, `legal`.
 **Modals** (`data-modal`): `pause`, `revive`, `gameover`, `levelResult`, `dailyReward`, `tutorial`,
-`confirm`, `notifAsk`, `levelUp`. Buttons carry `data-action="<screen|modal>.<action>"` (e.g.
+`confirm`, `notifAsk`, `levelUp`, `levelStart`, `purchasePending`, `langPicker`, `booster`.
+Buttons carry `data-action="<screen|modal>.<action>"` (e.g.
 `home.play`, `revive.watch`, `revive.coins`, `revive.skip`, `gameover.again`, `gameover.home`,
 `gameover.double`, `shop.buy.remove_ads`, `tutorial.skip`).
+Rewarded placements: `revive`, `double_coins`, `booster`, `daily_double`, `free_coins`.
+`app.retention` (`js/app/retention.js`) owns the daily-reward / level-up / notification soft-ask
+popups and reminder opt-in. How to add screens, modals, popups, strings and icons is documented at
+the top of `js/app/app.js`.
 
 **FTUE**: `!flags.tutorialDone` → straight into the tutorial on the game screen (`tutorial.skip`
 visible from step 2). Wrong drops fly back, the hand hint replays after 1.5 s idle. After the last
