@@ -16,6 +16,12 @@
 
 import en from './strings/en.js';
 import de from './strings/de.js';
+import es from './strings/es.js';
+import fr from './strings/fr.js';
+import it from './strings/it.js';
+import pt from './strings/pt.js';
+import tr from './strings/tr.js';
+import ru from './strings/ru.js';
 
 /** Supported language codes (settings order). */
 export const LANGS = Object.freeze(['en', 'de', 'es', 'fr', 'it', 'pt', 'tr', 'ru']);
@@ -26,7 +32,7 @@ export const LANG_NAMES = Object.freeze({
 });
 
 /** @type {Readonly<Record<string, Record<string, any>>>} */
-const TABLES = Object.freeze({ en, de });
+const TABLES = Object.freeze({ en, de, es, fr, it, pt, tr, ru });
 
 let lang = 'en';
 let debug = false;

@@ -1,0 +1,313 @@
+// Russian strings (same keys as en.js). Informal "ты" (casual-game convention), «…» quotes, em dash.
+// Plurals: { one, few, many, other } picked by Intl.PluralRules('ru') from the `n` param (1/21 →
+// one, 2–4 → few, 0/5–20 → many); `other` repeats the `many` form as the fallback. Keys whose `n`
+// counts a noun are plural objects here even where en.js has a plain string; nouns next to other
+// params come first ("монеты +{coins}") so they never need agreement. Past tense is avoided where it
+// would need a gender. Keep it short – everything must fit 320 px.
+// Terms: монеты · бонусы = boosters (Молот, Замена) · Кампания (journey) · испытание дня · второй шанс (revive) ·
+// комбо · рекорд · уровень · тема · игра · поле · фигура.
+
+export default {
+  // --- shared ---------------------------------------------------------------------------------
+  'common.back': 'Назад',
+  'common.play': 'Играть',
+  'common.best': 'Рекорд',
+  'common.home': 'Меню',
+  'common.continue': 'Продолжить',
+  'common.ok': 'ОК',
+  'common.cancel': 'Отмена',
+  'common.notNow': 'Не сейчас',
+  'common.close': 'Закрыть',
+
+  'nav.shop': 'Магазин',
+  'nav.missions': 'Задания',
+  'nav.settings': 'Настройки',
+
+  'mode.journey': 'Кампания',
+  'mode.daily': 'Испытание дня',
+  'common.locked': 'Закрыто',
+  'common.open': 'Открыть',
+  'time.hm': '{h} ч {m} мин',
+  'time.m': '{m} мин',
+
+  // --- canvas texts (renderer) ---------------------------------------------------------------
+  'praise.good': 'Хорошо!',
+  'praise.great': 'Отлично!',
+  'praise.excellent': 'Превосходно!',
+  'praise.amazing': 'Потрясающе!',
+  'praise.unbelievable': 'Невероятно!',
+  combo: 'Комбо x{n}',
+  nospace: 'Нет места!',
+  newbest: 'Новый рекорд!',
+
+  // --- home -----------------------------------------------------------------------------------
+  'home.play': 'Играть',
+  'home.continue': 'Продолжить',
+  'home.newGame': 'Новая игра',
+  'home.best': 'Рекорд',
+  'home.level': 'Уровень {n}',
+  'home.journeyLevel': 'Уровень {n}',
+  'home.continueLevel': 'Продолжить уровень {n}',
+  'home.dailyGoal': { one: 'Цель: {n} очко', few: 'Цель: {n} очка', many: 'Цель: {n} очков', other: 'Цель: {n} очков' },
+  'home.dailyDone': 'Готово — до завтра!',
+  'home.locked.games': {
+    one: 'Откроется через {n} игру', few: 'Откроется через {n} игры', many: 'Откроется через {n} игр', other: 'Откроется через {n} игр',
+  },
+  'home.locked.journeyLevel': 'Откроется на {n}-м уровне кампании',
+  'home.levelAria': 'Уровень игрока {n}: {xp} из {next} опыта',
+  'home.starsAria': 'Звёзды: {n} из {max}',
+
+  // --- daily reward (login calendar) ----------------------------------------------------------
+  'daily.title': 'Ежедневная награда',
+  'daily.sub.first': 'Заходи каждый день — награды растут!',
+  'daily.sub.streak': {
+    one: '{n} день подряд — так держать!', few: '{n} дня подряд — так держать!', many: '{n} дней подряд — так держать!', other: '{n} дней подряд — так держать!',
+  },
+  'daily.sub.grace': 'Один день пропущен — серия сохранена!',
+  'daily.sub.next': 'Следующая награда через {time}',
+  'daily.claim': 'Забрать',
+  'daily.double': '×2 за рекламу',
+  'daily.day': 'День {n}',
+  'daily.streakSaved': 'Серия спасена!',
+  'daily.boosterGift': 'Молот +{hammer}, Замена +{shuffle}',
+
+  // --- level up -------------------------------------------------------------------------------
+  'levelUp.title': 'Новый уровень!',
+  'levelUp.reached': 'Теперь у тебя уровень {n}.',
+  'levelUp.newTheme': 'Открыта новая тема',
+  'levelUp.useNow': 'Применить',
+
+  // --- journey map + level start sheet --------------------------------------------------------
+  'journey.lockedToast': 'Сначала пройди уровень {n}',
+  'journey.more': 'Играй, чтобы открыть новые уровни',
+  'journey.starsAria': { one: '{n} звезда', few: '{n} звезды', many: '{n} звёзд', other: '{n} звёзд' },
+  'journey.chapter': 'Глава {n}',
+  'levelStart.goal': 'Собери',
+  'levelStart.par': { one: '≤ {n} фигура', few: '≤ {n} фигуры', many: '≤ {n} фигур', other: '≤ {n} фигур' },
+  'levelStart.finish': 'Пройди уровень',
+
+  // --- game HUD -------------------------------------------------------------------------------
+  'hud.pause': 'Пауза',
+  'hud.nudge': 'Ещё {n} до рекорда!',
+  'hud.pieces': 'Фигуры: {n}',
+  'hud.level': 'Уровень {n}',
+  'hud.daily': 'Испытание дня',
+  'tag.hard': 'Сложный',
+  'tag.superhard': 'Очень сложный',
+  'gem.1': 'Алмаз',
+  'gem.2': 'Звезда',
+  'gem.3': 'Сердце',
+
+  'booster.hammer': 'Молот',
+  'booster.shuffle': 'Замена',
+  'booster.hammer.desc': 'Разбивает блоки в области 3×3.',
+  'booster.shuffle.desc': 'Меняет твои фигуры на новые, которые поместятся.',
+  'booster.watch': '{name} бесплатно за рекламу',
+  'booster.tapCell': 'Коснись блока, чтобы разбить его',
+
+  // --- tutorial -------------------------------------------------------------------------------
+  'tutorial.title': 'Как играть',
+  'tutorial.step1': 'Перетащи блок на поле, чтобы заполнить ряд.',
+  'tutorial.step2': 'Полные столбцы тоже исчезают — заполни этот!',
+  'tutorial.step3': 'Убери ряд и столбец одновременно — будет комбо!',
+  'tutorial.skip': 'Пропустить',
+  'tutorial.done': 'Отлично! Теперь твоя очередь.',
+
+  // --- pause / confirm ------------------------------------------------------------------------
+  'pause.title': 'Пауза',
+  'pause.resume': 'Продолжить',
+  'pause.restart': 'Заново',
+  'pause.home': 'Меню',
+  'confirm.restart.title': 'Начать заново?',
+  'confirm.restart.body': 'Текущая игра будет завершена.',
+  'confirm.abandon.title': 'Начать новую игру?',
+  'confirm.abandon.body.classic': 'Сохранённая игра будет завершена.',
+  'confirm.abandon.body.journey': 'Сохранённый уровень кампании будет завершён.',
+  'confirm.abandon.body.daily': 'Сохранённое испытание дня будет завершено.',
+  'confirm.abandon.ok': 'Начать',
+
+  // --- revive / stuck -------------------------------------------------------------------------
+  'revive.title': 'Нет места!',
+  'revive.toBest': 'Ещё {n} до рекорда',
+  'revive.hint': 'Очищает 2 ряда и 2 столбца',
+  'revive.free': 'Второй шанс бесплатно!',
+  'revive.watch': 'Второй шанс за рекламу',
+  'revive.coins': {
+    one: 'Потратить {n} монету', few: 'Потратить {n} монеты', many: 'Потратить {n} монет', other: 'Потратить {n} монет',
+  },
+  'revive.skip': 'Нет, спасибо',
+  'stuck.body': 'Бонус или второй шанс помогут продолжить.',
+  'stuck.giveUp': 'Сдаться',
+
+  // --- run results ----------------------------------------------------------------------------
+  'result.score': 'Очки',
+  'result.newBest': 'Новый рекорд!',
+  'result.firstRecord': 'Первый рекорд!',
+  'result.again': 'Ещё раз',
+  'result.double': '×2 за рекламу',
+  'result.doubled': 'Удвоено!',
+  'result.xp': '+{n} опыта',
+  'result.levelUp': 'Достигнут уровень {n}!',
+  'result.themeUnlocked': 'Новая тема: «{name}»',
+  'result.missionDone': 'Задание выполнено: {text}',
+  'result.upsell': 'Играть без рекламы',
+  'result.levelComplete': 'Пройдено!',
+  'result.dailyComplete': 'Испытание пройдено!',
+  'result.levelFailed': 'Ходов больше нет',
+  'result.missing': 'Не хватило',
+  'result.streak': { one: '{n} день подряд', few: '{n} дня подряд', many: '{n} дней подряд', other: '{n} дней подряд' },
+  'result.next': 'Дальше',
+  'result.retry': 'Заново',
+  'result.map': 'Карта',
+  'result.tryAgain': 'Попробовать снова',
+
+  // --- toasts ---------------------------------------------------------------------------------
+  'toast.coins': { one: '+{n} монета', few: '+{n} монеты', many: '+{n} монет', other: '+{n} монет' },
+  'toast.gift': 'Подарок: монеты +{coins}, Молот +{hammer}, Замена +{shuffle}',
+  'toast.adsRemoved': 'Реклама отключена — спасибо!',
+  'toast.purchasePending': 'Покупка обрабатывается — она завершится автоматически.',
+  'toast.purchaseError': 'Покупка не прошла.',
+  'toast.purchaseUnavailable': 'Покупки сейчас недоступны.',
+  'toast.alreadyOwned': 'Предыдущая покупка получена',
+  'toast.restoreError': 'Не удалось связаться с Google Play.',
+  'toast.restored': 'Покупки восстановлены.',
+  'toast.restoreNone': 'Нет покупок для восстановления.',
+  'toast.noVideo': 'Сейчас нет доступных видео.',
+  'toast.noReward': 'Награды нет — видео не досмотрено.',
+  'toast.missionDone': 'Задание выполнено: {text}',
+  'toast.notEnoughCoins': 'Не хватает монет',
+  'toast.reminderOn': 'Напоминание включено — до завтра!',
+
+  // --- missions -------------------------------------------------------------------------------
+  'missions.bonus': 'Забери награды за все 3 задания',
+  'mission.clear_lines': { one: 'Убери {n} линию', few: 'Убери {n} линии', many: 'Убери {n} линий', other: 'Убери {n} линий' },
+  'mission.score_single': {
+    one: 'Набери {n} очко за одну игру', few: 'Набери {n} очка за одну игру', many: 'Набери {n} очков за одну игру', other: 'Набери {n} очков за одну игру',
+  },
+  'mission.play_games': { one: 'Заверши {n} игру', few: 'Заверши {n} игры', many: 'Заверши {n} игр', other: 'Заверши {n} игр' },
+  'mission.combo_reach': 'Сделай комбо x{n}',
+  'mission.place_pieces': { one: 'Поставь {n} фигуру', few: 'Поставь {n} фигуры', many: 'Поставь {n} фигур', other: 'Поставь {n} фигур' },
+  'mission.multi_clear': {
+    one: 'Убери 2+ линии за один ход', few: 'Убери 2+ линии за ход {n} раза', many: 'Убери 2+ линии за ход {n} раз', other: 'Убери 2+ линии за ход {n} раз',
+  },
+  'mission.all_clear': { one: 'Очисти всё поле', few: 'Очисти всё поле {n} раза', many: 'Очисти всё поле {n} раз', other: 'Очисти всё поле {n} раз' },
+  'mission.journey_levels': {
+    one: 'Пройди {n} уровень кампании', few: 'Пройди {n} уровня кампании', many: 'Пройди {n} уровней кампании', other: 'Пройди {n} уровней кампании',
+  },
+  'mission.daily_challenge': 'Пройди испытание дня',
+  'mission.use_booster': { one: 'Используй {n} бонус', few: 'Используй {n} бонуса', many: 'Используй {n} бонусов', other: 'Используй {n} бонусов' },
+  'missions.easy': 'Лёгкое',
+  'missions.medium': 'Среднее',
+  'missions.hard': 'Сложное',
+  'missions.resets': 'Новые задания через {time}',
+  'missions.lockedTitle': 'Ежедневные задания',
+  'missions.bonusTitle': 'Большой сундук',
+  'missions.bonusDone': 'Открыт — завтра новые задания!',
+
+  // --- themes ---------------------------------------------------------------------------------
+  'theme.jewel': 'Самоцветы',
+  'theme.neon': 'Неон',
+  'theme.candy': 'Карамель',
+  'theme.wood': 'Дерево',
+  'theme.pixel': 'Пиксели',
+  'theme.gold': 'Золото',
+
+  // --- shop -----------------------------------------------------------------------------------
+  'shop.title': 'Магазин',
+  'shop.product.remove_ads': 'Без рекламы',
+  'shop.product.coins_small': 'Мешочек монет',
+  'shop.product.coins_large': 'Сундук монет',
+  'shop.removeAds.desc': 'Убирает баннер и рекламу между играми. Необязательные видео с наградой остаются доступны.',
+  'shop.removeAds.gift': {
+    one: 'Подарок: {n} монета + бонусы', few: 'Подарок: {n} монеты + бонусы', many: 'Подарок: {n} монет + бонусы', other: 'Подарок: {n} монет + бонусы',
+  },
+  'shop.owned': 'Активно',
+  'shop.bestValue': 'Самый выгодный',
+  'shop.freeCoins': {
+    one: '+{n} монета за рекламу', few: '+{n} монеты за рекламу', many: '+{n} монет за рекламу', other: '+{n} монет за рекламу',
+  },
+  'shop.unavailable': 'Магазин сейчас недоступен.',
+  'shop.tab.coins': 'Монеты',
+  'shop.tab.themes': 'Темы',
+  'shop.tab.boosters': 'Бонусы',
+  'shop.removeAds.giftLine': 'Подарок: монеты +{coins}, Молот +{hammer}, Замена +{shuffle}',
+  'shop.adFree': 'Без рекламы',
+  'shop.free.title': 'Бесплатные монеты',
+  'shop.free.left': {
+    one: 'Сегодня осталось {n} видео', few: 'Сегодня осталось {n} видео', many: 'Сегодня осталось {n} видео', other: 'Сегодня осталось {n} видео',
+  },
+  'shop.free.none': 'Возвращайся завтра за новыми.',
+  'shop.theme.selected': 'Выбрана',
+  'shop.theme.select': 'Выбрать',
+  'shop.theme.level': 'Уровень {n}',
+  'shop.theme.need': 'Не хватает {n}',
+  'shop.theme.short': {
+    one: 'Не хватает {n} монеты', few: 'Не хватает {n} монет', many: 'Не хватает {n} монет', other: 'Не хватает {n} монет',
+  },
+  'shop.theme.lockedToast': 'Откроется на {n}-м уровне игрока',
+  'shop.theme.confirmTitle': 'Открыть эту тему?',
+  'shop.theme.confirmBody': {
+    one: '«{name}» за {n} монету', few: '«{name}» за {n} монеты', many: '«{name}» за {n} монет', other: '«{name}» за {n} монет',
+  },
+  'shop.theme.unlock': 'Открыть',
+  'shop.theme.unlocked': 'Тема «{name}» открыта!',
+  'shop.theme.applied': 'Тема: «{name}»',
+  'shop.booster.got': '+1 {name}',
+  'shop.booster.watch': '+1 бесплатно за рекламу',
+  'shop.removeAds.giftLabel': 'Подарок:',
+  'shop.booster.hint': 'Бонусы помогают на уровнях кампании и в испытаниях дня.',
+  'pending.title': 'Платёж обрабатывается',
+  'pending.body': 'Google Play ещё обрабатывает твой платёж. Когда он завершится, покупка придёт автоматически — даже если ты закроешь игру.',
+
+  // --- settings -------------------------------------------------------------------------------
+  'settings.sound': 'Звуковые эффекты',
+  'settings.music': 'Музыка',
+  'settings.haptics': 'Вибрация',
+  'settings.language': 'Язык',
+  'settings.langAuto': 'Автоматически',
+  'settings.notifications': 'Ежедневное напоминание',
+  'settings.notifDenied': 'Разреши уведомления в настройках системы',
+  'settings.removeAds': 'Убрать рекламу',
+  'settings.restore': 'Восстановить покупки',
+  'settings.privacy': 'Настройки конфиден\u00ADциальности', // soft hyphen: one word is wider than the 320 px row
+  'settings.privacyPolicy': 'Политика конфиден\u00ADциальности',
+  'settings.legal': 'Правовая информация',
+  'settings.rate': 'Оценить',
+  'settings.share': 'Поделиться',
+  'settings.shareText': 'Я играю в Blocko! Мой рекорд: {n}. {url}',
+  'settings.reset': 'Сбросить прогресс',
+  'settings.resetConfirm': 'Весь прогресс, монеты и темы будут удалены. Покупки сохранятся.',
+  'settings.version': 'Версия {v}',
+  'settings.notifOn': 'Вкл. — одно напоминание в день',
+  'settings.notifOff': 'Выкл.',
+  'settings.purchases': 'Покупки',
+  'settings.about': 'Об игре',
+  'settings.resetTitle': 'Сбросить прогресс?',
+  'settings.resetOk': 'Сбросить',
+
+  // --- legal ----------------------------------------------------------------------------------
+  'legal.title': 'Правовая информация',
+  'legal.email': 'Эл. почта',
+  'legal.phone': 'Телефон',
+  'legal.vat': 'Номер НДС',
+  'legal.heading': 'Сведения согласно § 5 DDG',
+  'legal.contact': 'Контакты',
+  'legal.online': 'Правовая информация онлайн',
+  'legal.licenses': 'Лицензии открытого ПО',
+  'legal.font': 'шрифт от The Nunito Project Authors',
+  'legal.sounds': 'Все звуковые эффекты и музыка создаются прямо в приложении.',
+  'legal.about': 'Об этом приложении',
+  'legal.ads': 'Есть реклама',
+  'legal.iap': 'Покупки в приложении',
+
+  // --- notifications --------------------------------------------------------------------------
+  'notify.title': 'Blocko',
+  'notify.body': 'Твои ежедневные головоломки готовы.',
+  'notifAsk.text': {
+    one: 'Завтра: +{n} монета. Напомнить?', few: 'Завтра: +{n} монеты. Напомнить?', many: 'Завтра: +{n} монет. Напомнить?', other: 'Завтра: +{n} монет. Напомнить?',
+  },
+  'notifAsk.yes': 'Да',
+  'notifAsk.no': 'Не сейчас',
+  'notifAsk.title': 'Ежедневное напоминание',
+  'notifAsk.hint': 'Одно дружеское напоминание в день. Отключить можно в настройках.',
+};
