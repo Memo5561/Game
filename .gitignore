@@ -32,3 +32,6 @@ android/keystore.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Store screenshots: phone sets are committed, tablet sets are regenerated with `npm run assets`
+store/screenshots/*/tablet-*/

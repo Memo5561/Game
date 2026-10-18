@@ -93,18 +93,18 @@ export const CONFIG = Object.freeze({
     // classic only: coins = floor(RUN_COINS_FACTOR * sqrt(score)) – concave, so long combo-driven
     // runs don't explode the economy (score 2,500 → 25, 10,000 → 50, 40,000 → 100)
     RUN_COINS_FACTOR: 0.5,
-    LEVEL_COMPLETE_COINS: 40,           // journey: first completion = base + 10 per star; replays: +10 per newly earned star
+    LEVEL_COMPLETE_COINS: 30,           // journey: first completion = base + 10 per star; replays: +10 per newly earned star
     LEVEL_STAR_COINS: 10,
-    DAILY_CHALLENGE_COINS: 150,         // first completion of that day only
-    DAILY_REWARDS: Object.freeze([50, 75, 100, 150, 200, 300, 500]), // 7-day login calendar
+    DAILY_CHALLENGE_COINS: 100,         // first completion of that day only
+    DAILY_REWARDS: Object.freeze([30, 50, 70, 100, 140, 200, 350]), // 7-day login calendar
     DAILY_REWARD_DAY7_BOOSTERS: Object.freeze({ hammer: 1, shuffle: 1 }),
-    MISSION_REWARDS: Object.freeze([30, 50, 70]),  // easy / medium / hard slot
-    MISSION_BONUS_COINS: 100,           // all 3 daily missions claimed
+    MISSION_REWARDS: Object.freeze([20, 30, 45]),  // easy / medium / hard slot
+    MISSION_BONUS_COINS: 40,           // all 3 daily missions claimed
     STARTING_COINS: 100,
     STARTING_BOOSTERS: Object.freeze({ hammer: 2, shuffle: 2 }),
     BOOSTER_PRICES: Object.freeze({ hammer: 150, shuffle: 120 }),
-    REVIVE_COINS: 400,                  // alternative to the revive ad (still once per run)
-    LEVEL_UP_COINS: 100,
+    REVIVE_COINS: 600,                  // alternative to the revive ad (still once per run)
+    LEVEL_UP_COINS: 50,
     FREE_COINS_AD_AMOUNT: 40,
     REMOVE_ADS_GIFT: Object.freeze({ coins: 500, hammer: 1, shuffle: 1 }), // once, when remove_ads is first owned
     // Each theme is either bought with coins (price) or unlocked by player level (unlockLevel).

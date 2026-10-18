@@ -62,11 +62,12 @@ export default async function reviveSpec() {
     assert(saved && saved.session.reviveUsed && saved.session.status === 'playing', 'revive persisted');
 
     // coins
-    await ev(page, () => window.__blocko.setCoins(500));
+    const startCoins = CONFIG.ECONOMY.REVIVE_COINS + 100;
+    await ev(page, (n) => window.__blocko.setCoins(n), startCoins);
     await toRevive(page);
     await tap(page, 'revive.coins');
     s = await waitState(page, '(st) => st.modals.length === 0 && st.session.reviveUsed');
-    assert(s.coins === 500 - CONFIG.ECONOMY.REVIVE_COINS, `coins spent (${s.coins})`);
+    assert(s.coins === startCoins - CONFIG.ECONOMY.REVIVE_COINS, `coins spent (${s.coins})`);
 
     // ad button arming on a fresh offer
     await toRevive(page);

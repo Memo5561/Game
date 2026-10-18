@@ -27,7 +27,7 @@ nach einem Tipp des Spielers, nie automatisch.
 
 | Platzierung | Wo | Regel |
 |---|---|---|
-| **Wiederbeleben** | Revive-Dialog nach „Kein Platz mehr!“ | einmal pro Runde. Alternativ `REVIVE_COINS` (400) Münzen: bewusst etwa 8 durchschnittliche Klassik-Runden wert, damit das Video die erste Wahl bleibt. Die ersten 2 Spiele: gratis ohne Video. „Nein danke“ ist sofort sichtbar und gleich groß. Der Countdown (5 s) startet beim Ablauf **nie** ein Video. |
+| **Wiederbeleben** | Revive-Dialog nach „Kein Platz mehr!“ | einmal pro Runde. Alternativ `REVIVE_COINS` (600) Münzen: bewusst etwa 13 durchschnittliche Klassik-Runden wert, damit das Video die erste Wahl bleibt. Die ersten 2 Spiele: gratis ohne Video. „Nein danke“ ist sofort sichtbar und gleich groß. Der Countdown (5 s) startet beim Ablauf **nie** ein Video. |
 | **×2 Münzen** | Game-over-Bildschirm | einmal pro Runde |
 | **Gratis-Booster** | Abenteuer/Tagesrätsel: Booster-Dialog im Level und Shop | Hammer oder Mischen, zusammen max. `FREE_BOOSTER_ADS_PER_DAY` (3) pro Tag. Der Zähler steht im Spielstand (`save.ads.freeBoosters`) und überlebt einen App-Neustart. |
 | **×2 Tagesbelohnung** | Login-Kalender | einmal pro Tag |
@@ -93,7 +93,7 @@ vertreibt aber Spieler. Das kostet langfristig mehr, als es bringt.
 | `UPSELL_AFTER_INTERSTITIALS` | 3 | 2–6 | Wann der „Werbefrei“-Chip zum ersten Mal erscheint. |
 | `BANNER_ENABLED` | true | – | Banner bringen in DE wenig. Abschalten kann die Bindung leicht erhöhen. |
 
-Passend dazu in `CONFIG.ECONOMY`: `FREE_COINS_AD_AMOUNT` (40), `REVIVE_COINS` (400),
+Passend dazu in `CONFIG.ECONOMY`: `FREE_COINS_AD_AMOUNT` (40), `REVIVE_COINS` (600),
 `REMOVE_ADS_GIFT` (500 Münzen + 1 Hammer + 1 Mischen).
 
 **Spielzeit vor einem Video zählt nicht doppelt:** Wer mitten in der Runde ein Belohnungsvideo
@@ -128,7 +128,7 @@ setzen (z. B. max. 15 pro Stunde). Das greift, falls im Code einmal etwas schief
 - **Wert im Spiel** (gemessen mit `node tools/simulate.mjs --economy`, siehe 4.3): Ein aktiver
   Spieler (30 Minuten am Tag, keine Videos) verdient etwa 700 Münzen am Tag, ein Gelegenheitsspieler
   (15 Minuten) etwa 500. Designs kosten 1.500 / 3.000 / 5.000 / 10.000 Münzen, Booster 120–150, die
-  Münz-Wiederbelebung 400. `coins_small` (1.500) entspricht dem ersten Design (Candy) und etwa
+  Münz-Wiederbelebung 600. `coins_small` (1.500) entspricht dem ersten Design (Candy) und etwa
   **2–3 Tagen Spielzeit**, `coins_large` (6.000) etwa **8–12 Tagen**. Münzpakete sind also eine
   **Abkürzung**, keine Pflicht. So bleibt das Spiel fair, und trotzdem lohnt sich die Abkürzung.
 - **Preisendungen ,99** und **lokale Preise**: Google rechnet die Preise automatisch um. Für
@@ -150,7 +150,7 @@ Optionen: `--days=30 --players=3 --profiles=casual,engaged,strong --ads=0|1`.
 | Münzen pro Tag, 30 Min Spielzeit, keine Videos | 500–800 |
 | Erstes Design (Candy, 1.500) | nach 2–3 Tagen |
 | Letztes Design (Gold, 10.000), darauf gespart | nach 2–3 Wochen |
-| Münz-Wiederbelebung (400) im Vergleich zu einer Klassik-Runde | deutlich teurer (mehrere Runden) |
+| Münz-Wiederbelebung (600) im Vergleich zu einer Klassik-Runde | deutlich teurer (mehrere Runden) |
 | `coins_small` / `coins_large` in Tagen Spielzeit | mehrere Tage |
 
 **Ergebnis** (30 Tage, 3 Spieler je Profil, `ECONOMY` wie in `config.js`):
@@ -163,7 +163,7 @@ Optionen: `--days=30 --players=3 --profiles=casual,engaged,strong --ads=0|1`.
 | Sehr gut, 45 Min, ohne Videos | ca. 1.040 | Tag 2 | Tag 10 | Tag 19 | 4,3 | 1,4 Tage | 5,8 Tage |
 | Sehr gut, 45 Min, alle Videos | ca. 1.930 | Tag 2 | Tag 6 | Tag 11 | 3,0 | 0,8 Tage | 3,1 Tage |
 
-„Revive = Runden“ heißt: Die 400 Münzen der Wiederbelebung sind so viele durchschnittliche
+„Revive = Runden“ heißt: Die 600 Münzen der Wiederbelebung sind so viele durchschnittliche
 Klassik-Runden wert (eine Runde bringt im Median 45–60 Münzen, ein sehr guter Spieler 95–130).
 
 **Woher die Münzen kommen** (aktiver Spieler ohne Videos, grob): Klassik-Runden 25 %, Abenteuer-Level
@@ -181,7 +181,7 @@ Tabelle oben mit dem Simulator:
 | `DAILY_REWARDS` | 30 / 50 / 70 / 100 / 140 / 200 / 350 | 7-Tage-Login-Kalender, im Schnitt etwa 130 Münzen am Tag. |
 | `MISSION_REWARDS`, `MISSION_BONUS_COINS` | 20 / 30 / 45, 40 | Drei Tagesmissionen und der Bonus für alle drei. |
 | `LEVEL_UP_COINS` | 50 | Pro Spielerlevel. |
-| `REVIVE_COINS` | 400 | Muss deutlich mehr kosten als eine Runde einbringt, sonst ersetzt die Münz-Wiederbelebung das Video. |
+| `REVIVE_COINS` | 600 | Muss deutlich mehr kosten als eine Runde einbringt, sonst ersetzt die Münz-Wiederbelebung das Video. |
 | `THEMES[...].price` | 1.500 / 3.000 / 5.000 / 10.000 | Münz-Designs. Sind alle gekauft, bleiben nur Booster und Revive als Münz-Verbrauch. Für ein langes Spiel sind weitere Designs (saisonal) die beste Maßnahme. |
 
 **⚠ Wenn du die Einnahmen der Spieler änderst**, ändern sich zugleich der Wert der Münzpakete und der

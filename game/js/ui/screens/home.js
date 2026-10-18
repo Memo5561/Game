@@ -10,7 +10,7 @@ import { generateLevel, generateDailyLevel, levelKind } from '../../core/levels.
 import { CONFIG } from '../../config.js';
 import { icon } from '../icons.js';
 import { fromHtml, setText, toggleClass, esc } from '../dom.js';
-import { t, formatNumber, formatDay } from '../i18n.js';
+import { t, upper, formatNumber, formatDay } from '../i18n.js';
 import { coinPill, bar, setBar, starsRow } from '../components.js';
 
 const LETTER_COLORS = [0, 1, 2, 3, 4, 6];
@@ -248,7 +248,7 @@ function render(app) {
 
   // Daily card
   const today = app.clock.today();
-  setText(refs.calMonth, formatDay(today, { month: 'short' }).replace('.', '').toUpperCase());
+  setText(refs.calMonth, upper(formatDay(today, { month: 'short' }).replace('.', '')));
   setText(refs.calDay, String(Number(today.slice(8))));
   const dailyOpen = P.isFeatureUnlocked('daily');
   const status = P.challengeStatus(today);

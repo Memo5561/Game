@@ -115,6 +115,7 @@ async function journeyCard() {
     await ev(page, () => window.__blocko.startGame('journey', { level: 4 }));
     await idle(page);
     await playMoves(page, 2);
+    await idle(page); // pause taps are ignored while the controller is busy
     await tap(page, 'game.pause');
     await waitModal(page, 'pause');
     await tap(page, 'pause.home');
@@ -140,6 +141,7 @@ async function staleDaily() {
     const first = await dayId();
     assert(first === `D${dayOffset(0)}`, `today's challenge (${first})`);
     await playMoves(page, 3);
+    await idle(page); // pause taps are ignored while the controller is busy
     await tap(page, 'game.pause');
     await waitModal(page, 'pause');
     await tap(page, 'pause.home');
@@ -160,6 +162,7 @@ async function staleDaily() {
     await playMoves(page, 2);
     await goToDay(page, 2);
     assert(await dayId() === `D${dayOffset(1)}`, 'the open run keeps playing (no jump under the player)');
+    await idle(page); // pause taps are ignored while the controller is busy
     await tap(page, 'game.pause');
     await waitModal(page, 'pause');
     await tap(page, 'pause.restart');
