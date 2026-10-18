@@ -1,0 +1,34 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Test / tool output
+test-results/
+playwright-report/
+.tmp/
+tools/out/
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/captures/
+android/.cxx/
+android/.kotlin/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Signing secrets – NEVER commit these
+*.jks
+*.keystore
+android/keystore.properties
+
+# OS
+.DS_Store
+Thumbs.db

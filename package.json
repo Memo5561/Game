@@ -1,0 +1,21 @@
+{
+  "name": "blocko",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Blocko – Block-Puzzle-Spiel (HTML5-Spiel in einer nativen Android-Huelle)",
+  "type": "module",
+  "scripts": {
+    "serve": "node tools/serve.mjs",
+    "test": "node --test tests/unit/",
+    "e2e": "node tests/e2e/run.mjs",
+    "sim": "node tools/simulate.mjs",
+    "assets": "node tools/store-assets.mjs",
+    "icons": "node tools/make-icons.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
