@@ -27,9 +27,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      # The runner image ships the Android SDK; use its own sdkmanager (setup-android@v3 tries to
+      # install the removed 'tools' package and fails).
       - name: Install SDK packages (compileSdk 37, build tools 36)
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n 1)"
+          echo "Using $SDKMANAGER (SDK at $SDK)"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0" "platform-tools"
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK
         working-directory: android
