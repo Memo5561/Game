@@ -9,6 +9,8 @@ import android.webkit.WebView
 import org.json.JSONObject
 import java.util.Locale
 
+private const val JS_TAG = "BlockoJS"
+
 /**
  * Native -> JS event channel: `window.__blockoNative.dispatch(event)` (docs/ARCHITECTURE.md §4.14).
  *
@@ -97,8 +99,8 @@ class GameBridge(
         val adState = ads.state
         return JSONObject()
             .put("platform", "android")
-            .put("appVersion", BuildConfig.VERSION_NAME)
-            .put("versionCode", BuildConfig.VERSION_CODE)
+            .put("appVersion", BuildConfig.BLOCKO_VERSION_NAME)
+            .put("versionCode", BuildConfig.BLOCKO_VERSION_CODE)
             .put("sdkInt", Build.VERSION.SDK_INT)
             .put("webViewVersion", activity.webViewVersion)
             .put("locale", Locale.getDefault().toLanguageTag())
@@ -238,9 +240,5 @@ class GameBridge(
         activity.runOnUiThread {
             if (!activity.isDestroyed) block()
         }
-    }
-
-    private companion object {
-        const val JS_TAG = "BlockoJS"
     }
 }

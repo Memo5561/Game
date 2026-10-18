@@ -118,7 +118,8 @@ function dispatch(evt) {
       settle(evt.requestId, undefined);
       break;
     case 'notificationPermissionResult':
-      if (info) info.notificationPermission = evt.granted ? 'granted' : 'denied';
+      // Android 13+ allows one more system prompt after a first denial, so ask native for the real state.
+      if (info) info.notificationPermission = evt.granted ? 'granted' : Platform.getNotificationPermission();
       settle(evt.requestId, !!evt.granted);
       break;
     case 'entitlements':

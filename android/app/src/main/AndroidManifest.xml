@@ -8,6 +8,14 @@
     <!-- Android 13+: asked only after the in-game soft ask ("Remind me?" -> Yes). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- WorkManager (work-runtime) merges FOREGROUND_SERVICE + SystemForegroundService for
+         foreground/expedited work. Blocko only uses a plain delayed OneTimeWorkRequest (reminder),
+         so both are removed: no foreground-service declaration needed in Play Console.
+         Never call setExpedited() / setForeground() on Blocko's work requests. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove" />
+
     <application
         android:allowBackup="true"
         android:appCategory="game"
@@ -28,6 +36,11 @@
         <meta-data
             android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT"
             android:value="true" />
+
+        <!-- See the FOREGROUND_SERVICE note above. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
 
         <!-- The game handles every size/orientation/theme/locale change itself: never recreate the WebView. -->
         <activity

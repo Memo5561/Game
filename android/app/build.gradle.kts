@@ -77,6 +77,9 @@ android {
 
         manifestPlaceholders["admobAppId"] = googleTestAppId
         buildConfigField("String", "TEST_DEVICE_IDS", blockoTestDeviceIds.asBuildConfigString())
+        // Reported to the game by getInfo() (explicit fields, independent of AGP's generated ones).
+        buildConfigField("String", "BLOCKO_VERSION_NAME", blockoVersionName.asBuildConfigString())
+        buildConfigField("int", "BLOCKO_VERSION_CODE", blockoVersionCode.toString())
     }
 
     signingConfigs {
