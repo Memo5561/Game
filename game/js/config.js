@@ -18,8 +18,7 @@ export const CONFIG = Object.freeze({
   // tools/check-release.mjs refuses a release while placeholders are left here.
   LEGAL: Object.freeze({
     OWNER_NAME: 'Mehmet Ali Köse',
-    // TODO(owner): the house number is missing – tools/check-release.mjs fails while 'Hausnummer fehlt' is here.
-    ADDRESS_LINES: Object.freeze(['Quellenstraße Hausnummer fehlt', '1100 Wien', 'Österreich']),
+    ADDRESS_LINES: Object.freeze(['Quellenstraße 24b/21/9', '1100 Wien', 'Österreich']),
     EMAIL: '1makdigital55@gmail.com',
     PHONE: '+43 664 1517640',
     CONTACT_FORM_URL: '',
