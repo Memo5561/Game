@@ -13,6 +13,8 @@ import { btn, iconBtn, starsRow } from '../components.js';
 import { startJourney } from '../screens/home.js';
 
 const { LEVEL_COMPLETE_COINS, LEVEL_STAR_COINS } = CONFIG.ECONOMY;
+/** First-clear base coins of a level (hard / super hard levels pay more: LevelDef.rewardCoins). */
+const baseCoins = (level) => (Number(level.rewardCoins) > 0 ? Number(level.rewardCoins) : LEVEL_COMPLETE_COINS);
 
 export const levelStartModal = {
   id: 'levelStart',
@@ -31,7 +33,7 @@ export const levelStartModal = {
     const gems = level.goals.gems || {};
     const goals = Object.keys(gems).map((type) => `<span class="ls__gem">${icon('gem', 'ls__gem-icon', Number(type))}<span>${esc(formatNumber(gems[type]))}</span></span>`).join('');
     const rows = [3, 2, 1].map((s) => {
-      const coins = best === 0 ? LEVEL_COMPLETE_COINS + LEVEL_STAR_COINS * s : LEVEL_STAR_COINS * Math.max(0, s - best);
+      const coins = best === 0 ? baseCoins(level) + LEVEL_STAR_COINS * s : LEVEL_STAR_COINS * Math.max(0, s - best);
       const text = s === 3 ? t('levelStart.par', { n: level.par[0] }) : s === 2 ? t('levelStart.par', { n: level.par[1] }) : t('levelStart.finish');
       return `<div class="ls__row${s <= best ? ' is-done' : ''}">
           ${starsRow(s, 3, 'ls__stars')}

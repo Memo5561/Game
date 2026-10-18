@@ -2,8 +2,10 @@
 //
 // Levels are deterministic functions of their number / day key. The prefilled blocks come from a
 // library of hand-made 8x8 pattern templates (shapes, symbols, letters, frames…) which are varied
-// with seeded rotation/mirroring and color schemes, so every level looks designed rather than
-// random. Journey difficulty follows a sawtooth (every 5th level hard, every 10th super hard,
+// with seeded rotation/mirroring, a small shift on the board and color schemes, so every level
+// looks designed rather than random. Journey levels never reuse a template within a few levels
+// (hard / super hard: within their last picks) and never repeat an exact board layout shortly
+// after it was used. Journey difficulty follows a sawtooth (every 5th level hard, every 10th super hard,
 // a breather after each peak); harder levels get denser patterns and gems that need more pieces.
 // Star thresholds (`par`) come from an effort model calibrated with tools/simulate.mjs.
 
@@ -53,12 +55,32 @@ const DIFFICULTY = Object.freeze({
 const CONTENT = Object.freeze({
   normal: Object.freeze({ effort: [8.5, 21], borders: [16, 27], cells: [11, 22], extraGems: 0, tiers: null }),
   hard: Object.freeze({ effort: [16, 26], borders: [28, 38], cells: [18, 26], extraGems: 1, tiers: [0, 0.2, 1, 1] }),
-  superhard: Object.freeze({ effort: [21.5, 31], borders: [38, 50], cells: [22, 30], extraGems: 2, tiers: [0, 0, 0.5, 1] }),
+  superhard: Object.freeze({ effort: [24, 38], borders: [38, 50], cells: [22, 30], extraGems: 2, tiers: [0, 0, 0.5, 1] }),
 });
 /** Seeded gem layouts tried per journey level (closest to the effort target wins). */
 const GEM_LAYOUT_TRIES = 10;
 /** A journey template is not reused within this many consecutive levels. */
 const TEMPLATE_WINDOW = 4;
+/**
+ * Hard / super hard levels additionally avoid the templates of their last PEAK_WINDOW picks of the
+ * same tag and of the last PEAK_WINDOW_OTHER picks of the other peak tag (the level window alone
+ * only ever sees normal levels there, so peaks used to repeat every 10 levels).
+ */
+const PEAK_WINDOW = 4;
+const PEAK_WINDOW_OTHER = 2;
+/**
+ * Soft repeat penalty on top of the hard windows: every use of a template among the last
+ * SOFT_WINDOW levels (peaks: SOFT_WINDOW_PEAKS peak picks) multiplies its weight by SOFT_FACTOR,
+ * so the templates close to the content target don't take turns with only a handful of others.
+ */
+const SOFT_WINDOW = 10;
+const SOFT_WINDOW_PEAKS = 12;
+const SOFT_FACTOR = 0.4;
+/** Journey levels below this number keep their template unshifted (first-session tuning). */
+const SHIFT_FROM_LEVEL = 10;
+/** Shifted layouts keep at least this share of the template's fragmentation (`borders`). */
+const SHIFT_MIN_BORDERS = 0.85;
+const MAX_SHIFT = 2;
 /** Coins for completing a journey level, as a multiple of LEVEL_COMPLETE_COINS. */
 const REWARD_FACTOR = Object.freeze({ normal: 1, hard: 1.5, superhard: 2 });
 
@@ -119,6 +141,11 @@ const TEMPLATE_DEFS = [
   { name: 'letterL', tier: 2, fixed: true, rows: ['........', '.a......', '.a......', '.a......', '.a......', '.aaaaa..', '........', '........'] },
   { name: 'letterE', tier: 2, fixed: true, rows: ['........', '.aaaaa..', '.a......', '.aaaa...', '.a......', '.aaaaa..', '........', '........'] },
   { name: 'letterU', tier: 2, fixed: true, rows: ['........', '.a....a.', '.a....a.', '.a....a.', '.a....a.', '..aaaa..', '........', '........'] },
+  { name: 'hash', tier: 2, rows: ['.....a..', '..a..a..', 'aaaaaaa.', '..a..a..', '..a..a..', 'aaaaaaa.', '..a..a..', '..a.....'] },
+  { name: 'rocket', tier: 2, rows: ['...a....', '..aaa...', '..aba...', '..aaa...', '..aaa...', '.aaaaa..', '.a.a.a..', '........'] },
+  { name: 'cactus', tier: 2, rows: ['....a...', '.a..a...', '.a..a.a.', '.aaaa.a.', '..aaaaa.', '....a...', '....a...', '........'] },
+  { name: 'lamp', tier: 2, rows: ['..aaaa..', '.aaaaaa.', '..aaaa..', '...bb...', '...bb...', '...bb...', '..cccc..', '........'] },
+  { name: 'flag', tier: 2, rows: ['.aaaa...', '.aaaa...', '.a......', '.a......', '.a......', '.a......', '.a......', '........'] },
 
   // --- tier 3: sparse diagonals, checkers, dense designs -----------------------------------
   { name: 'letterX', tier: 3, fixed: true, rows: ['a......a', '.a....a.', '..a..a..', '...bb...', '...bb...', '..a..a..', '.a....a.', 'a......a'] },
@@ -143,6 +170,27 @@ const TEMPLATE_DEFS = [
   { name: 'skull', tier: 3, rows: ['..aaaa..', '.aaaaaa.', '.a.aa.a.', '.aaaaaa.', '..a..a..', '..bbbb..', '........', '........'] },
   { name: 'stripes', tier: 3, rows: ['aa..bb..', '.aa..bb.', '..aa..bb', 'b..aa..b', 'bb..aa..', '.bb..aa.', '..bb..aa', '........'] },
   { name: 'ladder', tier: 3, rows: ['......a.', 'abbbbba.', 'a.....a.', 'a.....a.', 'abbbbba.', 'a.....a.', 'a.....a.', 'abbbbb..'] },
+
+  // --- more tier 3: dense designs for the hard / super hard pools (fragmented, spread over all rows) ---
+  { name: 'nestedV', tier: 3, rows: ['a......a', 'aa....aa', '.aa..aa.', '..aaaa..', '...bb...', '..b..b..', '.b....b.', 'b......b'] },
+  { name: 'comb', tier: 3, rows: ['aaaaaaa.', 'a.a.a.a.', 'a.a.a.a.', '........', '.b.b.b.b', '.b.b.b.b', '.bbbbbbb', '........'] },
+  { name: 'snake', tier: 3, rows: ['aaaaaaa.', '......a.', '.aaaa.a.', '.a..a.a.', '.a.aa.a.', '.a....a.', '.aaaaaa.', '........'] },
+  { name: 'pinwheel', tier: 3, rows: ['aaa.....', 'a..b....', 'a..b..cc', '...bbb.c', 'd.bbb...', 'dd..b..a', '....b..a', '.....aaa'] },
+  { name: 'knot', tier: 3, rows: ['.aaaa...', '.a..a...', '.a.bbbb.', '.aab..b.', '...b.aa.', '.bbbb.a.', '...aaaa.', '........'] },
+  { name: 'lanterns', tier: 3, rows: ['.aaaaaa.', '.a....a.', '.aaaaaa.', '..a..a..', '..aaaa..', '..a..a..', '.aaaaaa.', '........'] },
+  { name: 'lightning', tier: 3, rows: ['....aaaa', '...aa...', '..aa....', '.aaaaaa.', '....aa..', '...aa...', '..aa....', 'aaa.....'] },
+  { name: 'maze2', tier: 3, rows: ['a.aaaaa.', 'a.....a.', 'aaaaa.a.', '....a.a.', '.bb.a.aa', '.b..a...', '.b.aaaa.', '.b......'] },
+  { name: 'cathedral', tier: 3, rows: ['a..aa..a', 'aa.aa.aa', 'aa....aa', 'a.bbbb.a', '..b..b..', 'a.b..b.a', 'aa....aa', 'aaa..aaa'] },
+  { name: 'dna', tier: 3, rows: ['aa....bb', '.aa..bb.', '..aabb..', '...bb...', '..bbaa..', '.bb..aa.', 'bb....aa', 'b......a'] },
+  { name: 'ziggurat', tier: 3, rows: ['...aa...', '..a..a..', '..a..a..', '.aa..aa.', '.a....a.', 'aa....aa', 'a......a', 'aaaaaaa.'] },
+  { name: 'tangram', tier: 3, rows: ['aaa.....', 'aaa..bb.', '.....bb.', 'ccc.....', '.cc..ddd', '.....ddd', 'ee....f.', 'ee...fff'] },
+  { name: 'hourglass', tier: 3, rows: ['.aaaaaa.', '..a..a..', '...aa...', '...bb...', '...bb...', '...aa...', '..a..a..', '.aaaaaa.'] },
+  { name: 'islands', tier: 3, rows: ['aa....bb', 'aaa..bbb', '.aa...b.', '........', '........', '.c...dd.', 'ccc..ddd', 'cc....dd'] },
+  { name: 'steps3', tier: 3, rows: ['aa......', 'aaa.....', '.aaa....', '..aaa...', '...bbb..', '....bbb.', '.....bbb', '......bb'] },
+  { name: 'tiles', tier: 3, rows: ['aa.bb.aa', 'aa.bb.aa', '........', 'cc.dd.cc', 'cc.dd.cc', '........', 'aa.bb.aa', '........'] },
+  { name: 'domino', tier: 3, rows: ['aa.bb.cc', '...bb...', 'dd....ee', 'dd.ff.ee', '...ff...', 'gg.hh.ii', '...hh...', 'jj....kk'] },
+  { name: 'frames2', tier: 3, rows: ['aaaa....', 'a..a....', 'aaaa....', '........', '....bbbb', '....b..b', '....bbbb', '........'] },
+  { name: 'bridge', tier: 3, rows: ['........', 'aaaaaaa.', 'a.a.a.a.', 'a.a.a.a.', '........', '.bbbbbbb', '.b.b.b.b', '.b.b.b.b'] },
 ];
 
 /**
@@ -177,6 +225,9 @@ const TEMPLATES = Object.freeze(TEMPLATE_DEFS.map((t) => Object.freeze({
 /** Template names (for tests and debugging). */
 export const PATTERN_NAMES = Object.freeze(TEMPLATES.map((t) => t.name));
 
+/** The template library (extra export for tests): `{ name, tier, fixed, rows, size, borders }`. */
+export const PATTERN_TEMPLATES = TEMPLATES;
+
 /** The 8 symmetries of the square: [swap axes, flip rows, flip cols]. */
 const TRANSFORMS = [
   [false, false, false], [false, false, true], [false, true, false], [false, true, true],
@@ -184,13 +235,15 @@ const TRANSFORMS = [
 ];
 
 /**
- * Template cells (with a seeded symmetry for non-fixed templates).
+ * Template cells with the given symmetry and shift.
  * @param {Template} tpl
- * @param {RNG} rng
+ * @param {readonly [boolean, boolean, boolean]} sym [swap axes, flip rows, flip cols]
+ * @param {number} [dr] rows to move down
+ * @param {number} [dc] columns to move right
  * @returns {Array<{r:number, c:number, group:number}>}
  */
-function templateCells(tpl, rng) {
-  const [swap, flipR, flipC] = tpl.fixed ? TRANSFORMS[0] : rng.pick(TRANSFORMS);
+function variantCells(tpl, sym, dr = 0, dc = 0) {
+  const [swap, flipR, flipC] = sym;
   const out = [];
   for (let r = 0; r < N; r++) {
     for (let c = 0; c < N; c++) {
@@ -199,10 +252,92 @@ function templateCells(tpl, rng) {
       let rr = flipR ? N - 1 - r : r;
       let cc = flipC ? N - 1 - c : c;
       if (swap) [rr, cc] = [cc, rr];
-      out.push({ r: rr, c: cc, group: ch.charCodeAt(0) - 97 });
+      out.push({ r: rr + dr, c: cc + dc, group: ch.charCodeAt(0) - 97 });
     }
   }
   return out;
+}
+
+/**
+ * Template cells (with a seeded symmetry for non-fixed templates).
+ * @param {Template} tpl
+ * @param {RNG} rng
+ * @returns {Array<{r:number, c:number, group:number}>}
+ */
+function templateCells(tpl, rng) {
+  return variantCells(tpl, tpl.fixed ? TRANSFORMS[0] : rng.pick(TRANSFORMS));
+}
+
+/**
+ * @typedef {Object} Variant
+ * @property {readonly [boolean, boolean, boolean]} sym
+ * @property {number} dr
+ * @property {number} dc
+ * @property {string} key  occupancy of the 64 cells ('#' / '.'), equal keys = identical board layout
+ */
+
+/** @param {Uint8Array} grid N×N occupancy @returns {string} equal strings = identical board layouts */
+function occupancyKey(grid) {
+  let key = '';
+  for (let i = 0; i < N * N; i++) key += grid[i] ? '#' : '.';
+  return key;
+}
+
+/** Fragmentation (`bordersOf`) of an N×N occupancy grid. */
+function bordersOfGrid(grid) {
+  let borders = 0;
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const v = grid[r * N + c];
+      if (c + 1 < N && v !== grid[r * N + c + 1]) borders++;
+      if (r + 1 < N && v !== grid[(r + 1) * N + c]) borders++;
+    }
+  }
+  return borders;
+}
+
+/** @type {Map<string, Variant[]>} */
+const VARIANT_CACHE = new Map();
+
+/**
+ * All distinct board layouts of a template: its symmetries (none for letters/symbols) combined
+ * with shifts of up to MAX_SHIFT cells that keep every cell on the board and the template's
+ * fragmentation (a shift towards an edge lowers it). Shifts preserve every row/column count as a
+ * multiset, so a shifted layout never has a full line either. Index 0 is the unshifted layout.
+ * @param {Template} tpl
+ * @returns {Variant[]}
+ */
+function variantsOf(tpl) {
+  let list = VARIANT_CACHE.get(tpl.name);
+  if (list) return list;
+  list = [];
+  const seen = new Set();
+  const bases = (tpl.fixed ? [TRANSFORMS[0]] : TRANSFORMS).map((sym) => {
+    const cells = variantCells(tpl, sym);
+    const rs = cells.map((p) => p.r);
+    const cs = cells.map((p) => p.c);
+    return { sym, cells, minR: Math.min(...rs), maxR: Math.max(...rs), minC: Math.min(...cs), maxC: Math.max(...cs) };
+  });
+  const grid = new Uint8Array(N * N);
+  for (let dist = 0; dist <= MAX_SHIFT; dist++) {
+    for (let dr = -dist; dr <= dist; dr++) {
+      for (let dc = -dist; dc <= dist; dc++) {
+        if (Math.max(Math.abs(dr), Math.abs(dc)) !== dist) continue;
+        for (const base of bases) {
+          if (base.minR + dr < 0 || base.maxR + dr >= N || base.minC + dc < 0 || base.maxC + dc >= N) continue;
+          grid.fill(0);
+          for (const { r, c } of base.cells) grid[(r + dr) * N + c + dc] = 1;
+          const key = occupancyKey(grid);
+          if (seen.has(key)) continue;
+          if (dist > 0 && bordersOfGrid(grid) < SHIFT_MIN_BORDERS * tpl.borders) continue;
+          seen.add(key);
+          list.push({ sym: base.sym, dr, dc, key });
+        }
+      }
+    }
+  }
+  VARIANT_CACHE.set(tpl.name, list);
+  return list;
 }
 
 /**
@@ -421,12 +556,13 @@ function progressOf(n) {
 }
 
 /**
- * Seeded template choice for journey level n, avoiding the templates of the previous levels.
+ * Seeded template choice for journey level n.
  * @param {number} n
- * @param {Template[]} recent templates of the previous TEMPLATE_WINDOW levels
+ * @param {Template[]} avoid templates that must not be reused (see `recentTemplates`)
+ * @param {Template[]} soft templates whose weight is reduced per use
  * @returns {Template}
  */
-function chooseTemplate(n, recent) {
+function chooseTemplate(n, avoid, soft) {
   const rng = new RNG(hashString(`journey-template-${n}`));
   const tag = levelKind(n);
   const progress = progressOf(n);
@@ -438,25 +574,99 @@ function chooseTemplate(n, recent) {
   // The template must allow gem layouts that need enough effort (e.g. not only nearly full lines).
   const minEffort = 0.7 * lerp(content.effort[0], content.effort[1], progress);
   const near = (x, target, width) => Math.exp(-(((x - target) / width) ** 2));
-  const weight = (t) => tierW[t.tier] * (0.02 + near(t.size, targetCells, 7) * near(t.borders, targetBorders, 6));
+  const uses = (t) => soft.reduce((k, u) => k + (u === t ? 1 : 0), 0);
+  // Templates with only a few layouts (symmetric ones) would run out of unused layouts first. A
+  // template no level used yet has all of them left (its layouts are built on first use only).
+  const layoutsLeft = (t) => (LAYOUTS_USED.has(t.name) ? unusedVariants(n, t).length : Infinity);
+  const weight = (t) => tierW[t.tier] * (0.02 + near(t.size, targetCells, 7) * near(t.borders, targetBorders, 6))
+    * SOFT_FACTOR ** uses(t) * Math.max(0.05, Math.min(1, layoutsLeft(t) / 3));
   const usable = TEMPLATES.filter((t) => tierW[t.tier] > 0 && t.size >= minCells);
   const strong = usable.filter((t) => maxEffort(t) >= minEffort);
-  const fresh = (strong.length ? strong : usable).filter((t) => !recent.includes(t));
-  return rng.weighted(fresh.length ? fresh : usable, weight);
+  const allowed = (strong.length ? strong : usable).filter((t) => !avoid.includes(t));
+  const fresh = allowed.filter((t) => layoutsLeft(t) > 0);
+  return rng.weighted(fresh.length ? fresh : allowed.length ? allowed : usable, weight);
 }
 
-/** Templates of journey levels 1..k (index = level), filled on demand. */
-const TEMPLATE_HISTORY = [null];
+/**
+ * Board layout of a journey level: a template and one of its variants.
+ * @typedef {{ tpl: Template, variant: Variant }} LayoutPlan
+ */
+
+/** Layout plans of journey levels 1..k (index = level), filled on demand. */
+const LAYOUT_HISTORY = [null];
+
+/**
+ * Templates journey level m must not reuse (`avoid`: the previous TEMPLATE_WINDOW levels and, for
+ * hard / super hard levels, the last picks of the peak tags, PEAK_WINDOW / PEAK_WINDOW_OTHER) and
+ * the ones it should rather not reuse (`soft`: SOFT_WINDOW levels, peaks: SOFT_WINDOW_PEAKS picks).
+ * @param {number} m
+ * @returns {{ avoid: Template[], soft: Template[] }}
+ */
+function recentTemplates(m) {
+  const avoid = LAYOUT_HISTORY.slice(Math.max(1, m - TEMPLATE_WINDOW), m).map((p) => p.tpl);
+  const tag = levelKind(m);
+  if (tag === 'normal') {
+    return { avoid, soft: LAYOUT_HISTORY.slice(Math.max(1, m - SOFT_WINDOW), m).map((p) => p.tpl) };
+  }
+  const soft = [];
+  let same = 0;
+  let other = 0;
+  for (let k = m - 1; k >= 1 && soft.length < SOFT_WINDOW_PEAKS; k--) {
+    const kind = levelKind(k);
+    if (kind === 'normal') continue;
+    soft.push(LAYOUT_HISTORY[k].tpl);
+    if (kind === tag ? same++ < PEAK_WINDOW : other++ < PEAK_WINDOW_OTHER) avoid.push(LAYOUT_HISTORY[k].tpl);
+  }
+  return { avoid, soft };
+}
+
+/** Board layout key → highest journey level that used it. */
+const LAYOUT_LAST_USED = new Map();
+/** Names of the templates some journey level already used. */
+const LAYOUTS_USED = new Set();
+
+/** @param {number} m @param {Template} tpl @returns {Variant[]} layouts journey level m may use */
+function variantPool(m, tpl) {
+  const all = variantsOf(tpl);
+  return m < SHIFT_FROM_LEVEL ? all.filter((v) => v.dr === 0 && v.dc === 0) : all;
+}
+
+/** @param {number} m @param {Template} tpl @returns {Variant[]} layouts of `tpl` no earlier level used */
+function unusedVariants(m, tpl) {
+  return variantPool(m, tpl).filter((v) => !LAYOUT_LAST_USED.has(v.key));
+}
+
+/**
+ * Seeded layout variant of a template for journey level m: a layout no earlier level used (the
+ * one used longest ago if the template ran out of layouts), unshifted layouts preferred.
+ * @param {number} m
+ * @param {Template} tpl
+ * @returns {Variant}
+ */
+function chooseVariant(m, tpl) {
+  const rng = new RNG(hashString(`journey-layout-${m}`));
+  const pool = variantPool(m, tpl);
+  const unused = unusedVariants(m, tpl);
+  if (unused.length > 0) {
+    return rng.weighted(unused, (v) => (v.dr === 0 && v.dc === 0 ? 3 : Math.abs(v.dr) + Math.abs(v.dc) <= 2 ? 1 : 0.5));
+  }
+  return pool.reduce((best, v) => (LAYOUT_LAST_USED.get(v.key) < LAYOUT_LAST_USED.get(best.key) ? v : best), pool[0]);
+}
 
 /**
  * @param {number} n
- * @returns {Template} the pattern template of journey level n
+ * @returns {LayoutPlan} template and layout of journey level n
  */
-function journeyTemplate(n) {
-  for (let m = TEMPLATE_HISTORY.length; m <= n; m++) {
-    TEMPLATE_HISTORY.push(chooseTemplate(m, TEMPLATE_HISTORY.slice(Math.max(1, m - TEMPLATE_WINDOW), m)));
+function journeyLayout(n) {
+  for (let m = LAYOUT_HISTORY.length; m <= n; m++) {
+    const { avoid, soft } = recentTemplates(m);
+    const tpl = chooseTemplate(m, avoid, soft);
+    const variant = chooseVariant(m, tpl);
+    LAYOUT_LAST_USED.set(variant.key, m);
+    LAYOUTS_USED.add(tpl.name);
+    LAYOUT_HISTORY.push({ tpl, variant });
   }
-  return TEMPLATE_HISTORY[n];
+  return LAYOUT_HISTORY[n];
 }
 
 /** @type {Map<string, number>} */
@@ -483,9 +693,11 @@ function maxEffort(tpl) {
  * Builds prefilled cells for the given template.
  * @param {Template} tpl
  * @param {RNG} rng
+ * @param {Variant} [variant] layout variant; a seeded symmetry is drawn from `rng` if omitted
  */
-function buildPrefilled(tpl, rng) {
-  return breakFullLines(colorize(templateCells(tpl, rng), rng))
+function buildPrefilled(tpl, rng, variant) {
+  const cells = variant ? variantCells(tpl, variant.sym, variant.dr, variant.dc) : templateCells(tpl, rng);
+  return breakFullLines(colorize(cells, rng))
     .sort((a, b) => a.r - b.r || a.c - b.c);
 }
 
@@ -513,8 +725,8 @@ export function generateLevel(n) {
   // Endless levels after 50 vary their effort randomly in the upper range.
   const progress = n > 50 ? lerp(0.6, 1, rng.next()) : progressOf(n);
 
-  const tpl = journeyTemplate(n);
-  const prefilled = buildPrefilled(tpl, rng);
+  const { tpl, variant } = journeyLayout(n);
+  const prefilled = buildPrefilled(tpl, rng, variant);
   const [lo, hi] = gemRangeFor(n, tag);
   const count = Math.min(rng.range(lo, hi), prefilled.length);
   // Several seeded gem layouts; keep the one whose effort is closest to the target.

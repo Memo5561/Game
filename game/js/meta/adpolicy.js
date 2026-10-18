@@ -7,6 +7,11 @@
 import { CONFIG } from '../config.js';
 import { dayKey } from './progression.js';
 
+/** @param {unknown} v @returns {number} finite seconds >= 0 (anything else → 0) */
+function seconds(v) {
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
 export class AdPolicy {
   /**
    * @param {import('./storage.js').SaveData} save
@@ -29,16 +34,23 @@ export class AdPolicy {
 
   /**
    * Once per finished or abandoned run (never the tutorial). Runs with fewer than RUN_MIN_PIECES
-   * pieces are ignored entirely.
-   * @param {{ playSec: number, pieces: number }} run playSec = active in-run seconds
+   * pieces are ignored entirely. Play time from before a rewarded ad watched in this run
+   * (`markRewardedShown(runPlaySecSoFar)`) was already "spent" by that ad and does not count.
+   * @param {{ playSec: number, pieces: number }} run playSec = active in-run seconds of the whole run
    * @returns {boolean} whether the run counted
    */
   onRunFinished({ playSec, pieces } = {}) {
-    if (!(pieces >= this.config.RUN_MIN_PIECES)) return false;
     const ads = this.save.ads;
+    const adAt = seconds(ads.runSecAtAd);
+    const sinceAd = Math.max(0, seconds(playSec) - adAt);
+    if (adAt > 0) ads.runSecAtAd = 0; // the run is over, whether it counted or not
+    if (!(pieces >= this.config.RUN_MIN_PIECES)) {
+      if (adAt > 0) this._changed();
+      return false;
+    }
     ads.runsFinished += 1;
     ads.sessionRuns += 1;
-    ads.playSecSinceAd += Number.isFinite(playSec) && playSec > 0 ? playSec : 0;
+    ads.playSecSinceAd += sinceAd;
     this._changed();
     return true;
   }
@@ -69,10 +81,16 @@ export class AdPolicy {
     this._changed();
   }
 
-  /** After every rewarded ad that resolved true (a full-screen ad resets the cadence too). */
-  markRewardedShown() {
+  /**
+   * After every rewarded ad that was shown (a full-screen ad resets the cadence too).
+   * @param {number} [runPlaySecSoFar=0] active play seconds of the running run at this moment (a
+   *   mid-run ad: revive, booster), 0/omitted for an ad outside a run. `onRunFinished` then credits
+   *   only the play time after the ad. Persisted in `save.ads.runSecAtAd`, so a resumed run keeps it.
+   */
+  markRewardedShown(runPlaySecSoFar = 0) {
     const ads = this.save.ads;
     ads.playSecSinceAd = 0;
+    ads.runSecAtAd = seconds(runPlaySecSoFar);
     ads.lastRewardedAt = this._nowMs();
     this._changed();
   }

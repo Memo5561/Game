@@ -34,6 +34,9 @@ import { paintBoardPreview } from './sprites.js';
  * @property {boolean} dark               dark UI (light text) or light UI
  * @property {number} fxGlow              strength of additive glow effects (lower on light themes)
  * @property {Object<string, string>} ui  DOM colors, see themeCssVars()
+ *   ui.coinText / accentText / goodText: legible variants of coin / accent / good for TEXT on panels
+ *   and the page background (light themes need darker ones); default to the fill colors.
+ *   ui.ad / adText: fill and label of "Watch ad" buttons – must differ from btn and btn2 (unit-tested).
  */
 
 const F = Object.freeze;
@@ -75,7 +78,7 @@ export const THEMES = F({
     dark: true,
     ui: F({
       panel: '#2A1F7A', panelEdge: '#4A3BB8', overlay: 'rgba(12,8,40,0.72)',
-      btn: '#2FCB72', btnText: '#FFFFFF', btnShadow: '#178A4A',
+      btn: '#1E9E57', btnText: '#FFFFFF', btnShadow: '#126B3A',
       btn2: '#5470FF', btn2Text: '#FFFFFF', btn2Shadow: '#2B3BB0',
       good: '#2FCB72', danger: '#F0405A', coin: '#FFC72C',
     }),
@@ -106,9 +109,10 @@ export const THEMES = F({
     dark: true,
     ui: F({
       panel: '#120A30', panelEdge: '#19E6FF', overlay: 'rgba(4,2,14,0.78)',
-      btn: '#FF3DD8', btnText: '#FFFFFF', btnShadow: '#8A1475',
+      btn: '#FF3DD8', btnText: '#12041F', btnShadow: '#8A1475',
       btn2: '#19E6FF', btn2Text: '#05121A', btn2Shadow: '#0B7C8C',
       good: '#3DFF6E', danger: '#FF3864', coin: '#FFE53B',
+      ad: '#FFE53B', adText: '#120530',
     }),
   }),
 
@@ -129,7 +133,7 @@ export const THEMES = F({
     accent: '#FF5FA2',
     accent2: '#7C5CFF',
     text: '#4B2C6B',
-    textDim: '#8A6FA6',
+    textDim: '#6A4F8A',
     textStroke: '#6E2A68',
     greyTint: '#B9A9D6',
     ghostAlpha: 0.45,
@@ -137,9 +141,11 @@ export const THEMES = F({
     dark: false,
     ui: F({
       panel: '#FFFFFF', panelEdge: '#F1D8FF', overlay: 'rgba(80,40,110,0.45)',
-      btn: '#FF5FA2', btnText: '#FFFFFF', btnShadow: '#C93A79',
+      btn: '#E0407F', btnText: '#FFFFFF', btnShadow: '#A82A5C',
       btn2: '#7C5CFF', btn2Text: '#FFFFFF', btn2Shadow: '#5236C9',
       good: '#3CC487', danger: '#F0466B', coin: '#FFB300',
+      coinText: '#8A5200', accentText: '#C2185B', goodText: '#0B6B45',
+      ad: '#FFC93C', adText: '#4B2C6B',
     }),
   }),
 
@@ -169,7 +175,7 @@ export const THEMES = F({
     ui: F({
       panel: '#5A3820', panelEdge: '#8C5A30', overlay: 'rgba(30,15,5,0.7)',
       btn: '#6E9B3A', btnText: '#FFFFFF', btnShadow: '#3F5E1C',
-      btn2: '#DE7F2C', btn2Text: '#FFFFFF', btn2Shadow: '#94501A',
+      btn2: '#C96A1B', btn2Text: '#FFFFFF', btn2Shadow: '#8A4510',
       good: '#7DBA45', danger: '#D9473A', coin: '#FFC857',
     }),
   }),
@@ -233,6 +239,7 @@ export const THEMES = F({
       btn: '#F5C84C', btnText: '#241A04', btnShadow: '#9C7414',
       btn2: '#2A2416', btn2Text: '#F5C84C', btn2Shadow: '#0A0907',
       good: '#12B76A', danger: '#E0115F', coin: '#F5C84C',
+      ad: '#22C3D6', adText: '#06242A',
     }),
   }),
 });
@@ -251,7 +258,8 @@ export function getTheme(id) {
  *
  * Provided: --bg-top, --bg-bottom, --accent, --accent-2, --text, --text-dim, --text-stroke,
  * --panel, --panel-edge, --overlay, --btn, --btn-text, --btn-shadow, --btn-2, --btn-2-text,
- * --btn-2-shadow, --good, --danger, --coin, --board, --cell-empty, --glow, --color-0 … --color-7,
+ * --btn-2-shadow, --good, --danger, --coin, --coin-text, --accent-text, --good-text, --ad, --ad-text,
+ * --board, --cell-empty, --glow, --color-0 … --color-7,
  * --scheme ('dark' | 'light', usable as `color-scheme: var(--scheme)`).
  * @param {Theme} theme
  * @returns {Object<string, string>}
@@ -279,6 +287,11 @@ export function themeCssVars(theme) {
     '--good': u.good,
     '--danger': u.danger,
     '--coin': u.coin,
+    '--coin-text': u.coinText || u.coin,
+    '--accent-text': u.accentText || th.accent,
+    '--good-text': u.goodText || u.good,
+    '--ad': u.ad || th.accent,
+    '--ad-text': u.adText || th.textStroke,
     '--board': th.board,
     '--cell-empty': th.cellEmpty,
     '--glow': th.accent,

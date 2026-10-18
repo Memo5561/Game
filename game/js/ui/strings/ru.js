@@ -58,7 +58,7 @@ export default {
   'home.starsAria': 'Звёзды: {n} из {max}',
 
   // --- daily reward (login calendar) ----------------------------------------------------------
-  'daily.title': 'Ежедневная награда',
+  'daily.title': 'Награда дня',
   'daily.sub.first': 'Заходи каждый день — награды растут!',
   'daily.sub.streak': {
     one: '{n} день подряд — так держать!', few: '{n} дня подряд — так держать!', many: '{n} дней подряд — так держать!', other: '{n} дней подряд — так держать!',
@@ -67,7 +67,7 @@ export default {
   'daily.sub.next': 'Следующая награда через {time}',
   'daily.claim': 'Забрать',
   'daily.double': '×2 за рекламу',
-  'daily.day': '{n}-й день',
+  'daily.day': '{n}-й',
   'daily.streakSaved': 'Серия спасена!',
   'daily.boosterGift': 'Молот +{hammer}, Замена +{shuffle}',
 
@@ -109,7 +109,7 @@ export default {
   'tutorial.title': 'Как играть',
   'tutorial.step1': 'Перетащи блок на поле, чтобы заполнить ряд.',
   'tutorial.step2': 'Полные столбцы тоже исчезают — заполни этот!',
-  'tutorial.step3': 'Убери ряд и столбец одновременно — будет комбо!',
+  'tutorial.step3': 'Сразу очисти ещё раз — комбо умножает очки!',
   'tutorial.skip': 'Пропустить',
   'tutorial.done': 'Отлично! Теперь твоя очередь.',
 
@@ -169,6 +169,8 @@ export default {
   'toast.purchaseError': 'Покупка не прошла.',
   'toast.purchaseUnavailable': 'Покупки сейчас недоступны.',
   'toast.alreadyOwned': 'Предыдущая покупка получена',
+  'toast.alreadyOwnedChecking': 'Проверяем твою прошлую покупку…',
+  'toast.alreadyOwnedPending': 'Прошлая покупка ещё обрабатывается.',
   'toast.restoreError': 'Не удалось связаться с Google Play.',
   'toast.restored': 'Покупки восстановлены.',
   'toast.restoreNone': 'Нет покупок для восстановления.',
@@ -185,7 +187,7 @@ export default {
     one: 'Набери {n} очко за одну игру', few: 'Набери {n} очка за одну игру', many: 'Набери {n} очков за одну игру', other: 'Набери {n} очков за одну игру',
   },
   'mission.play_games': { one: 'Заверши {n} игру', few: 'Заверши {n} игры', many: 'Заверши {n} игр', other: 'Заверши {n} игр' },
-  'mission.combo_reach': 'Сделай комбо x{n}',
+  'mission.combo_reach': 'Сделай комбо\u00A0x{n}',
   'mission.place_pieces': { one: 'Поставь {n} фигуру', few: 'Поставь {n} фигуры', many: 'Поставь {n} фигур', other: 'Поставь {n} фигур' },
   'mission.multi_clear': {
     one: 'Убери 2+ линии за один ход', few: 'Убери 2+ линии за ход {n} раза', many: 'Убери 2+ линии за ход {n} раз', other: 'Убери 2+ линии за ход {n} раз',
@@ -269,8 +271,8 @@ export default {
   'settings.notifDenied': 'Разреши уведомления в настройках системы',
   'settings.removeAds': 'Убрать рекламу',
   'settings.restore': 'Восстановить покупки',
-  'settings.privacy': 'Настройки конфиден\u00ADциальности', // soft hyphen: one word is wider than the 320 px row
-  'settings.privacyPolicy': 'Политика конфиден\u00ADциальности',
+  'settings.privacy': 'Приватность',
+  'settings.privacyPolicy': 'Политика конфиден\u00ADциальности', // soft hyphen: the word is wider than the 320 px row
   'settings.legal': 'Правовая информация',
   'settings.rate': 'Оценить',
   'settings.share': 'Поделиться',
@@ -289,6 +291,7 @@ export default {
   'legal.title': 'Правовая информация',
   'legal.email': 'Эл. почта',
   'legal.phone': 'Телефон',
+  'legal.contactForm': 'Форма связи',
   'legal.vat': 'Номер НДС',
   'legal.heading': 'Сведения согласно §\u00A05\u00A0DDG',
   'legal.contact': 'Контакты',
@@ -297,7 +300,7 @@ export default {
   'legal.font': 'шрифт от The Nunito Project Authors',
   'legal.sounds': 'Все звуковые эффекты и музыка создаются прямо в приложении.',
   'legal.about': 'Об этом приложении',
-  'legal.ads': 'Есть реклама',
+  'legal.ads': 'Содержит рекламу',
   'legal.iap': 'Покупки в приложении',
 
   // --- notifications --------------------------------------------------------------------------

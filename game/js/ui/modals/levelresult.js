@@ -9,7 +9,7 @@ import { esc } from '../dom.js';
 import { t, formatNumber } from '../i18n.js';
 import { btn, coinPill, starsRow } from '../components.js';
 import { wait, pop } from '../anim.js';
-import { coinsRow, xpRows, missionLine, armAdButtons, playRewards, doubleCoins, backHome, cleanupResult } from './result.js';
+import { coinsRow, xpRows, missionLine, armAdButtons, watchDoubleOffer, trackOverflow, playRewards, doubleCoins, backHome, cleanupResult } from './result.js';
 
 const STAR_FIRST_MS = 350;
 const STAR_STEP_MS = 380;
@@ -38,7 +38,7 @@ export const levelResultModal = {
       }
       card += `<div class="result__line">${icon('check')}<span>${esc(t('hud.pieces', { n: s.pieces }))}</span></div>`;
     }
-    card += xpRows(s) + missionLine(app);
+    card += xpRows(s) + missionLine(app, s);
     let actions;
     if (won && !daily) {
       actions = `${btn({ action: 'levelResult.next', labelKey: 'result.next', icon: 'next', size: 'xl' })}
@@ -60,14 +60,18 @@ export const levelResultModal = {
           <h2 class="result__title">${esc(title)}</h2>
           ${middle}
         </div>
-        ${card ? `<div class="panel result__card">${card}</div>` : ''}
-        <div class="result__actions">${actions}</div>
+        <div class="result__side">
+          ${card ? `<div class="panel result__card">${card}</div>` : ''}
+          <div class="result__actions">${actions}</div>
+        </div>
       </div>`;
   },
 
   onOpen(m, app) {
     const s = m.props.summary;
     armAdButtons(m);
+    trackOverflow(m);
+    if (s.reason === 'won') watchDoubleOffer(m, app, 'levelResult');
     let delay = 200;
     if (s.reason === 'won') {
       const stars = m.$('[data-ref="stars"]');

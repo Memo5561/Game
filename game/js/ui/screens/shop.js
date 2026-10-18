@@ -30,11 +30,6 @@ const TABS = [
 const BOOSTERS = ['hammer', 'shuffle'];
 const PACKS = ['coins_small', 'coins_large'];
 const PACK_ICON = { coins_small: 'bag', coins_large: 'chest-open' };
-/**
- * Free booster videos per day. Kept in memory (no save field exists for it) – the cap resets with
- * an app restart. TODO(lead): CONFIG.ADS.FREE_BOOSTER_ADS_PER_DAY + a save counter like freeCoins.
- */
-const FREE_BOOSTER_ADS_PER_DAY = 3;
 
 let el = null;
 let body = null;
@@ -44,7 +39,6 @@ let highlight = '';
 let products = null;
 /** product id whose Google Play flow is open */
 let pending = '';
-const freeBoosters = { day: '', count: 0 };
 
 export const shopScreen = {
   id: 'shop',
@@ -241,12 +235,7 @@ function themesTab(app) {
 
 function boostersTab(app) {
   const P = app.progression;
-  const today = app.clock.today();
-  if (freeBoosters.day !== today) {
-    freeBoosters.day = today;
-    freeBoosters.count = 0;
-  }
-  const canWatch = app.isRewardedAvailable() && freeBoosters.count < FREE_BOOSTER_ADS_PER_DAY;
+  const canWatch = app.isRewardedAvailable() && app.freeBoostersLeft() > 0;
   const cards = BOOSTERS.map((type) => {
     const price = CONFIG.ECONOMY.BOOSTER_PRICES[type];
     const name = t(`booster.${type}`);
@@ -355,12 +344,11 @@ function buyBooster(app, type, b) {
 }
 
 async function watchBooster(app, type, b) {
-  if (b.disabled || freeBoosters.count >= FREE_BOOSTER_ADS_PER_DAY) return;
+  if (b.disabled || app.freeBoostersLeft() < 1) return;
   b.disabled = true;
   const ok = await app.showRewarded('booster');
   if (ok) {
-    freeBoosters.count += 1;
-    app.progression.addBooster(type, 1);
+    app.grantFreeBooster(type);
     Sfx.play('reward');
     app.toast(t('shop.booster.got', { name: t(`booster.${type}`) }), { icon: type, tone: 'good', ms: 1600 });
   }

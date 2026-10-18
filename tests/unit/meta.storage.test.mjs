@@ -67,7 +67,8 @@ test('defaultSave has the complete v1 shape with CONFIG starting values', () => 
   assert.deepEqual(s.challenge, { completed: {}, streak: 0, lastDay: null });
   assert.deepEqual(s.ads, {
     runsFinished: 0, playSecSinceAd: 0, lastInterstitialAt: 0, lastRewardedAt: 0,
-    interstitialsShown: 0, sessionRuns: 0, upsellDay: null, freeCoins: { day: null, count: 0 },
+    interstitialsShown: 0, sessionRuns: 0, upsellDay: null, runSecAtAd: 0,
+    freeCoins: { day: null, count: 0 }, freeBoosters: { day: null, count: 0 },
   });
   assert.deepEqual(s.iap, { adsRemoved: false, adsGiftGranted: false, grantedTokens: [] });
   assert.deepEqual(s.flags, {
@@ -124,6 +125,8 @@ test('loadSave deep-merges over defaults, keeps unknown keys, takes arrays and r
   assert.deepEqual(s.futureKey, { nested: true });
   assert.deepEqual(s.missions, { day: null, list: [], bonusClaimed: false });
   assert.deepEqual(s.ads.freeCoins, { day: null, count: 0 });
+  assert.deepEqual(s.ads.freeBoosters, { day: null, count: 0 }, 'saves from before the field existed get the default');
+  assert.equal(s.ads.runSecAtAd, 0);
 });
 
 test('loadSave replaces values whose type contradicts the default', () => {

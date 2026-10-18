@@ -134,6 +134,56 @@ test('a rewarded ad resets play time and the interval like an interstitial', () 
   assert.equal(ctx.policy.shouldShowInterstitial(), true);
 });
 
+test('play time before a mid-run rewarded ad does not count towards the next interstitial', () => {
+  const ctx = setup();
+  ctx.policy.onSessionStart();
+  ctx.save.stats.playSec = 1000; // past the first-session gate
+  ctx.save.ads.sessionRuns = 1; // past the first run of the session
+  // a run of 300 s: revive ad after 200 s, then 100 s more
+  ctx.policy.markRewardedShown(200);
+  assert.equal(ctx.save.ads.runSecAtAd, 200);
+  assert.equal(ctx.save.ads.playSecSinceAd, 0);
+  ctx.clock.t += 10 * MIN;
+  assert.equal(ctx.policy.onRunFinished({ playSec: 300, pieces: 40 }), true);
+  assert.equal(ctx.save.ads.playSecSinceAd, 100, 'only the 100 s after the ad count');
+  assert.equal(ctx.save.ads.runSecAtAd, 0, 'reset when the run is over');
+  assert.equal(ctx.policy.shouldShowInterstitial(), false, '100 s < INTERSTITIAL_MIN_PLAY_SEC_SINCE_AD');
+  // the next run is credited completely again
+  ctx.policy.onRunFinished({ playSec: ADS.INTERSTITIAL_MIN_PLAY_SEC_SINCE_AD - 100, pieces: 40 });
+  assert.equal(ctx.save.ads.playSecSinceAd, ADS.INTERSTITIAL_MIN_PLAY_SEC_SINCE_AD);
+  assert.equal(ctx.policy.shouldShowInterstitial(), true);
+
+  // without the old behaviour (whole run counted) this run would already have qualified
+  const old = setup();
+  old.policy.markRewardedShown(); // ad outside of a run, or an old caller
+  old.policy.onRunFinished({ playSec: 300, pieces: 40 });
+  assert.equal(old.save.ads.playSecSinceAd, 300, 'backward compatible: no marker, the whole run counts');
+});
+
+test('runSecAtAd: later ads replace the marker, uncounted runs clear it, bad values are ignored', () => {
+  const ctx = setup();
+  ctx.policy.markRewardedShown(50);
+  ctx.policy.markRewardedShown(180); // second rewarded ad in the same run
+  assert.equal(ctx.save.ads.runSecAtAd, 180);
+  assert.equal(ctx.policy.onRunFinished({ playSec: 190, pieces: ADS.RUN_MIN_PIECES - 1 }), false);
+  assert.equal(ctx.save.ads.runSecAtAd, 0, 'an uncounted run is over too');
+  assert.equal(ctx.save.ads.playSecSinceAd, 0, 'and adds nothing');
+
+  for (const bad of [NaN, -5, Infinity, 'x', null, undefined]) {
+    ctx.policy.markRewardedShown(bad);
+    assert.equal(ctx.save.ads.runSecAtAd, 0, String(bad));
+  }
+  // a marker larger than the run (e.g. left over from a dropped run) never subtracts below zero
+  ctx.save.ads.runSecAtAd = 500;
+  ctx.policy.onRunFinished({ playSec: 100, pieces: 40 });
+  assert.equal(ctx.save.ads.playSecSinceAd, 0);
+  assert.equal(ctx.save.ads.runSecAtAd, 0);
+  // a save without the field (older version) behaves like 0
+  delete ctx.save.ads.runSecAtAd;
+  ctx.policy.onRunFinished({ playSec: 100, pieces: 40 });
+  assert.equal(ctx.save.ads.playSecSinceAd, 100);
+});
+
 test('a clock moved back does not block interstitials forever', () => {
   const ctx = eligible(setup());
   ctx.save.ads.lastInterstitialAt = START + 24 * 60 * MIN; // "tomorrow"

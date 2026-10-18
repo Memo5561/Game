@@ -2,6 +2,7 @@
 // and restores the identical board / tray / score (and the future trays); a run killed during the
 // game-over offer is finalized at boot; an incompatible saved run is dropped silently.
 // Run: node tests/e2e/run.mjs persistence
+import { CONFIG } from '../../game/js/config.js';
 import { openGame, veteranSave, assert, ev, state, waitModal, waitState, tap, playMoves, assertNoErrors } from './ui.helpers.mjs';
 import { waitForDebug } from './harness.mjs';
 
@@ -34,7 +35,7 @@ export default async function persistenceSpec() {
     s = await waitState(page, '(st) => st.screen === "game"');
     assert(snap(s) === snap(before), 'identical board / tray / score after Continue');
     // the same moves produce the same future on both sides of the reload
-    await playMoves(page, 3);
+    await playMoves(page, CONFIG.ADS.RUN_MIN_PIECES - 3); // 4 + this ≥ RUN_MIN_PIECES: the run counts as a game
     const a = await state(page);
     await reload(page);
     await tap(page, 'home.continue');

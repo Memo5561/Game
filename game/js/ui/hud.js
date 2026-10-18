@@ -9,7 +9,7 @@
 import { CONFIG } from '../config.js';
 import { TUTORIAL_STEP_COUNT } from '../core/game.js';
 import { icon } from './icons.js';
-import { esc, setText, toggleClass } from './dom.js';
+import { esc, setText, toggleClass, fitText } from './dom.js';
 import { t, formatNumber, translateDom } from './i18n.js';
 import { iconBtn, bar, setBar, starsRow } from './components.js';
 import { countUp, pop, dur, animate } from './anim.js';
@@ -71,12 +71,16 @@ export class Hud {
     const e = this.e;
     const ms = instant ? 0 : 380;
     if (this.kind === 'classic') {
+      fitText(e.score, formatNumber(s.score)); // a 6-7 digit score shrinks to its column instead of being clipped
       countUp(e.score, s.score, { ms, format: formatNumber });
       const best = Math.max(s.bestScore, s.score);
       const record = s.bestScore > 0 && s.score > s.bestScore;
       if (Number(e.best.dataset.value) !== best) countUp(e.best, best, { ms, format: formatNumber });
       toggleClass(e.bestBox, 'is-record', record);
-      const near = s.bestScore > 0 && s.score >= s.bestScore * NUDGE_FROM && s.score <= s.bestScore;
+      // a new player has no best yet: no crown with a 0 (the space stays, nothing shifts)
+      toggleClass(e.bestBox, 'is-empty', !(s.bestScore > 0));
+      // no "only n to beat your best" behind the revive offer / result (they carry their own numbers)
+      const near = s.status === 'playing' && s.bestScore > 0 && s.score >= s.bestScore * NUDGE_FROM && s.score <= s.bestScore;
       if (near) setText(e.nudge, t('hud.nudge', { n: s.bestScore - s.score + 1 }));
       toggleClass(e.nudge, 'is-on', near);
       this._syncCombo(s);

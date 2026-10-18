@@ -175,6 +175,9 @@ Algorithm (all constants from `CONFIG.GENERATOR`):
    b. **Mercy** (`fill > MERCY_FILL` or `traysSinceClear >= MERCY_TRAYS_NO_CLEAR` or `mercyTrays > 0`):
       random among solvable candidates with `maxLines >= 1` (journey/daily: prefer lines containing gems; this help scales with `1 - difficulty`).
    c. Otherwise: with probability `RAW_P_MAX * d` the first sample unfiltered; else random among solvable candidates.
+   d. **Opening tray of a journey/daily level** (`trayIndex === 0`, any branch): always fully placeable. There is no
+      raw roll, and if no candidate is solvable (normal or mercy branch) a tiny-piece `rescue()` tray is dealt, so an
+      attempt is never lost before the first tray is placed. (Classic tray 0 is covered by the early phase.)
 5. Deterministic: `analyzeTray` is bounded only by `NODE_LIMIT` nodes (never wall clock); the rng is
    consumed in a fixed order (colors included). p99 `nextTray` ≤ 3 ms in Node.
 
@@ -190,7 +193,15 @@ export function levelKind(n)                // 'normal' | 'hard' | 'superhard'
 - `difficulty = min(0.85, 0.15 + 0.012 n)`, `+0.12` when `n % 5 == 0` (hard), `+0.25` when `n % 10 == 0`
   (super hard, replaces hard), `-0.1` for the level after a peak. First hard level = 10 (levels 1–9 normal).
 - Prefilled patterns come from a library of designed 8×8 templates (symmetry, hearts, arrows,
-  frames, letters…) with seeded mirroring/rotation/color schemes; never full rows/cols at start.
+  frames, letters… ~80 templates, tiers 1–3) with seeded mirroring/rotation, a shift of up to 2 cells
+  that keeps the template's fragmentation, and color schemes; never full rows/cols at start, gems only
+  on filled cells. Variety rules (journey): a template is not reused within 4 levels; hard / super hard
+  levels also avoid their last 4 picks of the same tag and the last 2 of the other peak tag; every use
+  of a template in the last 10 levels (peaks: 12 peak picks) weighs ×0.4; an exact board layout is never
+  repeated (the layout history is built lazily in level order, so `generateLevel(n)` is independent of
+  the call order). Levels 1–9 keep their template unshifted.
+- `rewardCoins` = `round(LEVEL_COMPLETE_COINS × {normal 1, hard 1.5, superhard 2})` is what
+  `Progression.completeLevel(n, stars, level.rewardCoins)` pays on the first win.
 - Journey goal = collect gems; daily goal = score (+ optional gems).
 - First-try bot win-rate bands (tested by `tools/simulate.mjs`): levels 1–9 ≥ 95 %; normal 80–92 %;
   hard 55–75 %; super hard 35–55 %. Stars by pieces used: `≤ par3` → 3★, `≤ par2` → 2★, else 1★
@@ -274,7 +285,9 @@ export function setStorageBackend(backend)   // tests: { getItem, setItem, remov
   journey: { unlocked: 1, stars: {} /* {n: 1..3} */ },
   challenge: { completed: {} /* {dayKey: stars} */, streak: 0, lastDay: null },
   ads: { runsFinished: 0, playSecSinceAd: 0, lastInterstitialAt: 0, lastRewardedAt: 0,
-         interstitialsShown: 0, sessionRuns: 0, upsellDay: null, freeCoins: { day: null, count: 0 } },
+         interstitialsShown: 0, sessionRuns: 0, upsellDay: null,
+         runSecAtAd: 0 /* play seconds of the running run at its last rewarded ad */,
+         freeCoins: { day: null, count: 0 }, freeBoosters: { day: null, count: 0 } /* videos watched per day */ },
   iap: { adsRemoved: false /* mirror of native */, adsGiftGranted: false, grantedTokens: [] /* last 100 */ },
   flags: { tutorialDone: false, notifAsked: null /* dayKey of last ask */, notifOptIn: false,
            notifDeclines: 0, reviewAsked: false, firstRecordShown: false },
@@ -287,6 +300,7 @@ export function setStorageBackend(backend)   // tests: { getItem, setItem, remov
 export function dayKey(date)                 // local 'YYYY-MM-DD'
 export function daysBetween(keyA, keyB)      // Math.round((Date.UTC(b) - Date.UTC(a)) / 864e5) parsed from keys (DST-safe)
 export function xpForLevel(level)            // XP_LEVEL_BASE + XP_LEVEL_STEP * level
+export function runCoins(score)              // floor(ECONOMY.RUN_COINS_FACTOR * sqrt(score)) – classic run payout
 export class Progression {
   constructor(save, { now = () => new Date(), onChange } = {})   // onChange after every mutation (→ requestSave)
   save
@@ -296,7 +310,9 @@ export class Progression {
   addXP(n)                      // → { leveledUp, levels: [..], coins, unlockedThemes: [ids] }
   recordGame({ mode, score, lines, maxCombo, pieces, allClears, playSec })
      // → { newBest, firstRecord, coinsEarned /* classic only */, xp /* addXP result */, counted /* pieces >= RUN_MIN_PIECES */ }
-     // classic: bestScore + COINS_PER_SCORE coins; all modes: stats, XP (XP_RUN_BASE + lines*XP_PER_LINE, capped)
+     // classic, counted runs only (pieces >= RUN_MIN_PIECES): bestScore/newBest/firstRecord + runCoins(score) coins
+     // (concave: floor(RUN_COINS_FACTOR * sqrt(score)), no minimum); uncounted runs set no record and pay nothing;
+     // all modes: stats, XP (XP_RUN_BASE + lines*XP_PER_LINE, capped, counted runs only)
   doubleRunCoins(amount)        // grants the same amount again (×2 ad), caller ensures once per run
   get bestScore()
   dailyRewardStatus()           // { available, day /*1..7*/, streak, graceUsed, rewards: [{day, coins, boosters?}] }
@@ -309,10 +325,12 @@ export class Progression {
      //      | {type:'level_complete', stars} | {type:'daily_complete'} | {type:'booster_used'}
   ownsTheme(id); themeUnlockInfo(id) /* {owned, price, unlockLevel, canBuy} */; buyTheme(id) /* price from CONFIG */; selectTheme(id); get selectedTheme()
   boosterCount(type); addBooster(type, n); useBooster(type); buyBooster(type)
-  get journeyUnlocked(); completeLevel(n, stars) // → { coins, firstTime, newStars, xp }
+  get journeyUnlocked(); completeLevel(n, stars, rewardCoins = LEVEL_COMPLETE_COINS) // → { coins, firstTime, newStars, xp }
+     // first win: rewardCoins (LevelDef.rewardCoins: hard/super hard pay more) + LEVEL_STAR_COINS per star; replays: LEVEL_STAR_COINS per newly earned star
   challengeStatus(dayKey)       // { completed, stars, streak }
   completeChallenge(dayKey, stars) // → { coins, streak, firstTime, xp } (coins/streak only the first time)
   freeCoinsLeft(); grantFreeCoins() /* → coins */
+  freeBoostersLeft(); grantFreeBooster(type) /* → boolean; ADS.FREE_BOOSTER_ADS_PER_DAY per day, persisted in save.ads.freeBoosters */
   grantRemoveAdsGift()          // once (iap.adsGiftGranted) → { coins, hammer, shuffle } | null
   applyGrant(token, productId)  // IAP coins; idempotent by token → { coins, duplicate }
 }
@@ -323,7 +341,8 @@ credited to the day in its `level.id`, never `dayKey(now)`.
 ### 4.10 `js/meta/missions.js` [meta]
 ```js
 export const MISSION_TYPES // clear_lines, score_single, play_games, combo_reach, place_pieces, multi_clear,
-                           // all_clear, journey_levels, daily_challenge, use_booster
+                           // all_clear (legacy: no longer generated – luck, not skill – but old saved lists still progress),
+                           // journey_levels, daily_challenge, use_booster
 export function generateMissions(dayKey, playerLevel, unlocked /* feature ids */) // → Mission[3]: easy, medium, hard
 // Mission = { id, type, target, progress, reward /* CONFIG.ECONOMY.MISSION_REWARDS[slot] */, claimed, textKey: 'mission.<type>' }
 ```
@@ -334,12 +353,14 @@ Never generates missions for locked features (journey_levels, daily_challenge, u
 export class AdPolicy {
   constructor(save, { config = CONFIG.ADS, nowMs = () => Date.now() })
   onSessionStart()                    // cold start or resume after SESSION_GAP_MIN → ads.sessionRuns = 0
-  onRunFinished({ playSec, pieces })  // once per finished/abandoned run (never tutorial); counts only pieces >= RUN_MIN_PIECES
+  onRunFinished({ playSec, pieces })  // once per finished/abandoned run (never tutorial); counts only pieces >= RUN_MIN_PIECES;
+                                      // playSecSinceAd += max(0, playSec - ads.runSecAtAd), then runSecAtAd = 0
   shouldShowInterstitial()            // !adsRemoved && total playSec >= MIN_TOTAL && playSecSinceAd >= MIN_PLAY_SEC_SINCE_AD
                                       // && now - max(lastInterstitialAt, lastRewardedAt) >= MIN_INTERVAL (clock moved back → elapsed)
                                       // && !(SKIP_FIRST_RUN_OF_SESSION && sessionRuns <= 1)
   markInterstitialShown()             // playSecSinceAd = 0, lastInterstitialAt, interstitialsShown++
-  markRewardedShown()                 // playSecSinceAd = 0, lastRewardedAt
+  markRewardedShown(runPlaySecSoFar = 0) // playSecSinceAd = 0, lastRewardedAt, runSecAtAd = runPlaySecSoFar (mid-run ad:
+                                      // the play time before it must not count again when the run ends)
   shouldShowUpsell()                  // !adsRemoved && interstitialsShown >= UPSELL_AFTER_INTERSTITIALS && upsellDay !== today
   markUpsellShown()
 }
@@ -537,7 +558,7 @@ onDrop(i,r,c): res = session.placePiece(i,r,c); if (!res) return false
 offerRevive(): if session.canRevive() && (free || adState.rewardedReady || coins >= REVIVE_COINS):
   revive modal: "{n} to your best" if 0 < best-score; 'No thanks' visible from frame 1, same size;
   countdown ring REVIVE_COUNTDOWN_SEC (pauses in background; expiry = decline, never starts an ad);
-  ad buttons armed after AD_BUTTON_ARM_MS; 'Watch ad: Revive' only if rewardedReady; 'Use 200 coins'.
+  ad buttons armed after AD_BUTTON_ARM_MS; 'Watch ad: Revive' only if rewardedReady; 'Use {REVIVE_COINS} coins'.
   success → session.revive() → requestSave → renderer.clearGameOver(); animateRevive(rr); busy = false
   decline → finalizeRun('over') → gameover modal
 ```
@@ -607,7 +628,7 @@ notifications, reset progress (confirm), version.
 
 **Shop**: themes (preview, price or "Level N"), boosters (coins), remove_ads tile ("Removes banner
 and between-game ads. Optional reward videos stay available." + gift), coin packs ("Best value"
-badge on coins_large), "Watch ad: +60 coins" (FREE_COINS_ADS_PER_DAY). Product names from i18n
+badge on coins_large), "Watch ad: +{FREE_COINS_AD_AMOUNT} coins" (FREE_COINS_ADS_PER_DAY), "Watch ad: free booster" (FREE_BOOSTER_ADS_PER_DAY, shared with the in-run booster sheet). Product names from i18n
 (`shop.product.<id>`), prices only from `getProducts()`; hide products that are missing. Neutral
 wording (no "Buy now!" imperatives aimed at players).
 

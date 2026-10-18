@@ -77,7 +77,7 @@ export default {
   'journey.chapter': 'Capítulo {n}',
   'levelStart.goal': 'Colete',
   'levelStart.par': { one: '≤ {n} peça', other: '≤ {n} peças' },
-  'levelStart.finish': 'Passe de nível',
+  'levelStart.finish': 'Conclua o nível',
 
   // --- game HUD -------------------------------------------------------------------------------
   'hud.pause': 'Pausa',
@@ -102,7 +102,7 @@ export default {
   'tutorial.title': 'Como jogar',
   'tutorial.step1': 'Arraste o bloco até o tabuleiro para completar a linha.',
   'tutorial.step2': 'Colunas cheias também somem – complete esta!',
-  'tutorial.step3': 'Limpe uma linha e uma coluna ao mesmo tempo para fazer um combo!',
+  'tutorial.step3': 'Limpe de novo na hora: o combo multiplica seus pontos!',
   'tutorial.skip': 'Pular',
   'tutorial.done': 'Ótimo! Agora é sua vez.',
 
@@ -160,6 +160,8 @@ export default {
   'toast.purchaseError': 'A compra não foi concluída.',
   'toast.purchaseUnavailable': 'As compras não estão disponíveis agora.',
   'toast.alreadyOwned': 'Compra anterior entregue',
+  'toast.alreadyOwnedChecking': 'Verificando sua compra anterior…',
+  'toast.alreadyOwnedPending': 'Sua compra anterior ainda está sendo processada.',
   'toast.restoreError': 'Não foi possível conectar ao Google Play.',
   'toast.restored': 'Compras restauradas.',
   'toast.restoreNone': 'Nenhuma compra para restaurar.',
@@ -174,7 +176,7 @@ export default {
   'mission.clear_lines': 'Limpe {n} linhas',
   'mission.score_single': 'Faça {n} pontos em uma partida',
   'mission.play_games': { one: 'Termine {n} partida', other: 'Termine {n} partidas' },
-  'mission.combo_reach': 'Alcance um combo x{n}',
+  'mission.combo_reach': 'Alcance um combo\u00A0x{n}',
   'mission.place_pieces': 'Coloque {n} peças',
   'mission.multi_clear': { one: 'Limpe 2+ linhas de uma vez', other: 'Limpe 2+ linhas de uma vez {n} vezes' },
   'mission.all_clear': { one: 'Limpe o tabuleiro inteiro', other: 'Limpe o tabuleiro inteiro {n} vezes' },
@@ -264,6 +266,7 @@ export default {
   'legal.title': 'Aviso legal',
   'legal.email': 'E-mail',
   'legal.phone': 'Telefone',
+  'legal.contactForm': 'Formulário de contato',
   'legal.vat': 'Nº de IVA',
   'legal.heading': 'Informações conforme o §\u00A05\u00A0DDG',
   'legal.contact': 'Contato',

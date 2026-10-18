@@ -130,12 +130,47 @@ export async function shot(page, name) {
 }
 
 /**
- * Layout problems on the visible screen + top modal: elements wider than the viewport and text
- * that does not fit its box. Word wrapping inside words is disabled during the check, so a label
- * that only fits by breaking a word counts as overflowing.
+ * Words that wrap inside themselves (no hyphen / soft hyphen at the break) on the visible screen +
+ * top modal – measured per word with Range rects, so a sub-pixel overflow ("Booster|s") is caught
+ * that the integer scrollWidth check rounds away.
  * @returns {Promise<string[]>}
  */
-export function layoutProblems(page) {
+export function brokenWords(page) {
+  return page.evaluate(() => {
+    const out = [];
+    for (const root of document.querySelectorAll('.screen.is-active, .modal:not(.is-closing):not(.is-covered), #toasts')) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const el = n.parentElement;
+        if (!el || el.closest('[aria-hidden="true"]') || !el.getClientRects().length) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        for (const m of n.textContent.matchAll(/[^ \t\n\r]+/g)) {
+          if (/[\u00AD\-‐–—/]/.test(m[0])) continue;
+          const r = document.createRange();
+          r.setStart(n, m.index);
+          r.setEnd(n, m.index + m[0].length);
+          const lines = new Set([...r.getClientRects()].filter((x) => x.width > 0.5).map((x) => Math.round(x.top)));
+          if (lines.size > 1) out.push(m[0]);
+        }
+      }
+    }
+    return out;
+  });
+}
+
+/**
+ * Layout problems on the visible screen + top modal: elements wider than the viewport, text that
+ * does not fit its box and words that wrap inside themselves. Word wrapping inside words is
+ * disabled during the box check, so a label that only fits by breaking a word counts as overflowing.
+ * @returns {Promise<string[]>}
+ */
+export async function layoutProblems(page) {
+  const broken = (await brokenWords(page)).map((w) => `word broken across lines: "${w}"`);
+  return [...(await boxProblems(page)), ...broken];
+}
+
+function boxProblems(page) {
   return page.evaluate(() => {
     const style = document.createElement('style');
     style.textContent = '* { overflow-wrap: normal !important; word-break: normal !important; }';

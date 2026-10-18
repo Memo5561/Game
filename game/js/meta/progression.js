@@ -1,7 +1,8 @@
 // Player progression (docs/ARCHITECTURE.md §4.9): coins, XP/levels, stats, feature unlocks,
 // 7-day login calendar, daily missions, themes, boosters, journey/daily-challenge rewards, free
-// coins and IAP grants. Pure logic on the SaveData object – no DOM, no storage access; every
-// mutation is reported through `onChange` (the App wires it to `requestSave`).
+// coins / free boosters (rewarded ads) and IAP grants. Pure logic on the SaveData object – no DOM,
+// no storage access; every mutation is reported through `onChange` (the App wires it to
+// `requestSave`).
 
 import { CONFIG } from '../config.js';
 import { generateMissions, progressMissions } from './missions.js';
@@ -46,6 +47,16 @@ export function daysBetween(keyA, keyB) {
  */
 export function xpForLevel(level) {
   return PROGRESSION.XP_LEVEL_BASE + PROGRESSION.XP_LEVEL_STEP * level;
+}
+
+/**
+ * Coins a classic run pays: floor(RUN_COINS_FACTOR × √score) – concave, so a long combo-driven run
+ * is worth a little more than a casual one, not many times more. No minimum.
+ * @param {number} score final score of the run
+ * @returns {number}
+ */
+export function runCoins(score) {
+  return Math.floor(ECONOMY.RUN_COINS_FACTOR * Math.sqrt(toCount(score)));
 }
 
 /**
@@ -146,15 +157,16 @@ export class Progression {
   /**
    * Records a finished or abandoned run (call once per run, never for the tutorial).
    * - stats for every mode (gamesPlayed/classicGames only for counted runs); bestScore, run coins
-   *   and `newBest` only in classic
-   * - classic coins = max(COINS_MIN_PER_GAME, floor(score × COINS_PER_SCORE)); the minimum only
-   *   applies to counted runs, so instantly abandoned runs can't farm it
+   *   and `newBest` only in classic and only for counted runs, so instantly abandoned runs can't
+   *   set a record (and spoil the one-time first-record moment) or farm coins
+   * - classic coins = runCoins(score) = floor(RUN_COINS_FACTOR × √score), no minimum
    * - XP = min(XP_RUN_CAP, XP_RUN_BASE + lines × XP_PER_LINE), only for counted runs
    * @param {{ mode: string, score?: number, lines?: number, maxCombo?: number, pieces?: number,
    *   allClears?: number, playSec?: number }} run
    * @returns {{ newBest: boolean, firstRecord: boolean, coinsEarned: number, xp: XPResult,
-   *   counted: boolean }} newBest = classic score above the previous best (also on the first
-   *   record); firstRecord = the first classic run that scored at all; counted = pieces >= RUN_MIN_PIECES
+   *   counted: boolean }} newBest = counted classic score above the previous best (also on the
+   *   first record); firstRecord = the first counted classic run that scored at all; counted =
+   *   pieces >= RUN_MIN_PIECES
    */
   recordGame({ mode, score, lines, maxCombo, pieces, allClears, playSec } = {}) {
     const st = this.save.stats;
@@ -180,14 +192,13 @@ export class Progression {
     let newBest = false;
     let firstRecord = false;
     let coinsEarned = 0;
-    if (classic) {
+    if (classic && counted) {
       if (runScore > st.bestScore) {
         firstRecord = st.bestScore === 0;
         newBest = true;
         st.bestScore = runScore;
       }
-      const coins = Math.floor(runScore * ECONOMY.COINS_PER_SCORE);
-      coinsEarned = this._addCoins(counted ? Math.max(ECONOMY.COINS_MIN_PER_GAME, coins) : coins);
+      coinsEarned = this._addCoins(runCoins(runScore));
     }
     const xp = this._addXP(counted
       ? Math.min(PROGRESSION.XP_RUN_CAP, PROGRESSION.XP_RUN_BASE + runLines * PROGRESSION.XP_PER_LINE)
@@ -444,14 +455,16 @@ export class Progression {
   }
 
   /**
-   * Records a won journey level and unlocks the next one. First win: LEVEL_COMPLETE_COINS +
-   * LEVEL_STAR_COINS per star and XP_LEVEL_WIN + XP_PER_STAR per star; replays: LEVEL_STAR_COINS
-   * per newly earned star, no XP.
+   * Records a won journey level and unlocks the next one. First win: the level's reward
+   * (`rewardCoins`, default LEVEL_COMPLETE_COINS) + LEVEL_STAR_COINS per star and XP_LEVEL_WIN +
+   * XP_PER_STAR per star; replays: LEVEL_STAR_COINS per newly earned star, no XP.
    * @param {number} n 1-based level number
    * @param {number} stars 1..3
+   * @param {number} [rewardCoins] the level's base reward (`LevelDef.rewardCoins`: hard and super hard
+   *   levels pay more); missing or invalid → ECONOMY.LEVEL_COMPLETE_COINS
    * @returns {{ coins: number, firstTime: boolean, newStars: number, xp: XPResult }}
    */
-  completeLevel(n, stars) {
+  completeLevel(n, stars, rewardCoins) {
     const level = toCount(n);
     if (level < 1) return { coins: 0, firstTime: false, newStars: 0, xp: this._addXP(0) };
     const j = this.save.journey;
@@ -460,8 +473,9 @@ export class Progression {
     const before = toCount(j.stars[key]);
     const firstTime = before === 0;
     const newStars = Math.max(0, earned - before);
+    const base = toCount(rewardCoins) || ECONOMY.LEVEL_COMPLETE_COINS;
     const coins = this._addCoins(firstTime
-      ? ECONOMY.LEVEL_COMPLETE_COINS + ECONOMY.LEVEL_STAR_COINS * earned
+      ? base + ECONOMY.LEVEL_STAR_COINS * earned
       : ECONOMY.LEVEL_STAR_COINS * newStars);
     if (earned > before) j.stars[key] = earned;
     if (j.unlocked < level + 1) j.unlocked = level + 1;
@@ -552,6 +566,34 @@ export class Progression {
     return coins;
   }
 
+  // --- free boosters (rewarded ad) -------------------------------------------------------------
+
+  /** @returns {number} "watch an ad: free booster" grants left today (shop and in-run sheet share it) */
+  freeBoostersLeft() {
+    this._rollover();
+    this._commit();
+    return this._freeBoostersLeft();
+  }
+
+  /**
+   * Grants one booster after a rewarded ad (ADS.FREE_BOOSTER_ADS_PER_DAY per day, persisted in
+   * `save.ads.freeBoosters`, so an app restart doesn't reset the cap).
+   * @param {'hammer'|'shuffle'} type
+   * @returns {boolean} true if granted; false for an unknown type or when today's limit is reached
+   */
+  grantFreeBooster(type) {
+    this._rollover();
+    let granted = false;
+    if (isBoosterType(type) && this._freeBoostersLeft() > 0) {
+      this.save.ads.freeBoosters.count += 1;
+      this._addBooster(type, 1);
+      this._dirty = true;
+      granted = true;
+    }
+    this._commit();
+    return granted;
+  }
+
   // --- purchases ------------------------------------------------------------------------------
 
   /**
@@ -606,8 +648,8 @@ export class Progression {
   }
 
   /**
-   * Rolls day-scoped state (missions, free-coin counter) over to today. State stamped with a
-   * later day (clock moved back) is kept rather than reset.
+   * Rolls day-scoped state (missions, free-coin and free-booster counters) over to today. State
+   * stamped with a later day (clock moved back) is kept rather than reset.
    * @returns {string} today's day key
    */
   _rollover() {
@@ -619,11 +661,12 @@ export class Progression {
       m.bonusClaimed = false;
       this._dirty = true;
     }
-    const free = this.save.ads.freeCoins;
-    if (isNewDay(free.day, today)) {
-      free.day = today;
-      free.count = 0;
-      this._dirty = true;
+    for (const counter of [this.save.ads.freeCoins, this.save.ads.freeBoosters]) {
+      if (isNewDay(counter.day, today)) {
+        counter.day = today;
+        counter.count = 0;
+        this._dirty = true;
+      }
     }
     return today;
   }
@@ -654,6 +697,10 @@ export class Progression {
 
   _freeCoinsLeft() {
     return Math.max(0, ADS.FREE_COINS_ADS_PER_DAY - this.save.ads.freeCoins.count);
+  }
+
+  _freeBoostersLeft() {
+    return Math.max(0, ADS.FREE_BOOSTER_ADS_PER_DAY - this.save.ads.freeBoosters.count);
   }
 
   _addCoins(n) {

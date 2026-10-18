@@ -5,7 +5,9 @@
 //   keeps it out of the auto queue for the rest of the session (the home gift button reopens it).
 // - levelUp (priority 20): player level-ups are queued by GameController.finalizeRun (the run-end
 //   screen already shows a level-up line) and celebrated on the next arrival at home – never during
-//   a run and never stacked on another modal. Several queued level-ups merge into one popup.
+//   a run and never stacked on another modal. Several queued level-ups merge into one popup. The
+//   queued celebration is kept in the save (flags.pendingLevelUp), so it survives closing the app
+//   (and the very first session, where nothing opens on home) and appears on a later arrival.
 // - notifAsk (soft ask): right after a daily-reward claim (never stacked: the calendar closes
 //   first) when gamesPlayed >= NOTIF_ASK_MIN_GAMES, the reminder is not on yet, the system
 //   permission can still be granted ('prompt', or already 'granted' on Android < 13 where only the
@@ -36,7 +38,8 @@ export function installRetention(app) {
       return P.dailyRewardStatus().available ? { auto: true } : null;
     },
   });
-  app.popups.register('levelUp', { priority: 20, modal: 'levelUp' });
+  app.popups.register('levelUp', { priority: 20, modal: 'levelUp', onShown: () => clearPendingLevelUp(app) });
+  restorePendingLevelUp(app);
 
   app.retention = {
     /** The auto-opened calendar was closed without claiming (stays out of the queue today). */
@@ -58,6 +61,7 @@ export function installRetention(app) {
       } else {
         app.popups.enqueue('levelUp', { levels: info.levels.slice(), coins: info.coins || 0, themes: (info.themes || []).slice() });
       }
+      savePendingLevelUp(app);
     },
 
     shouldAskNotif: () => shouldAskNotif(app),
@@ -88,6 +92,31 @@ export function installRetention(app) {
       Platform.cancelReminder();
     },
   };
+}
+
+/** Writes the queued level-up celebration into the save. */
+function savePendingLevelUp(app) {
+  const q = app.popups.queue.find((x) => x.kind === 'levelUp');
+  app.save.flags.pendingLevelUp = q ? { levels: q.props.levels.slice(), coins: q.props.coins, themes: q.props.themes.slice() } : null;
+  requestSave(app.save);
+}
+
+/** The celebration was shown: forget it. */
+function clearPendingLevelUp(app) {
+  if (!app.save.flags.pendingLevelUp) return;
+  app.save.flags.pendingLevelUp = null;
+  requestSave(app.save);
+}
+
+/** Boot: a level-up that was not celebrated before the app closed is queued again. */
+function restorePendingLevelUp(app) {
+  const p = app.save.flags.pendingLevelUp;
+  if (!p || !Array.isArray(p.levels) || !p.levels.length) return;
+  app.popups.enqueue('levelUp', {
+    levels: p.levels.map(Number).filter(Number.isFinite),
+    coins: Number(p.coins) || 0,
+    themes: Array.isArray(p.themes) ? p.themes.filter((x) => typeof x === 'string') : [],
+  });
 }
 
 /** Conditions of the notification soft ask (see the header). */

@@ -9,7 +9,9 @@
   ANLEITUNG (siehe docs/VEROEFFENTLICHUNG.md, Schritt 2, und docs/RECHTLICHES.md, Abschnitt 4):
   1. Alle gelb markierten Angaben (class="ph") durch deine echten Daten ersetzen.
      Dieselben Daten gehören in game/js/config.js → LEGAL (Impressum in der App).
-  2. Optionale Zeilen (Telefon, USt-IdNr) ausfüllen oder komplett löschen.
+  2. Telefon ODER Kontaktformular ist PFLICHT (§ 5 DDG: neben der E-Mail ein zweiter schneller,
+     direkter Kontaktweg, EuGH C-298/07) – mindestens eine der beiden Zeilen ausfüllen, die andere
+     darf gelöscht werden. Die USt-IdNr nur eintragen, wenn du eine hast (sonst Abschnitt löschen).
   3. Danach im <body>-Tag class="draft" entfernen.
   4. npm run check-release prüft, ob noch Platzhalter enthalten sind.
   Diese Seite lädt keine externen Dateien.
@@ -89,8 +91,11 @@
   <p>
     <!-- ANPASSEN: deine Support-E-Mail-Adresse (zweimal in dieser Zeile) -->
     E-Mail: <a href="mailto:support@example.com"><span class="ph">support@example.com</span></a><br>
-    <!-- OPTIONAL, empfohlen: Telefonnummer eintragen – oder diese Zeile komplett löschen -->
-    Telefon / Phone: <span class="ph">+49 XXX XXXXXXX</span>
+    <!-- PFLICHT: Telefonnummer ODER Kontaktformular (mindestens eine der beiden Zeilen ausfüllen,
+         die nicht genutzte Zeile komplett löschen). Dieselbe Angabe gehört in game/js/config.js → LEGAL
+         (PHONE bzw. CONTACT_FORM_URL). -->
+    Telefon / Phone: <span class="ph">+49 XXX XXXXXXX</span><br>
+    Kontaktformular / Contact form: <a href="https://example.com/kontakt"><span class="ph">https://example.com/kontakt</span></a>
   </p>
 
   <!-- OPTIONAL: Diesen Abschnitt (h2 + p) komplett löschen, wenn du keine USt-IdNr bzw. Wirtschafts-ID hast -->

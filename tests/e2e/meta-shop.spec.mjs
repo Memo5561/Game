@@ -46,11 +46,13 @@ export default async function metaShopSpec() {
     await tap(page, 'shop.theme.locked.neon');
     let s = await state(page);
     assert(s.toasts.some((x) => /level 3/.test(x)) && s.modals.length === 0, 'level lock toast');
-    // too few coins for Wood (2,500 > 2,000)
-    assert(/Need 500 more/.test(await text(page, '[data-theme-card="wood"]')), '"Need 500 more"');
+    // too few coins for Wood (price > 2,000)
+    const short = CONFIG.ECONOMY.THEMES.wood.price - 2000;
+    const shortText = short.toLocaleString('en-US');
+    assert(short > 0 && new RegExp(`Need ${shortText} more`).test(await text(page, '[data-theme-card="wood"]')), `"Need ${shortText} more"`);
     await tap(page, 'shop.theme.buy.wood');
     s = await state(page);
-    assert(s.modals.length === 0 && s.toasts.some((x) => /500 more coins/.test(x)) && s.coins === 2000, 'short: toast, nothing bought');
+    assert(s.modals.length === 0 && s.toasts.some((x) => x.includes(`${shortText} more coins`)) && s.coins === 2000, 'short: toast, nothing bought');
     // buy Candy (1,500) → confirm → applied
     await tap(page, 'shop.theme.buy.candy');
     await waitModal(page, 'confirm');
@@ -97,10 +99,11 @@ export default async function metaShopSpec() {
 
     // --- free coins video --------------------------------------------------------------------------
     await openShop(page, 'coins');
-    assert(/5 videos left today/.test(await text(page, '.shop-card--free')), 'free coins counter');
+    const perDay = CONFIG.ADS.FREE_COINS_ADS_PER_DAY;
+    assert(new RegExp(`${perDay} videos left today`).test(await text(page, '.shop-card--free')), `free coins counter (${perDay} a day)`);
     await tap(page, 'shop.freeCoins');
     await page.waitForFunction((n) => window.__blocko.save().coins === n, 10 + E.FREE_COINS_AD_AMOUNT);
-    await page.waitForFunction(() => /4 videos left today/.test(document.querySelector('.screen.is-active .shop-card--free')?.textContent || ''));
+    await page.waitForFunction((n) => new RegExp(`${n} videos left today`).test(document.querySelector('.screen.is-active .shop-card--free')?.textContent || ''), perDay - 1);
     assert((await adLog(page)).slice(-1)[0] === 'Rewarded (free_coins)', 'placement free_coins');
 
     // --- purchase results (stubbed Platform.purchase) --------------------------------------------
@@ -119,7 +122,9 @@ export default async function metaShopSpec() {
     assert(s.toasts.length === toastsBefore && s.modals.length === 0, 'cancelled → silent');
     await recordPlatform(page, ['purchase'], { purchase: { resolve: 'already_owned' } });
     await tap(page, 'shop.buy.coins_small');
-    s = await waitState(page, '(st) => st.toasts.includes("Previous purchase delivered")');
+    // a coin pack is never reported as delivered before its grant arrived
+    s = await waitState(page, '(st) => st.toasts.some((x) => /still being processed/.test(x))');
+    assert(s.toasts.includes('Checking your earlier purchase…') && !s.toasts.includes('Previous purchase delivered'), `already_owned (coin pack): neutral wording (${s.toasts})`);
     await recordPlatform(page, ['purchase'], { purchase: { resolve: 'error' } });
     await tap(page, 'shop.buy.coins_small');
     s = await waitState(page, '(st) => st.toasts.some((x) => /didn’t go through/.test(x))');

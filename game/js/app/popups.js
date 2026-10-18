@@ -11,6 +11,7 @@
 //     priority: 30,
 //     check: (app) => props | null,   // null = nothing to show right now
 //     modal: 'dailyReward',           // modal id opened with the props
+//     onShown: (props) => {},         // optional: after it was opened (e.g. forget a persisted queue entry)
 //   });
 // One-off popups produced elsewhere (e.g. a level-up that could not be shown on the run-end
 // screen) are queued with app.popups.enqueue(kind, props) and shown on a later home arrival.
@@ -37,6 +38,7 @@ export class PopupQueue {
       priority: def.priority ?? POPUP_PRIORITY[kind] ?? 0,
       check: def.check,
       modal: def.modal || kind,
+      onShown: def.onShown,
     });
   }
 
@@ -72,6 +74,7 @@ export class PopupQueue {
     const pick = candidates[0];
     if (pick.queued) this.queue.splice(this.queue.indexOf(pick.queued), 1);
     app.modals.open(pick.def.modal, pick.props);
+    if (pick.def.onShown) pick.def.onShown(pick.props);
     return pick.kind;
   }
 }

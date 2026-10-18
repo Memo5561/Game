@@ -9,11 +9,11 @@ import { Platform } from '../../platform/bridge.js';
 import { Sfx } from '../../audio/sfx.js';
 import { flushSave, requestSave } from '../../meta/storage.js';
 import { icon } from '../icons.js';
-import { esc } from '../dom.js';
+import { esc, fitText } from '../dom.js';
 import { t, formatNumber } from '../i18n.js';
 import { btn, bar, coinPill, setBar } from '../components.js';
 import { countUp, pop } from '../anim.js';
-import { coinsRow, xpRows, missionLine, armAdButtons, playRewards, doubleCoins, backHome, cleanupResult } from './result.js';
+import { coinsRow, xpRows, missionLine, armAdButtons, watchDoubleOffer, trackOverflow, playRewards, doubleCoins, backHome, cleanupResult } from './result.js';
 
 /** "Only n to beat your best!" from this share of the best score on. */
 const NUDGE_FROM = 0.6;
@@ -38,7 +38,7 @@ export const gameoverModal = {
         </div>
         ${near ? `<p class="result__nudge">${esc(t('hud.nudge', { n: s.bestBefore - s.score + 1 }))}</p>` : ''}`;
     }
-    const card = coinsRow(s, app, 'gameover') + xpRows(s) + missionLine(app);
+    const card = coinsRow(s, app, 'gameover') + xpRows(s) + missionLine(app, s);
     return `<div class="result">
         <div class="result__top">${coinPill(null)}</div>
         <div class="result__head">
@@ -46,18 +46,22 @@ export const gameoverModal = {
           <div class="result__score" data-ref="score" data-value="0">0</div>
           <div class="result__best">${best}</div>
         </div>
-        ${card ? `<div class="panel result__card">${card}</div>` : ''}
-        <div class="result__actions">
-          ${btn({ action: 'gameover.again', labelKey: 'result.again', icon: 'retry', size: 'xl' })}
-          ${btn({ action: 'gameover.home', labelKey: 'common.home', icon: 'home', variant: 'ghost' })}
+        <div class="result__side">
+          ${card ? `<div class="panel result__card">${card}</div>` : ''}
+          <div class="result__actions">
+            ${btn({ action: 'gameover.again', labelKey: 'result.again', icon: 'retry', size: 'xl' })}
+            ${btn({ action: 'gameover.home', labelKey: 'common.home', icon: 'home', variant: 'ghost' })}
+          </div>
+          ${m.data.upsell ? `<button type="button" class="chip result__upsell" data-action="gameover.upsell">${icon('noads')}<span>${esc(t('result.upsell'))}</span></button>` : ''}
         </div>
-        ${m.data.upsell ? `<button type="button" class="chip result__upsell" data-action="gameover.upsell">${icon('noads')}<span>${esc(t('result.upsell'))}</span></button>` : ''}
       </div>`;
   },
 
   onOpen(m, app) {
     const s = m.props.summary;
     armAdButtons(m);
+    trackOverflow(m);
+    watchDoubleOffer(m, app, 'gameover');
     if (m.data.upsell) app.adPolicy.markUpsellShown();
     if (s.firstRecord && !app.save.flags.firstRecordShown) {
       app.save.flags.firstRecordShown = true;
@@ -65,6 +69,7 @@ export const gameoverModal = {
     }
     const bestBar = m.$('[data-ref="bestBar"]');
     if (bestBar) setBar(bestBar, 0);
+    fitText(m.$('[data-ref="score"]'), formatNumber(s.score)); // 7-digit scores shrink to the screen width
     countUp(m.$('[data-ref="score"]'), s.score, { from: 0, ms: SCORE_COUNT_MS, format: formatNumber }).then(() => {
       if (m.isClosed) return;
       if (bestBar) setBar(bestBar, s.bestBefore > 0 ? s.score / s.bestBefore : 0);
@@ -105,14 +110,21 @@ export const gameoverModal = {
   },
 };
 
-/** Play review card: automatically after a new best, from ASK_REVIEW_AFTER_GAMES games, once ever. */
+/**
+ * Play review card: automatically after a new best, from ASK_REVIEW_AFTER_GAMES games, once ever.
+ * The once-ever flag is spent only when the request is really made: leaving the screen before
+ * REVIEW_DELAY_MS (or while an interstitial is up) keeps the ask for the next new best, and the
+ * card never shares a result screen with an interstitial (GameController.leaveResult).
+ */
 function maybeAskReview(m, app, s) {
   const save = app.save;
   if (!s.newBest || save.stats.gamesPlayed < CONFIG.RETENTION.ASK_REVIEW_AFTER_GAMES || save.flags.reviewAsked) return;
-  save.flags.reviewAsked = true;
-  flushSave(save);
   m.data.reviewTimer = setTimeout(() => {
-    if (!m.isClosed) Platform.requestReview();
+    if (m.isClosed || app.modals.top() !== m || app.game._leaving || Platform.isBusy()) return;
+    save.flags.reviewAsked = true;
+    flushSave(save);
+    m.data.reviewShown = true;
+    Platform.requestReview();
   }, REVIEW_DELAY_MS);
 }
 

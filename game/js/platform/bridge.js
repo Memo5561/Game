@@ -23,8 +23,10 @@ const listeners = new Map();
 const STICKY_TYPES = new Set(['grant', 'entitlements', 'adState', 'insets']);
 /** @type {Map<string, any[]>} */
 const queued = new Map();
-/** @type {Map<string, {resolve: Function, timer: any, fallback: any}>} */
+/** @type {Map<string, {resolve: Function, timer: any, fallback: any, modal: boolean}>} */
 const pending = new Map();
+/** ids of pending requests that put native UI over the WebView (ad, purchase flow, dialogs) */
+const modalPending = new Set();
 let requestCounter = 0;
 let mockOverlayVisible = false;
 let adsRemoved = false;
@@ -56,30 +58,40 @@ function nextRequestId() {
   return `r${requestCounter}_${Date.now().toString(36)}`;
 }
 
-/** Sends a request to native and resolves with the matching *Result event (or fallback on timeout/error). */
-function request(send, timeoutMs, fallback) {
+/**
+ * Sends a request to native and resolves with the matching *Result event (or fallback on timeout/error).
+ * `modal` requests put native UI over the WebView (interstitial, rewarded, purchase flow, privacy
+ * options, notification permission) and are the only ones that make isBusy() true.
+ */
+function request(send, timeoutMs, fallback, modal = false) {
   const id = nextRequestId();
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
-      pending.delete(id);
+      forget(id);
       resolve(fallback);
     }, timeoutMs);
-    pending.set(id, { resolve, timer, fallback });
+    pending.set(id, { resolve, timer, fallback, modal });
+    if (modal) modalPending.add(id);
     try {
       send(id);
     } catch (e) {
       console.error('[Platform] native call failed', e);
       clearTimeout(timer);
-      pending.delete(id);
+      forget(id);
       resolve(fallback);
     }
   });
 }
 
+function forget(id) {
+  pending.delete(id);
+  modalPending.delete(id);
+}
+
 function settle(requestId, value) {
   const p = pending.get(requestId);
   if (!p) return;
-  pending.delete(requestId);
+  forget(requestId);
   clearTimeout(p.timer);
   p.resolve(value);
 }
@@ -102,7 +114,8 @@ function dispatch(evt) {
       settle(evt.requestId, !!evt.shown);
       break;
     case 'rewardedResult':
-      settle(evt.requestId, !!evt.rewarded);
+      // `shown`: the video was displayed at all (a skipped video is shown but not rewarded)
+      settle(evt.requestId, { rewarded: !!evt.rewarded, shown: evt.shown === undefined ? !!evt.rewarded : !!evt.shown });
       break;
     case 'productsResult':
       settle(evt.requestId, Array.isArray(evt.products) ? evt.products : []);
@@ -320,9 +333,13 @@ export const Platform = {
     return () => listeners.get(type)?.delete(fn);
   },
 
-  /** True while a native request (ad, purchase, dialog…) is pending or a mock ad is visible. */
+  /**
+   * True while native UI covers the WebView: an interstitial / rewarded video, the purchase flow,
+   * the privacy options form or the notification permission dialog (or a mock ad overlay).
+   * Background queries (queryProducts, restorePurchases) do NOT count: the player keeps control.
+   */
   isBusy() {
-    return pending.size > 0 || mockOverlayVisible;
+    return modalPending.size > 0 || mockOverlayVisible;
   },
 
   get adsRemoved() {
@@ -364,16 +381,27 @@ export const Platform = {
 
   showInterstitial() {
     if (adsRemoved) return Promise.resolve(false);
-    if (native) return request((id) => native.showInterstitial(id), LONG_TIMEOUT, false);
+    if (native) return request((id) => native.showInterstitial(id), LONG_TIMEOUT, false, true);
     if (!mockAdsAvailable()) return Promise.resolve(false);
     return mockAdOverlay('Interstitial', mockDelay(1500)).then(() => true);
   },
 
   /** Resolves true only if the user earned the reward. */
   showRewarded(placement) {
-    if (native) return request((id) => native.showRewarded(id, String(placement || '')), LONG_TIMEOUT, false);
-    if (!mockAdsAvailable()) return Promise.resolve(false);
-    return mockAdOverlay(`Rewarded (${placement})`, mockDelay(1500)).then(() => true);
+    return Platform.showRewardedResult(placement).then((r) => r.rewarded);
+  },
+
+  /**
+   * Like showRewarded(), but also tells whether a video was displayed at all: a video the player
+   * closed early is `{ rewarded: false, shown: true }` and still counts as a full-screen ad.
+   * @returns {Promise<{ rewarded: boolean, shown: boolean }>}
+   */
+  showRewardedResult(placement) {
+    if (native) {
+      return request((id) => native.showRewarded(id, String(placement || '')), LONG_TIMEOUT, { rewarded: false, shown: false }, true);
+    }
+    if (!mockAdsAvailable()) return Promise.resolve({ rewarded: false, shown: false });
+    return mockAdOverlay(`Rewarded (${placement})`, mockDelay(1500)).then(() => ({ rewarded: true, shown: true }));
   },
 
   isRewardedReady() {
@@ -385,6 +413,16 @@ export const Platform = {
     if (native) callNative('setBannerVisible', !!visible);
   },
 
+  /**
+   * Tints the native strip around the WebView (banner slot, navigation-bar padding) to the theme.
+   * @param {{ background?: string }} colors '#RRGGBB'
+   */
+  setThemeColors({ background } = {}) {
+    if (!native || typeof native.setThemeColors !== 'function') return;
+    if (typeof background !== 'string' || !/^#[0-9a-f]{6}$/i.test(background)) return;
+    callNative('setThemeColors', background);
+  },
+
   /** @returns {Promise<Array<{id: string, title: string, price: string}>>} */
   getProducts() {
     if (native) return request((id) => native.queryProducts(id), 15000, []);
@@ -394,7 +432,7 @@ export const Platform = {
 
   /** @returns {Promise<'success'|'cancelled'|'pending'|'error'|'already_owned'|'unavailable'>} */
   purchase(productId) {
-    if (native) return request((id) => native.purchase(id, String(productId)), LONG_TIMEOUT, 'error');
+    if (native) return request((id) => native.purchase(id, String(productId)), LONG_TIMEOUT, 'error', true);
     if (!mockEnabled) return Promise.resolve('unavailable');
     const product = CONFIG.PRODUCTS[productId];
     if (!product) return Promise.resolve('unavailable');
@@ -482,7 +520,7 @@ export const Platform = {
   },
 
   showPrivacyOptions() {
-    if (native) return request((id) => native.showPrivacyOptions(id), LONG_TIMEOUT, undefined);
+    if (native) return request((id) => native.showPrivacyOptions(id), LONG_TIMEOUT, undefined, true);
     console.info('[Platform mock] showPrivacyOptions');
     return Promise.resolve();
   },
@@ -497,7 +535,7 @@ export const Platform = {
   },
 
   requestNotificationPermission() {
-    if (native) return request((id) => native.requestNotificationPermission(id), LONG_TIMEOUT, false);
+    if (native) return request((id) => native.requestNotificationPermission(id), LONG_TIMEOUT, false, true);
     if (!mockEnabled) return Promise.resolve(false);
     if (info) info.notificationPermission = 'granted';
     return Promise.resolve(true);

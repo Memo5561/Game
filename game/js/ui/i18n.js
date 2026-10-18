@@ -4,7 +4,10 @@
 //   language lacks it (languages without a string table yet use English entirely).
 // - Setting 'auto' resolves from the device language (navigator.language / Platform.info.locale).
 // - Values are strings with `{name}` placeholders, or plural objects `{ one, other, few?, many? }`
-//   selected with Intl.PluralRules by the `n` param (en/de/ru-friendly).
+//   selected with Intl.PluralRules(lang) by the `n` param: en/de/es/fr/it/pt/tr use one + other, ru
+//   needs one (1, 21 …) / few (2–4, 22–24 …) / many (0, 5–20 …) / other (fractions; repeats many).
+//   A language may use a plural object for a key whose English string is plain (the noun after `{n}`
+//   needs agreement there); every form must carry the same placeholders.
 // - Numeric params are formatted for the language (1,500 / 1.500).
 // - DOM: elements with `data-i18n="key"` get their textContent from translateDom(); optional
 //   `data-i18n-params='{"n":3}'`; `data-i18n-aria="key"` sets aria-label.
@@ -106,6 +109,21 @@ export function t(key, params) {
   }
   if (typeof value === 'object') value = pluralForm(value, params && params.n);
   return params ? interpolate(value, params) : value;
+}
+
+/**
+ * Upper-cases for display in the active language. Use this instead of String#toUpperCase for text
+ * that comes from translations or Intl (Turkish: i → İ, ı → I; CSS `text-transform` already follows
+ * `<html lang>` and needs nothing).
+ * @param {string} text
+ * @returns {string}
+ */
+export function upper(text) {
+  try {
+    return String(text).toLocaleUpperCase(lang);
+  } catch {
+    return String(text).toUpperCase();
+  }
 }
 
 /** Formats a number for the active language (grouping separators). */

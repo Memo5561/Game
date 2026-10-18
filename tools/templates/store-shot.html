@@ -1,0 +1,215 @@
+<!doctype html>
+<!-- Marketing frame for the Google Play screenshots (tools/store-assets.mjs).
+     The script serves the repo root, opens this page at the final pixel size (device scale factor 1)
+     and calls window.__compose({...}) with the caption, the real game screenshot and the device
+     geometry. Everything is positioned in final pixels; "u" = canvas width / 1080 keeps the
+     decoration proportional on tablets. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blocko store screenshot</title>
+<link rel="stylesheet" href="/game/assets/fonts/fonts.css">
+<style>
+  :root { --u: 1; --W: 1080; --H: 1920; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #1B1446; }
+  body {
+    width: calc(var(--W) * 1px); height: calc(var(--H) * 1px); overflow: hidden; position: relative;
+    font-family: 'Nunito', system-ui, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+  }
+
+  /* ---- backdrop ------------------------------------------------------------------------------- */
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(70% 38% at 50% 0%, rgba(255, 255, 255, .20) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(90% 55% at 50% 62%, rgba(150, 122, 255, .55) 0%, rgba(150, 122, 255, 0) 70%),
+      radial-gradient(60% 40% at 100% 100%, rgba(255, 92, 192, .28) 0%, rgba(255, 92, 192, 0) 70%),
+      radial-gradient(60% 40% at 0% 88%, rgba(47, 182, 240, .26) 0%, rgba(47, 182, 240, 0) 70%),
+      linear-gradient(180deg, #6A4BFF 0%, #4B34C8 30%, #33259A 64%, #1F1659 100%);
+  }
+  .bg::after { /* fine diagonal sheen */
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .06) 45%, rgba(255, 255, 255, 0) 60%);
+  }
+
+  /* glossy jewel blocks (same look as the in-game blocks) */
+  .blk {
+    position: absolute; width: calc(var(--s) * var(--u) * 1px); height: calc(var(--s) * var(--u) * 1px);
+    left: calc(var(--x) * var(--u) * 1px); top: calc(var(--y) * var(--u) * 1px);
+    border-radius: 22%; transform: rotate(calc(var(--r) * 1deg));
+    background: linear-gradient(180deg, var(--c1) 0%, var(--c2) 100%);
+    box-shadow: inset 0 calc(var(--s) * var(--u) * -.07px) 0 rgba(0, 0, 0, .22), 0 calc(var(--s) * var(--u) * .22px) calc(var(--s) * var(--u) * .4px) rgba(12, 6, 50, .35);
+    opacity: var(--o, 1); filter: blur(calc(var(--b, 0) * var(--u) * 1px));
+  }
+  .blk::after {
+    content: ''; position: absolute; left: 14%; right: 14%; top: 9%; height: 34%; border-radius: 40%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0));
+  }
+  .spark {
+    position: absolute; width: calc(var(--s) * var(--u) * 1px); height: calc(var(--s) * var(--u) * 1px);
+    left: calc(var(--x) * var(--u) * 1px); top: calc(var(--y) * var(--u) * 1px); opacity: var(--o, .8);
+    background: #fff; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  }
+
+  /* ---- caption -------------------------------------------------------------------------------- */
+  .caption {
+    position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: center;
+    padding: 0 calc(var(--W) * .06px); text-align: center; z-index: 3;
+  }
+  .caption__text {
+    margin: 0; color: #fff; font-weight: 900; letter-spacing: -.01em; line-height: 1.06; text-wrap: balance;
+    text-shadow: 0 calc(var(--u) * 6px) 0 rgba(26, 15, 74, .55), 0 calc(var(--u) * 14px) calc(var(--u) * 34px) rgba(14, 8, 48, .45);
+  }
+  .caption__text em { font-style: normal; color: #FFD23F; }
+
+  /* ---- device --------------------------------------------------------------------------------- */
+  .glow {
+    position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(150, 122, 255, .55), rgba(150, 122, 255, 0));
+    z-index: 1; pointer-events: none;
+  }
+  .device {
+    position: absolute; z-index: 2;
+    background: linear-gradient(150deg, #8A8AAE 0%, #2B2B45 18%, #0B0B1C 50%, #2A2A46 82%, #6C6C92 100%);
+    box-shadow:
+      0 calc(var(--u) * 70px) calc(var(--u) * 120px) rgba(10, 4, 48, .62),
+      0 calc(var(--u) * 24px) calc(var(--u) * 40px) rgba(10, 4, 48, .4),
+      0 0 calc(var(--u) * 90px) rgba(150, 122, 255, .28);
+  }
+  .device__bezel { position: absolute; background: #04040C; }
+  .device__screen { position: absolute; overflow: hidden; background: #1B1446; }
+  .device__screen img { display: block; width: 100%; height: 100%; }
+  .device__key { position: absolute; background: linear-gradient(90deg, #3A3A58, #14142A); border-radius: calc(var(--u) * 4px); }
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<div id="deco"></div>
+<div class="caption" id="caption"><h1 class="caption__text" id="captionText"></h1></div>
+<div class="glow" id="glow"></div>
+<div class="device" id="device">
+  <div class="device__bezel" id="bezel"></div>
+  <div class="device__screen" id="screen"><img id="shot" alt=""></div>
+</div>
+
+<script>
+  // jewel palette (same hues as the in-game blocks)
+  const JEWELS = [
+    ['#FF7A86', '#E02A45'], ['#FFB877', '#F2710F'], ['#FFE57A', '#F5A800'], ['#7DF0A8', '#1DB863'],
+    ['#7FE3FF', '#0F95E0'], ['#8FA2FF', '#3A55F0'], ['#C79BFF', '#7A2FE6'], ['#FF9EE0', '#E8329F'],
+  ];
+  // decoration in 1080-wide design units: [x, y, size, rotation, jewel index, opacity, blur]
+  const BLOCKS = [
+    [-30, 372, 96, -12, 4, 1, 0], [982, 392, 70, 16, 7, 1, 0], [22, 650, 44, 20, 6, .75, 2],
+    [994, 712, 52, -14, 2, .8, 2], [-44, 1100, 120, 12, 0, 1, 0], [974, 1010, 104, -16, 3, 1, 0],
+    [942, 1480, 80, 14, 5, 1, 1], [14, 1566, 86, -20, 1, 1, 1], [1002, 1742, 116, 8, 6, 1, 0],
+    [-22, 1812, 100, 18, 2, 1, 0],
+  ];
+  const SPARKS = [[34, 66, 34, .9], [1026, 170, 28, .75], [70, 272, 24, .6], [1004, 288, 22, .6], [58, 700, 26, .6], [1018, 800, 30, .7], [120, 1500, 28, .6], [940, 1330, 22, .55], [526, 18, 22, .45]];
+
+  const $ = (id) => document.getElementById(id);
+
+  function px(el, props) { for (const [k, v] of Object.entries(props)) el.style[k] = typeof v === 'number' ? `${v}px` : v; }
+
+  /** Splits "A *b* c" into HTML with the starred part highlighted (HTML-escaped). */
+  function captionHtml(text) {
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return text.split('\n').map((line) => line.split('*').map((part, i) => (i % 2 ? `<em>${esc(part)}</em>` : esc(part))).join('')).join('<br>');
+  }
+
+  /**
+   * Largest font size (px) at which every caption fits into `maxLines` lines of `maxWidth` px
+   * (and one word never overflows). Used to give all captions of a language the same size.
+   */
+  window.__fitCaptions = function (texts, { W, H, maxWidth, maxLines, maxSize, minSize }) {
+    document.documentElement.style.setProperty('--u', String(W / 1080));
+    document.documentElement.style.setProperty('--W', String(W));
+    document.documentElement.style.setProperty('--H', String(H));
+    const probe = $('captionText');
+    px($('caption'), { left: 0, right: 0 });
+    probe.style.width = `${maxWidth}px`;
+    probe.style.whiteSpace = 'normal';
+    let best = minSize;
+    for (let size = maxSize; size >= minSize; size -= 2) {
+      probe.style.fontSize = `${size}px`;
+      let ok = true;
+      for (const text of texts) {
+        probe.innerHTML = captionHtml(text);
+        const lines = Math.round(probe.getBoundingClientRect().height / (size * 1.06));
+        // widest unbreakable word must fit as well
+        const range = document.createRange();
+        range.selectNodeContents(probe);
+        let wide = 0;
+        for (const r of range.getClientRects()) wide = Math.max(wide, r.width);
+        if (lines > maxLines || wide > maxWidth + 1) { ok = false; break; }
+      }
+      if (ok) { best = size; break; }
+    }
+    probe.style.width = '';
+    return best;
+  };
+
+  /**
+   * opts: { W, H, caption, captionSize, captionHeight, captionMaxWidth,
+   *         device: { x, y, w, h, radius, rim, bezel, screenRadius, keys }, shot: dataURL }
+   * Resolves when fonts and the screenshot are decoded.
+   */
+  window.__compose = async function (o) {
+    const u = o.W / 1080;
+    document.documentElement.style.setProperty('--u', String(u));
+    document.documentElement.style.setProperty('--W', String(o.W));
+    document.documentElement.style.setProperty('--H', String(o.H));
+
+    // decoration
+    const deco = $('deco');
+    deco.innerHTML = '';
+    for (const [x, y, s, r, j, op, b] of BLOCKS) {
+      const el = document.createElement('i');
+      el.className = 'blk';
+      el.style.cssText = `--x:${x};--y:${y};--s:${s};--r:${r};--c1:${JEWELS[j][0]};--c2:${JEWELS[j][1]};--o:${op};--b:${b}`;
+      deco.appendChild(el);
+    }
+    for (const [x, y, s, op] of SPARKS) {
+      const el = document.createElement('i');
+      el.className = 'spark';
+      el.style.cssText = `--x:${x};--y:${y};--s:${s};--o:${op}`;
+      deco.appendChild(el);
+    }
+
+    // caption
+    const cap = $('caption');
+    const txt = $('captionText');
+    px(cap, { height: o.captionHeight, top: o.captionTop || 0 });
+    txt.style.fontSize = `${o.captionSize}px`;
+    txt.style.maxWidth = `${o.captionMaxWidth}px`;
+    txt.innerHTML = captionHtml(o.caption);
+
+    // device
+    const d = o.device;
+    const dev = $('device');
+    px(dev, { left: d.x, top: d.y, width: d.w, height: d.h, borderRadius: d.radius });
+    px($('bezel'), { left: d.rim, top: d.rim, right: d.rim, bottom: d.rim, borderRadius: d.radius - d.rim });
+    const inset = d.rim + d.bezel;
+    px($('screen'), { left: inset, top: inset, right: inset, bottom: inset, borderRadius: d.screenRadius });
+    for (const old of dev.querySelectorAll('.device__key')) old.remove();
+    for (const k of d.keys || []) {
+      const key = document.createElement('i');
+      key.className = 'device__key';
+      px(key, { left: k.side === 'left' ? -k.t : d.w - 1, width: k.t + 1, top: k.y, height: k.h });
+      dev.appendChild(key);
+    }
+    const glow = $('glow');
+    const gw = d.w * 1.5;
+    px(glow, { left: d.x + d.w / 2 - gw / 2, top: d.y + d.h / 2 - (d.h * 0.8), width: gw, height: d.h * 1.6 });
+
+    const img = $('shot');
+    img.src = o.shot;
+    await img.decode();
+    await document.fonts.ready;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return true;
+  };
+</script>
+</body>
+</html>

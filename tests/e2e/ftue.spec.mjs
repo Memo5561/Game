@@ -14,7 +14,8 @@ export default async function ftueSpec() {
     assert(s.screen === 'game' && s.tutorial && s.tutorial.step === 0, 'fresh install starts the tutorial on the game screen');
     assert(s.modals.length === 0, 'no modal on first launch');
     assert(!s.ads.started && !s.ads.canRequestAds && !s.ads.banner, 'no ads / consent / banner during the tutorial');
-    const skipVisible = () => ev(page, () => getComputedStyle(document.querySelector('[data-action="tutorial.skip"]')).visibility === 'visible');
+    // a hidden skip takes no room (display: none), so the coach title never wraps because of it
+    const skipVisible = () => ev(page, () => { const cs = getComputedStyle(document.querySelector('[data-action="tutorial.skip"]')); return cs.display !== 'none' && cs.visibility === 'visible'; });
     assert(!(await skipVisible()), 'skip is hidden in step 1');
 
     // a wrong drop flies back and keeps the step

@@ -133,6 +133,7 @@ export class Renderer {
     this._dprCap = 2;
     this._sizeKey = '';
     this._insets = { gestureLeft: 0, gestureRight: 0 };
+    this._bottomReserve = 0;
     this.sprites = new SpriteSet();
     this.particles = new Particles(256);
     this._rnd = makeRandom(0x5eed);
@@ -292,6 +293,21 @@ export class Renderer {
     this.resize();
   }
 
+  /**
+   * Keeps the tray's touch area at least `px` CSS px above the canvas bottom edge (the native banner
+   * sits right below the WebView): the hit rects end there instead of at the layout's gutter. The
+   * board is not touched; a rect never shrinks below the middle of its tallest piece (cy + 1.5 tray
+   * cells), so on the smallest phones the clearance can end a few px short of `px`. Extra.
+   * @param {number} px
+   */
+  setBottomReserve(px) {
+    const next = Math.max(0, Number(px) || 0);
+    if (next === this._bottomReserve) return;
+    this._bottomReserve = next;
+    this._sizeKey = '';
+    this.resize();
+  }
+
   /** Called once per rendered frame before drawing (DragController uses it). Extra. */
   setFrameHook(fn) {
     this._frameHook = typeof fn === 'function' ? fn : null;
@@ -405,10 +421,21 @@ export class Renderer {
     this.dpr = dpr;
     this.canvas.width = Math.max(1, Math.round(cssW * dpr));
     this.canvas.height = Math.max(1, Math.round(cssH * dpr));
-    this.layout = computeLayout(cssW, cssH, dpr, this._insets);
+    this.layout = this._computeLayout(cssW, cssH, dpr);
     this._rebuildSprites();
     this._last = 0;
     this.invalidate();
+  }
+
+  /** computeLayout() with the tray hit rects kept clear of the bottom edge (see setBottomReserve). */
+  _computeLayout(cssW, cssH, dpr) {
+    const L = computeLayout(cssW, cssH, dpr, this._insets);
+    if (!(this._bottomReserve > 0)) return L;
+    for (const r of L.trayRects) {
+      const bottom = Math.min(r.y + r.h, Math.max(cssH - this._bottomReserve, r.cy + 1.5 * L.trayCell));
+      if (bottom > r.y + 1) r.h = bottom - r.y;
+    }
+    return L;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -715,12 +742,22 @@ export class Renderer {
     if (kind === 'newBest') {
       const s = this._sprite('newbest', this._tr('newbest'), 'newbest', this._bigFont(0.9));
       const bxm = L.boardX + L.boardPx / 2;
-      const bym = L.boardY + L.cell * 1.1;
-      this._spawnText(TK_BANNER, s, bxm, bym, TIMING.NEW_BEST, 0);
-      this._confetti(bxm - s.w * 0.45, bym, 26, -2.5, 60);
-      this._confetti(bxm + s.w * 0.45, bym, 26, -0.64, 60);
-      this._sparkleBurst(bxm, bym, 8, s.w * 0.5, 60);
-      return this._after(TIMING.NEW_BEST);
+      // clear of the points / praise texts of the placement that just set the record; when the
+      // board has no room for all of them the banner waits until they have faded (never on top)
+      const wanted = L.boardY + L.cell * 1.1;
+      let bym = this._clearY(bxm, s.w, s.h, wanted, L.boardY - L.cell * 0.5, L.boardY + L.boardPx);
+      let wait = 0;
+      if (!this._textFree(this._liveTextRects(this.time), bxm, s.w, s.h, bym)) {
+        bym = wanted;
+        wait = TIMING.PRAISE * 0.8;
+      }
+      const slot = this._spawnText(TK_BANNER, s, bxm, bym, TIMING.NEW_BEST, 0);
+      slot.start += wait;
+      this._extend(wait);
+      this._confetti(bxm - s.w * 0.45, bym, 26, -2.5, 60 + wait);
+      this._confetti(bxm + s.w * 0.45, bym, 26, -0.64, 60 + wait);
+      this._sparkleBurst(bxm, bym, 8, s.w * 0.5, 60 + wait);
+      return this._after(wait + TIMING.NEW_BEST);
     }
     if (kind === 'win') {
       const w = L.width;
@@ -990,23 +1027,16 @@ export class Renderer {
     return slot;
   }
 
+  /**
+   * Floating texts of a clearing placement: the points rise from the piece, the praise and the combo
+   * text are laid out so that none of them ever covers another one (the points text is placed
+   * first, the others avoid its whole rise – see _clearY).
+   */
   _spawnClearTexts(result, cx, cy) {
     const L = this.layout;
     const midX = L.boardX + L.boardPx / 2;
-    let praiseY = L.boardY + L.boardPx * 0.4;
-    // keep the praise away from the piece centre where the points rise
-    if (Math.abs(cy - praiseY) < L.cell * 1.2) praiseY = cy > L.boardY + L.boardPx / 2 ? cy - L.cell * 2.1 : cy + L.cell * 2.1;
-    let comboY = praiseY;
-    if (result.praise) {
-      const s = this._sprite(`praise.${result.praise}`, this._tr(`praise.${result.praise}`), 'praise', this._bigFont(1.0), result.praise);
-      this._spawnText(TK_PRAISE, s, midX, praiseY, TIMING.PRAISE, L.cell * 0.6);
-      comboY = praiseY + s.h * 0.62;
-    }
-    if (result.combo >= 2) {
-      // cached per combo value (the glow blur is the expensive part of text rendering)
-      const s = this._sprite(`combo.${result.combo}`, this._tr('combo', { n: result.combo }), 'combo', this._smallFont(0.62));
-      this._spawnText(TK_COMBO, s, midX, result.praise ? comboY : cy - L.cell * 1.1, TIMING.PRAISE, L.cell * 0.6);
-    }
+    const minY = L.boardY;
+    const maxY = L.boardY + L.boardPx;
     const pts = result.totalPoints || 0;
     if (pts > 0) {
       const slot = this._spawnText(TK_POINTS, null, cx, cy, TIMING.POINTS, L.cell * 1.1);
@@ -1017,6 +1047,66 @@ export class Renderer {
       slot.w = w;
       slot.h = h;
     }
+    let praiseY = L.boardY + L.boardPx * 0.4;
+    if (result.praise) {
+      const s = this._sprite(`praise.${result.praise}`, this._tr(`praise.${result.praise}`), 'praise', this._bigFont(1.0), result.praise);
+      praiseY = this._clearY(midX, s.w, s.h, praiseY, minY, maxY);
+      this._spawnText(TK_PRAISE, s, midX, praiseY, TIMING.PRAISE, L.cell * 0.6);
+      praiseY += s.h * 0.62; // the combo text prefers the spot right below the praise
+    }
+    if (result.combo >= 2) {
+      // cached per combo value (the glow blur is the expensive part of text rendering)
+      const s = this._sprite(`combo.${result.combo}`, this._tr('combo', { n: result.combo }), 'combo', this._smallFont(0.62));
+      this._spawnText(TK_COMBO, s, midX, this._clearY(midX, s.w, s.h, praiseY, minY, maxY), TIMING.PRAISE, L.cell * 0.6);
+    }
+  }
+
+  /**
+   * Rectangles (CSS px, canvas space) that the currently live floating texts sweep over their
+   * whole lifetime (points rise, banner drop-in included).
+   */
+  _liveTextRects(sinceStart = -Infinity) {
+    const out = [];
+    const cell = this.layout.cell;
+    for (let i = 0; i < MAX_TEXTS; i++) {
+      const s = this._texts[i];
+      if (!s.active || !s.img || this.time - s.start >= s.dur || s.start < sinceStart) continue;
+      let top = s.y - s.h / 2;
+      if (s.kind === TK_POINTS || s.kind === TK_INFO) top -= s.rise;
+      else if (s.kind === TK_BANNER) top -= cell * 0.9;
+      else if (s.kind === TK_PRAISE || s.kind === TK_COMBO) top -= s.rise * 0.5;
+      out.push({ l: s.x - s.w / 2, r: s.x + s.w / 2, t: top, b: s.y + s.h / 2 });
+    }
+    return out;
+  }
+
+  /** True when a w×h text centred at (x, y) overlaps none of the `live` rects (with a small gap). */
+  _textFree(live, x, w, h, y) {
+    const gap = this.layout.cell * 0.12;
+    return live.every((q) => x + w / 2 + gap <= q.l || x - w / 2 - gap >= q.r || y + h / 2 + gap <= q.t || y - h / 2 - gap >= q.b);
+  }
+
+  /**
+   * Centre y for a w×h text at x, as close to `py` as possible, that overlaps no live text and
+   * stays within [minY, maxY]. Falls back to the clamped preferred spot when nothing is free.
+   */
+  _clearY(x, w, h, py, minY, maxY) {
+    const gap = this.layout.cell * 0.12;
+    const lo = minY + h / 2;
+    const hi = Math.max(lo, maxY - h / 2);
+    const clamp = (y) => Math.max(lo, Math.min(hi, y));
+    const first = clamp(py);
+    // 1st try: clear of every live text; 2nd: at least clear of the texts of this very placement
+    // (a quick player can still have the previous, fading texts around)
+    for (const live of [this._liveTextRects(), this._liveTextRects(this.time)]) {
+      const free = (y) => this._textFree(live, x, w, h, y);
+      if (free(first)) return first;
+      const candidates = [lo, hi];
+      for (const q of live) candidates.push(q.t - gap - h / 2, q.b + gap + h / 2);
+      candidates.sort((a, b) => Math.abs(a - py) - Math.abs(b - py));
+      for (const y of candidates) if (y >= lo - 0.5 && y <= hi + 0.5 && free(y)) return y;
+    }
+    return first;
   }
 
   _allClearFx() {
@@ -1770,9 +1860,11 @@ export class Renderer {
   }
 
   _drawTexts(ctx, T, dpr, ox, oy) {
-    for (let i = 0; i < MAX_TEXTS; i++) {
+    // two passes: the points text is drawn last, so it can never be hidden behind another text
+    for (let pass = 0; pass < 2 * MAX_TEXTS; pass++) {
+      const i = pass % MAX_TEXTS;
       const s = this._texts[i];
-      if (!s.active || !s.img) continue;
+      if (!s.active || !s.img || (s.kind === TK_POINTS) !== (pass >= MAX_TEXTS)) continue;
       const k = clamp01((T - s.start) / s.dur);
       let scale = 1;
       let alpha = 1;

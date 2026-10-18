@@ -206,6 +206,34 @@ test('raw (unfiltered) trays: RAW_P_MAX for classic, RAW_P_MAX_LEVELS for journe
   assert.ok(classicDiffers > 0 && levelsDiffers > 0);
 });
 
+test('journey/daily opening tray (trayIndex 0) is always fully placeable: raw roll, mercy branch and rescue', () => {
+  // Crowded board where most random trays are unsolvable (20 empty cells in small pockets).
+  const board = boardFrom(['##.##.##', '#.##.##.', '.##.##.#', '##.##.##', '#.##.##.', '.##.##.#', '##.##.##', '........']);
+  const exhaustive = (tray) => analyzeTray(board, tray.map((p) => p.shapeId), { nodeLimit: 1e7 }).solvable;
+  const deal = (mode, overrides, ctx, seed) => {
+    const gen = new PieceGenerator({ rng: new RNG(seed), mode, config: { ...GEN, ...overrides } });
+    return gen.nextTray(board, { level: { difficulty: 1 }, ...ctx });
+  };
+  const variants = [
+    ['always take the raw roll', { RAW_P_MAX_LEVELS: 1 }, { fill: 0.4 }],
+    ['mercy branch (crowded board)', {}, { fill: GEN.MERCY_FILL + 0.1 }],
+    ['mercy branch (right after a revive)', {}, { fill: 0.4, mercyTrays: 1 }],
+    ['single unfiltered candidate, rescue tray', { CANDIDATES: 1 }, { fill: 0.4 }],
+    ['single candidate in the mercy branch', { CANDIDATES: 1 }, { fill: 0.9 }],
+  ];
+  for (const mode of ['journey', 'daily']) {
+    for (const [name, overrides, ctx] of variants) {
+      let laterUnsolvable = 0;
+      for (let seed = 1; seed <= 150; seed++) {
+        assert.ok(exhaustive(deal(mode, overrides, { ...ctx, trayIndex: 0 }, seed)), `${mode}, ${name}, seed ${seed}: opening tray is not placeable`);
+        if (!exhaustive(deal(mode, overrides, { ...ctx, trayIndex: 1 }, seed))) laterUnsolvable++;
+      }
+      // the same variant on a later tray may deal an unsolvable tray: the guard is what protects tray 0
+      if (name === 'always take the raw roll' || name.startsWith('single')) assert.ok(laterUnsolvable > 0, `${mode}, ${name}: test setup never produces an unsolvable tray`);
+    }
+  }
+});
+
 test('early multi-line preference (EARLY_MULTI_P) picks a tray with a 2-line clear available right away', () => {
   // Rows 6 and 7 miss only (6,3)/(7,3): I2v clears both at once. Row 0 misses (0,5),(0,6),(0,7).
   const board = boardFrom(['#####...', '........', '........', '........', '........', '........', '###.####', '###.####']);

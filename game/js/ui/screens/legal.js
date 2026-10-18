@@ -1,5 +1,6 @@
 // Legal notice (Impressum, § 5 DDG) – fully offline: CONFIG.LEGAL (name, address, email as a
-// mailto link, phone and VAT id when set), links to the online legal notice and the privacy
+// mailto link, phone and/or contact form link – § 5 DDG wants a second fast channel – and the
+// VAT id when set), links to the online legal notice and the privacy
 // policy, open-source licenses (Nunito – SIL OFL 1.1; all sounds are synthesized in the app) and
 // the "contains ads / in-app purchases" note. Text is selectable.
 
@@ -22,6 +23,7 @@ export const legalScreen = {
     </section>`);
     body = el.querySelector('[data-ref="body"]');
     app.action('legal.email', () => Platform.openUrl(`mailto:${CONFIG.LEGAL.EMAIL}`));
+    app.action('legal.form', () => Platform.openUrl(CONFIG.LEGAL.CONTACT_FORM_URL));
     app.action('legal.online', () => Platform.openUrl(CONFIG.IMPRINT_URL));
     app.action('legal.privacy', () => Platform.openUrl(CONFIG.PRIVACY_POLICY_URL));
     return el;
@@ -44,6 +46,9 @@ function render() {
     contact.push(`<button type="button" class="legal__link" data-action="legal.email">${icon('mail')}<span>${esc(L.EMAIL)}</span></button>`);
   }
   if (L.PHONE) contact.push(`<p class="legal__line"><span class="legal__label">${esc(t('legal.phone'))}</span> ${esc(L.PHONE)}</p>`);
+  if (L.CONTACT_FORM_URL) {
+    contact.push(`<button type="button" class="legal__link" data-action="legal.form">${icon('external')}<span>${esc(t('legal.contactForm'))}</span></button>`);
+  }
   body.innerHTML = `
     <section class="panel legal__card">
       <h2 class="legal__heading">${esc(t('legal.heading'))}</h2>

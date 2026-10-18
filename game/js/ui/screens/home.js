@@ -45,7 +45,7 @@ export const homeScreen = {
       <div class="home__hero">
         <div class="home__floaters" aria-hidden="true">${floaters}</div>
         <div class="logo">${icon('logo', 'logo__mark')}<div class="logo__word" role="img" aria-label="Blocko">${letters}</div></div>
-        <div class="home__best">${icon('crown', 'home__crown')}<span class="home__best-label" data-i18n="home.best"></span><span class="home__best-value" data-ref="best">0</span></div>
+        <div class="home__best" data-ref="bestBox">${icon('crown', 'home__crown')}<span class="home__best-label" data-i18n="home.best"></span><span class="home__best-value" data-ref="best">0</span></div>
       </div>
       <div class="home__cta">
         <div class="breathe"><button type="button" class="btn btn--primary btn--xl btn--shine home__play" data-action="home.play" data-ref="play">
@@ -91,7 +91,11 @@ export const homeScreen = {
       if (!P.isFeatureUnlocked('journey')) lockedToast(app, 'journey');
       else app.go('journey');
     });
-    app.action('home.journeyPlay', () => startJourney(app, P.journeyUnlocked));
+    // the card's ▶ continues the saved journey run (it may be an older level replayed for stars)
+    app.action('home.journeyPlay', () => {
+      const saved = game.savedRun();
+      startJourney(app, saved && saved.mode === 'journey' ? saved.level.number : P.journeyUnlocked);
+    });
     app.action('home.daily', () => startDaily(app));
     app.action('home.missions', () => {
       if (!P.isFeatureUnlocked('missions')) lockedToast(app, 'missions');
@@ -145,6 +149,8 @@ export function startDaily(app) {
     lockedToast(app, 'daily');
     return;
   }
+  // a daily run of an earlier day ends here (no reward) instead of being continued as "today's"
+  app.game.expireStaleDaily();
   const saved = app.game.savedRun();
   if (saved && saved.mode === 'daily') {
     app.game.continueRun();
@@ -204,6 +210,8 @@ function render(app) {
   setBar(refs.levelBar, info.progress);
   refs.levelChip.setAttribute('aria-label', t('home.levelAria', { n: info.level, xp: info.xpIntoLevel, next: info.xpForNext }));
   setText(refs.best, formatNumber(P.bestScore));
+  // nothing to show for a new player (the space stays, so nothing shifts when the first record is set)
+  refs.bestBox.classList.toggle('is-empty', !(P.bestScore > 0));
 
   // daily reward gift (only once unlocked; dot while claimable)
   const giftOpen = P.isFeatureUnlocked('daily_reward');

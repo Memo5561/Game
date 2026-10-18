@@ -4,6 +4,8 @@
 // Usage: node tools/simulate.mjs [--runs=200] [--levels=100] [--attempts=8] [--days=30]
 //          [--start=2026-10-01] [--seed=1] [--bot=greedy|planner] [--experience=10]
 //          [--config='{"RAW_P_MAX":0.15}']   (JSON merged over CONFIG.GENERATOR to try tunings)
+//        node tools/simulate.mjs --economy [--days=30] [--players=3] [--profiles=casual,engaged,strong]
+//          [--ads=both|0|1] [--seed=1]       (coin economy of whole play days, see simulateEconomy)
 //
 // Bots (same priorities: points from line clears/gems ≫ remaining pieces still fit ≫ few isolated
 // holes ≫ smooth surface ≫ room for big pieces ≫ open centre):
@@ -19,6 +21,8 @@ import { generateLevel, generateDailyLevel, levelKind } from '../game/js/core/le
 import { hashString } from '../game/js/core/rng.js';
 import { clearPoints } from '../game/js/core/scoring.js';
 import { CONFIG } from '../game/js/config.js';
+import { Progression, dayKey } from '../game/js/meta/progression.js';
+import { defaultSave } from '../game/js/meta/storage.js';
 import { pathToFileURL } from 'node:url';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -387,11 +391,278 @@ function simulateDaily() {
   if (failed.length) console.log(`  days with failed first tries: ${failed.join(' ')}`);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Economy (--economy): whole play days with the real Progression
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Player profiles. `minutes` = play time per day, `secPerPiece` = thinking/drag time per placed
+ * piece, `journeyTries` = journey level attempts per day (the rest of the time is classic),
+ * `dailyTries` = attempts at the daily challenge.
+ */
+export const ECONOMY_PROFILES = Object.freeze({
+  casual: { minutes: 15, bot: 'greedy', secPerPiece: 3.5, journeyTries: 2, dailyTries: 1 },
+  engaged: { minutes: 30, bot: 'greedy', secPerPiece: 3, journeyTries: 4, dailyTries: 2 },
+  strong: { minutes: 45, bot: 'planner', secPerPiece: 2.5, journeyTries: 6, dailyTries: 2 },
+});
+const RUN_OVERHEAD_MIN = 0.2; // menus, result screens, "play again"
+const AD_MIN = 0.5; // one rewarded video, including the taps around it
+const ECO_COIN_THEMES = Object.entries(CONFIG.ECONOMY.THEMES)
+  .filter(([, def]) => def.price > 0).sort((a, b) => a[1].price - b[1].price).map(([id]) => id);
+
+/**
+ * Plays `days` days of one player: login reward, optional rewarded ads (x2 on the login reward and
+ * on run / level / daily coins, free-coin videos, revive videos), the daily challenge, journey
+ * attempts, classic runs for the rest of the time, mission claims; buys the cheapest coin theme
+ * as soon as it is affordable. Coins are attributed to their source.
+ * @param {typeof ECONOMY_PROFILES[keyof typeof ECONOMY_PROFILES]} profile
+ * @param {{ ads: boolean, days: number, seed: number }} opts
+ */
+export function simulatePlayer(profile, { ads, days, seed }) {
+  const save = defaultSave();
+  save.flags.tutorialDone = true;
+  let now = new Date(2026, 9, 1, 12);
+  const P = new Progression(save, { now: () => now });
+  const income = {};
+  const add = (key, n) => { income[key] = (income[key] || 0) + n; };
+  const out = {
+    days: [], runCoins: [], runPlayMin: [], incomeBy: income, bought: [], spent: 0, cumulative: [], gameOverBalances: [],
+    missions: { offered: 0, completed: 0, bonus: 0, daysWithAll: 0 }, totalMin: 0, levelUps: 0,
+  };
+  const cumulative = () => out.cumulative[out.cumulative.length - 1] || 0;
+  let counter = 0;
+  const nextSeed = () => hashString(`economy-${seed}-${counter++}`);
+  let minutes = 0;
+  let earnedToday = 0;
+
+  /** Runs `fn`, attributes the coin change to `key` (minus the level-up coins in `xpCoins()`). */
+  const credit = (key, fn) => {
+    const before = P.coins;
+    const res = fn();
+    const gained = P.coins - before;
+    add(key, gained);
+    earnedToday += gained;
+    return res;
+  };
+  const levelUpCoins = (xp) => add('level-ups', xp && xp.coins ? xp.coins : 0);
+  const watch = () => { minutes += AD_MIN; };
+
+  const play = (session) => {
+    playOut(session, {
+      revive: ads && session.mode !== 'tutorial',
+      bot: profile.bot,
+      onPlace(res) {
+        P.trackEvent({ type: 'place', cells: res.placedCells.length });
+        if (res.linesCount > 0) P.trackEvent({ type: 'clear', lines: res.linesCount, combo: res.combo });
+        if (res.allClear) P.trackEvent({ type: 'all_clear' });
+      },
+    });
+    minutes += (session.piecesPlaced * profile.secPerPiece) / 60 + RUN_OVERHEAD_MIN + (ads && session.reviveUsed ? AD_MIN : 0);
+    return session;
+  };
+  /** recordGame + the game_end mission event; returns { rec, coins } */
+  const finish = (session, mode) => {
+    const before = P.coins;
+    const rec = P.recordGame({
+      mode, score: session.score, lines: session.linesCleared, maxCombo: session.maxCombo,
+      pieces: session.piecesPlaced, allClears: session.allClears, playSec: session.piecesPlaced * profile.secPerPiece,
+    });
+    P.trackEvent({ type: 'game_end', mode, score: session.score, pieces: session.piecesPlaced });
+    const gained = P.coins - before;
+    if (rec.coinsEarned > 0) add('classic runs', rec.coinsEarned);
+    add('level-ups', rec.xp.coins);
+    earnedToday += gained;
+    if (rec.xp.leveledUp) out.levelUps += rec.xp.levels.length;
+    return rec;
+  };
+  const doubleUp = (amount) => {
+    if (!ads || !(amount > 0)) return;
+    const gained = P.doubleRunCoins(amount);
+    add('x2 videos', gained);
+    earnedToday += gained;
+    watch();
+  };
+  const claimLogin = () => {
+    if (!P.isFeatureUnlocked('daily_reward')) return;
+    const r = P.claimDailyReward(ads ? 2 : 1);
+    if (r.coins > 0) {
+      add('login calendar', r.coins);
+      earnedToday += r.coins;
+      if (ads) watch();
+    }
+  };
+
+  for (let d = 0; d < days; d++) {
+    now = new Date(2026, 9, 1 + d, 12);
+    minutes = 0;
+    earnedToday = 0;
+    claimLogin();
+    if (ads) {
+      for (let i = 0; i < CONFIG.ADS.FREE_COINS_ADS_PER_DAY; i++) {
+        credit('free-coin videos', () => P.grantFreeCoins());
+        watch();
+      }
+    }
+    // daily challenge
+    if (P.isFeatureUnlocked('daily')) {
+      const level = generateDailyLevel(dayKey(now));
+      for (let a = 0; a < profile.dailyTries; a++) {
+        const s = play(createSession({ mode: 'daily', level, seed: nextSeed(), gamesPlayed: save.stats.gamesPlayed }));
+        finish(s, 'daily');
+        if (s.status === 'won') {
+          const before = P.coins;
+          const r = P.completeChallenge(level.id, s.stars());
+          add('daily challenge', r.coins);
+          levelUpCoins(r.xp);
+          earnedToday += P.coins - before;
+          P.trackEvent({ type: 'daily_complete' });
+          doubleUp(r.coins);
+          break;
+        }
+      }
+    }
+    // journey attempts (a lost attempt is retried with a new seed)
+    if (P.isFeatureUnlocked('journey')) {
+      for (let k = 0; k < profile.journeyTries; k++) {
+        const n = save.journey.unlocked;
+        const level = generateLevel(n);
+        // the "use a booster" mission is done with a booster the player owns (starting / gift / video ones)
+        const useBooster = P.missions().some((m) => m.type === 'use_booster' && m.progress < m.target);
+        if (useBooster) {
+          const type = P.boosterCount('shuffle') > 0 ? 'shuffle' : 'hammer';
+          if (P.useBooster(type)) P.trackEvent({ type: 'booster_used' });
+        }
+        const s = play(createSession({ mode: 'journey', level, seed: nextSeed(), gamesPlayed: save.stats.gamesPlayed }));
+        finish(s, 'journey');
+        if (s.status === 'won') {
+          const before = P.coins;
+          const r = P.completeLevel(n, s.stars(), level.rewardCoins);
+          add('journey levels', r.coins);
+          levelUpCoins(r.xp);
+          earnedToday += P.coins - before;
+          P.trackEvent({ type: 'level_complete', stars: s.stars() });
+          doubleUp(r.coins);
+        }
+      }
+    }
+    // classic for the rest of the time (the first two games are the tutorial-ish unlock games)
+    do {
+      const s = play(createSession({ mode: 'classic', seed: nextSeed(), bestScore: P.bestScore, gamesPlayed: save.stats.gamesPlayed }));
+      out.gameOverBalances.push(P.coins);
+      const rec = finish(s, 'classic');
+      out.runCoins.push(rec.coinsEarned);
+      out.runPlayMin.push((s.piecesPlaced * profile.secPerPiece) / 60);
+      doubleUp(rec.coinsEarned);
+      claimLogin(); // the login calendar unlocks after the first game
+    } while (minutes < profile.minutes);
+    // missions
+    const list = P.missions();
+    out.missions.offered += list.length;
+    let claimed = 0;
+    for (const m of list) {
+      if (!m.claimed && m.progress >= m.target) {
+        credit('missions', () => P.claimMission(m.id));
+        claimed++;
+      } else if (m.claimed) claimed++;
+    }
+    out.missions.completed += list.filter((m) => m.progress >= m.target).length;
+    if (list.length === 3 && P.missionBonusStatus().available) {
+      credit('mission bonus', () => P.claimMissionBonus());
+      out.missions.bonus++;
+    }
+    if (list.length === 3 && list.every((m) => m.progress >= m.target)) out.missions.daysWithAll++;
+    // spend: the cheapest coin theme as soon as it is affordable
+    for (const id of ECO_COIN_THEMES) {
+      if (P.themeUnlockInfo(id).canBuy) {
+        P.buyTheme(id);
+        out.spent += CONFIG.ECONOMY.THEMES[id].price;
+        out.bought.push({ id, day: d + 1 });
+      }
+    }
+    out.totalMin += minutes;
+    out.cumulative.push(cumulative() + earnedToday);
+    out.days.push({ day: d + 1, earned: earnedToday, minutes, level: P.levelInfo().level, journey: save.journey.unlocked, balance: P.coins });
+  }
+  // level-up coins are counted in 'level-ups' only, not again in the source that triggered them
+  out.finalBalance = P.coins;
+  out.level = P.levelInfo().level;
+  out.journeyLevel = save.journey.unlocked;
+  return out;
+}
+
+function simulateEconomy() {
+  const E = CONFIG.ECONOMY;
+  const players = Number(args.players || 3);
+  const days = Number(args.days || 30);
+  const names = String(args.profiles || Object.keys(ECONOMY_PROFILES).join(',')).split(',');
+  const adModes = args.ads === '0' ? [false] : args.ads === '1' ? [true] : [false, true];
+  const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+  const median = (xs) => quantile(xs.slice().sort((a, b) => a - b), 0.5);
+  const packs = Object.entries(CONFIG.PRODUCTS).filter(([, p]) => p.coins).map(([id, p]) => [id, p.coins]);
+  console.log(`\n=== Economy: ${days} days x ${players} players per profile (real Progression; greedy / planner bots) ===`);
+  console.log(`config: run coins ${E.RUN_COINS_FACTOR}*sqrt(score), level ${E.LEVEL_COMPLETE_COINS}+${E.LEVEL_STAR_COINS}/star (x1/1.5/2), daily ${E.DAILY_CHALLENGE_COINS}, `
+    + `login ${E.DAILY_REWARDS.join('/')}, missions ${E.MISSION_REWARDS.join('/')}+${E.MISSION_BONUS_COINS}, level-up ${E.LEVEL_UP_COINS}, revive ${E.REVIVE_COINS}`);
+  console.log(`themes ${ECO_COIN_THEMES.map((id) => `${id} ${E.THEMES[id].price}`).join(', ')}; packs ${packs.map(([id, c]) => `${id} ${c}`).join(', ')}`);
+  console.log('targets: engaged player without ads ~500-800 coins/day; first theme within ~2-3 days, last theme in ~2-3 weeks; revive >> one run; packs = several days of play');
+  const summary = [];
+  for (const name of names) {
+    const profile = ECONOMY_PROFILES[name];
+    if (!profile) throw new Error(`unknown profile ${name}`);
+    for (const ads of adModes) {
+      const runs = [];
+      for (let k = 0; k < players; k++) runs.push(simulatePlayer(profile, { ads, days, seed: BASE_SEED * 1000 + k }));
+      const perDay = (fn) => sum(runs.map(fn)) / (players * days);
+      const totalPerDay = perDay((r) => r.cumulative[r.cumulative.length - 1]);
+      const week = (from, to) => sum(runs.map((r) => sum(r.days.slice(from, to).map((x) => x.earned)))) / (players * (to - from));
+      const sources = {};
+      for (const r of runs) for (const [k, v] of Object.entries(r.incomeBy)) sources[k] = (sources[k] || 0) + v;
+      const runCoins = runs.flatMap((r) => r.runCoins).sort((a, b) => a - b);
+      const minutes = sum(runs.map((r) => r.totalMin));
+      const coinsPerHour = (totalPerDay * players * days) / (minutes / 60);
+      // day on which the cumulative income (start coins included) reaches a price, averaged over players
+      const dayReaching = (price) => {
+        const ds = runs.map((r) => { const i = r.cumulative.findIndex((c) => c + E.STARTING_COINS >= price); return i < 0 ? Infinity : i + 1; });
+        const finite = ds.filter(Number.isFinite);
+        return finite.length === ds.length ? fmt(mean(ds), 1) : finite.length ? `${fmt(mean(finite), 1)}*` : `>${days}`;
+      };
+      const boughtDay = (id) => {
+        const ds = runs.map((r) => (r.bought.find((b) => b.id === id) || {}).day);
+        const f = ds.filter(Boolean);
+        return f.length === ds.length ? fmt(mean(f), 1) : f.length ? `${fmt(mean(f), 1)}*` : `>${days}`;
+      };
+      const allOwned = ECO_COIN_THEMES.reduce((a, id) => a + E.THEMES[id].price, 0);
+      const late = runs.flatMap((r) => r.gameOverBalances.slice(Math.floor(r.gameOverBalances.length * 0.7)));
+      const early = runs.flatMap((r) => r.gameOverBalances.slice(0, Math.ceil(r.gameOverBalances.length * 0.2)));
+      const affordable = (xs) => pct(xs.filter((b) => b >= E.REVIVE_COINS).length, xs.length);
+      console.log(`\n--- ${name}: ${profile.minutes} min/day, ${profile.bot} bot, ${profile.secPerPiece}s/piece, ${profile.journeyTries} journey + ${profile.dailyTries} daily tries; rewarded ads: ${ads ? 'all optional ones watched' : 'never'} ---`);
+      console.log(`coins/day ${fmt(totalPerDay, 0)}  (days 1-3 ${fmt(week(0, 3), 0)}, days 4-7 ${fmt(week(3, 7), 0)}, last 7 days ${fmt(week(Math.max(0, days - 7), days), 0)})  = ${fmt(coinsPerHour, 0)} coins per hour of play`);
+      console.log('  by source (coins/day): ' + Object.entries(sources).sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${k} ${fmt(v / (players * days), 0)} (${fmt((100 * v) / sum(Object.values(sources)), 0)}%)`).join(', '));
+      console.log(`  classic run income: median ${median(runCoins)}, p10 ${quantile(runCoins, 0.1)}, p90 ${quantile(runCoins, 0.9)} coins; ${fmt(runCoins.length / (players * days), 1)} classic runs/day; `
+        + `reached player level ${fmt(mean(runs.map((r) => r.level)), 1)}, journey level ${fmt(mean(runs.map((r) => r.journeyLevel)), 1)}`);
+      console.log(`  missions: ${fmt(sum(runs.map((r) => r.missions.completed)) / sum(runs.map((r) => r.missions.offered)) * 100, 0)}% completed, all three on ${fmt(sum(runs.map((r) => r.missions.daysWithAll)) / (players * days) * 100, 0)}% of days`);
+      console.log(`  themes (bought cheapest first)   day: ${ECO_COIN_THEMES.map((id) => `${id} ${boughtDay(id)}`).join(', ')};  saving for one alone, day income reaches the price: ${ECO_COIN_THEMES.map((id) => `${id} ${dayReaching(E.THEMES[id].price)}`).join(', ')}; all four ${dayReaching(allOwned)}`);
+      console.log(`  revive ${E.REVIVE_COINS} coins = ${fmt(E.REVIVE_COINS / median(runCoins), 1)} median classic runs = ${fmt(E.REVIVE_COINS / totalPerDay, 2)} days of income; `
+        + `balance >= ${E.REVIVE_COINS} at ${affordable(early)} of the game overs in the first 20% of the days, ${affordable(late)} in the last 30% (after the themes are bought)`);
+      console.log(`  packs in days of play: ${packs.map(([id, c]) => `${id} (${c}) = ${fmt(c / totalPerDay, 1)} days / ${fmt(c / coinsPerHour * 60 / profile.minutes, 1)} days of ${profile.minutes} min`).join(', ')}`);
+      summary.push({ profile: name, ads: ads ? 'ads' : 'no ads', coinsDay: Math.round(totalPerDay), perHour: Math.round(coinsPerHour), runMedian: median(runCoins),
+        firstTheme: boughtDay(ECO_COIN_THEMES[0]), lastTheme: boughtDay(ECO_COIN_THEMES[ECO_COIN_THEMES.length - 1]), reviveRuns: fmt(E.REVIVE_COINS / median(runCoins), 1),
+        smallDays: fmt(packs[0][1] / totalPerDay, 1), largeDays: fmt((packs[1] || packs[0])[1] / totalPerDay, 1) });
+    }
+  }
+  console.log('\nsummary:');
+  console.table(summary);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const t0 = performance.now();
-  if (GEN_CONFIG !== CONFIG.GENERATOR) console.log('generator config override:', args.config);
-  if (RUNS > 0) simulateClassic();
-  if (LEVELS > 0) simulateJourney();
-  if (DAYS > 0) simulateDaily();
+  if (args.economy) {
+    simulateEconomy();
+  } else {
+    if (GEN_CONFIG !== CONFIG.GENERATOR) console.log('generator config override:', args.config);
+    if (RUNS > 0) simulateClassic();
+    if (LEVELS > 0) simulateJourney();
+    if (DAYS > 0) simulateDaily();
+  }
   console.log(`\n(simulation took ${((performance.now() - t0) / 1000).toFixed(1)} s)`);
 }

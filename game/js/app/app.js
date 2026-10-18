@@ -42,6 +42,8 @@ import { SCREENS } from '../ui/screens/index.js';
 import { MODALS } from '../ui/modals/index.js';
 
 const LANDSCAPE_RATIO = 1.2;
+/** Touch targets keep this distance to the bottom edge while a banner can be present (AdMob). */
+export const BANNER_CLEARANCE_PX = 48;
 const DAY_CHECK_MS = 60000;
 const TOAST_LOG = 20;
 
@@ -83,6 +85,12 @@ export class App {
     this._resetting = false;
     this._dayKey = '';
     this._dayTimer = 0;
+    /** confirmations that arrived before the shell existed (entitlements at boot), shown once it does */
+    this._bootNotices = [];
+    /** mission completions of a running game, shown as toasts once the player leaves the game screen */
+    this._missionQueue = [];
+    /** free booster videos watched today when the meta layer has no persisted counter (fallback) */
+    this._freeBoosterFallback = { day: '', count: 0 };
     /** @type {Map<string, Function>} */
     this._actions = new Map();
     /** @type {Map<string, Set<Function>>} */
@@ -205,6 +213,7 @@ export class App {
     this.applyAudioSettings();
     Sfx.startMusic();
     this.applyTheme(this.progression.selectedTheme);
+    this.applyBannerClearance();
     this.registerGlobalActions();
     installRetention(this);
   }
@@ -212,6 +221,7 @@ export class App {
   async initGame() {
     this.game = new GameController(this);
     await this.game.init();
+    this.applyBannerClearance();
   }
 
   /** DOM font weights used by the UI (local files; never blocks longer than 1.5 s). */
@@ -225,6 +235,8 @@ export class App {
 
   showFirstScreen() {
     this.game.restoreSavedRun();
+    this.game.expireStaleDaily();
+    this.flushBootNotices();
     if (!this.save.flags.tutorialDone) {
       this.router.go('game', null, { instant: true });
       this.game.startTutorial();
@@ -325,9 +337,12 @@ export class App {
     if (this.game) {
       if (prev === 'game') this.game.onScreen(false);
       if (id === 'game') this.game.onScreen(true);
+      // a daily run left over from a previous day ends here, so the Daily card offers today's level
+      if (id !== 'game') this.game.expireStaleDaily();
     }
     clearInterval(this._dayTimer);
     if (id === 'home') this._dayTimer = setInterval(() => this.checkDay(), DAY_CHECK_MS);
+    if (id !== 'game') this.flushMissionToasts();
   }
 
   onResize() {
@@ -383,6 +398,7 @@ export class App {
     const changed = key !== this._dayKey;
     this._dayKey = key;
     if (!this.router) return;
+    if (changed && this.game && this.router.current !== 'game') this.game.expireStaleDaily();
     this.router.refresh(changed ? 'day' : 'data');
     if (changed) this.emit('day', key);
   }
@@ -396,18 +412,40 @@ export class App {
     this.save.iap.adsRemoved = !!adsRemoved;
     if (adsRemoved) {
       const gift = this.progression.grantRemoveAdsGift();
-      if (gift && this.toasts) {
-        this.toast(t('toast.gift', { coins: gift.coins, hammer: gift.hammer, shuffle: gift.shuffle }), { icon: 'gift', tone: 'good', ms: 3600 });
-        Sfx.play('reward');
-        this.refreshCoins();
+      if (gift) {
+        if (this.toasts) this.showGiftNotice(gift);
+        else this._bootNotices.push({ kind: 'gift', gift });
       }
     }
     requestSave(this.save);
     this.updateBanner();
     if (was !== !!adsRemoved) {
-      if (adsRemoved && this.toasts) this.toast(t('toast.adsRemoved'), { icon: 'noads', tone: 'good' });
+      if (adsRemoved) {
+        if (this.toasts) this.toast(t('toast.adsRemoved'), { icon: 'noads', tone: 'good' });
+        else this._bootNotices.push({ kind: 'adsRemoved' });
+      }
       this.emit('entitlements', { adsRemoved: !!adsRemoved });
       if (this.router) this.router.refresh('data');
+    }
+  }
+
+  showGiftNotice(gift) {
+    this.toast(t('toast.gift', { coins: gift.coins, hammer: gift.hammer, shuffle: gift.shuffle }), { icon: 'gift', tone: 'good', ms: 3600 });
+    Sfx.play('reward');
+    this.refreshCoins();
+  }
+
+  /**
+   * Remove-ads detected before the shell existed (a pending payment completed while the app was
+   * closed, or bought on another device): confirm it now. Skipped during the very first tutorial.
+   */
+  flushBootNotices() {
+    const list = this._bootNotices;
+    this._bootNotices = [];
+    if (this.firstLaunch) return;
+    for (const n of list) {
+      if (n.kind === 'gift') this.showGiftNotice(n.gift);
+      else if (n.kind === 'adsRemoved') this.toast(t('toast.adsRemoved'), { icon: 'noads', tone: 'good' });
     }
   }
 
@@ -427,7 +465,11 @@ export class App {
    * @returns {Promise<string>} purchase status
    */
   async purchase(productId) {
-    if (Platform.isBusy()) return 'busy';
+    if (Platform.isBusy()) {
+      // another native screen (ad, payment, dialog) is open – say so instead of swallowing the tap
+      this.toast(t('toast.purchaseError'), { icon: 'close', tone: 'warn' });
+      return 'busy';
+    }
     flushSave(this.save);
     Sfx.suspend();
     this.lastPurchaseAt = performance.now();
@@ -445,14 +487,37 @@ export class App {
       this.modals.open('purchasePending', { productId });
       return status;
     }
+    if (status === 'already_owned') {
+      await this.deliverEarlierPurchase(productId);
+      return status;
+    }
     const msg = {
-      pending: 'toast.purchasePending', error: 'toast.purchaseError', unavailable: 'toast.purchaseUnavailable', already_owned: 'toast.alreadyOwned',
+      pending: 'toast.purchasePending', error: 'toast.purchaseError', unavailable: 'toast.purchaseUnavailable',
     }[status];
-    if (msg) this.toast(t(msg), { icon: status === 'pending' ? 'info' : status === 'already_owned' ? 'check' : 'close', tone: status === 'pending' || status === 'already_owned' ? 'info' : 'warn' });
-    // an earlier purchase of this product is still open: re-query so native delivers it
-    // (remove_ads → entitlements; coins → the pending grant)
-    if (status === 'already_owned') Platform.restorePurchases();
+    if (msg) this.toast(t(msg), { icon: status === 'pending' ? 'info' : 'close', tone: status === 'pending' ? 'info' : 'warn' });
     return status;
+  }
+
+  /**
+   * An earlier purchase of this product is still open: re-query so native delivers it (remove_ads →
+   * entitlements; coins → the pending grant). Nothing is claimed as delivered before it was: the
+   * grant toast confirms a coin pack, a pack that is still being processed says so.
+   */
+  async deliverEarlierPurchase(productId) {
+    const consumable = !!(CONFIG.PRODUCTS[productId] && CONFIG.PRODUCTS[productId].type === 'consumable');
+    if (!consumable) {
+      this.toast(t('toast.alreadyOwned'), { icon: 'check', tone: 'info' });
+      Platform.restorePurchases();
+      return;
+    }
+    this.toast(t('toast.alreadyOwnedChecking'), { icon: 'info', tone: 'info' });
+    const coinsBefore = this.save.coins;
+    const grantsBefore = this.save.iap.grantedTokens.length;
+    const r = await Platform.restorePurchases();
+    if (!r || !r.ok) this.toast(t('toast.restoreError'), { icon: 'close', tone: 'warn' });
+    else if (this.save.iap.grantedTokens.length === grantsBefore && this.save.coins === coinsBefore) {
+      this.toast(t('toast.alreadyOwnedPending'), { icon: 'info', tone: 'info' });
+    }
   }
 
   /** Settings → restore purchases. */
@@ -472,10 +537,21 @@ export class App {
   }
 
   updateBanner() {
+    this.applyBannerClearance();
     const visible = this.adsStarted && CONFIG.ADS.BANNER_ENABLED && !this.save.iap.adsRemoved;
     if (visible === this.bannerVisible) return;
     this.bannerVisible = visible;
     Platform.setBannerVisible(visible);
+  }
+
+  /**
+   * body.has-banner while a banner can be present (the native slot keeps its height even before the
+   * first fill): css/app.css then keeps every touch target ≥ 48 px above the bottom edge.
+   */
+  applyBannerClearance() {
+    const present = CONFIG.ADS.BANNER_ENABLED && !this.save.iap.adsRemoved;
+    document.body.classList.toggle('has-banner', present);
+    if (this.game && this.game.renderer) this.game.renderer.setBottomReserve(present ? BANNER_CLEARANCE_PX : 0);
   }
 
   /** Rewarded buttons are offered only when a video is ready (§4.15). */
@@ -484,7 +560,8 @@ export class App {
   }
 
   /**
-   * Shows a rewarded video. Every rewarded ad that resolved true → adPolicy.markRewardedShown().
+   * Shows a rewarded video. Every video that was displayed – also one the player closed early –
+   * counts as a full-screen ad for the interstitial spacing (adPolicy.markRewardedShown()).
    * @param {string} placement 'revive'|'double'|'booster'|'daily'|'coins'
    * @returns {Promise<boolean>} rewarded
    */
@@ -495,17 +572,25 @@ export class App {
     }
     flushSave(this.save);
     Sfx.suspend();
-    let ok = false;
+    let result = { rewarded: false, shown: false };
     try {
-      ok = await Platform.showRewarded(placement);
+      result = await Platform.showRewardedResult(placement);
     } catch (e) {
       console.error('[app] rewarded failed', e);
     } finally {
       if (!this.appPaused) Sfx.resume();
     }
-    if (ok) this.adPolicy.markRewardedShown();
-    else this.toast(t('toast.noReward'), { icon: 'info' });
+    const ok = !!(result && result.rewarded);
+    if (ok || (result && result.shown)) this.adPolicy.markRewardedShown(this.runPlaySec());
+    if (!ok) this.toast(t('toast.noReward'), { icon: 'info' });
     return ok;
+  }
+
+  /** Active seconds of the running run (mid-run rewarded ads restart the interstitial clock from here). */
+  runPlaySec() {
+    const g = this.game;
+    if (!g || !g.session || g.finalized || g.session.mode === 'tutorial') return undefined;
+    return g.playSecNow();
   }
 
   /**
@@ -531,6 +616,28 @@ export class App {
     }
     if (shown) this.adPolicy.markInterstitialShown();
     return shown;
+  }
+
+  /** Free booster videos left today (persisted by the meta layer; in-memory fallback otherwise). */
+  freeBoostersLeft() {
+    const P = this.progression;
+    if (typeof P.freeBoostersLeft === 'function') return P.freeBoostersLeft();
+    const f = this._freeBoosterFallback;
+    if (f.day !== this.clock.today()) {
+      f.day = this.clock.today();
+      f.count = 0;
+    }
+    return Math.max(0, CONFIG.ADS.FREE_BOOSTER_ADS_PER_DAY - f.count);
+  }
+
+  /** Grants one free booster for a watched video (counts against the daily cap). */
+  grantFreeBooster(type) {
+    const P = this.progression;
+    if (typeof P.grantFreeBooster === 'function') return P.grantFreeBooster(type);
+    this.freeBoostersLeft();
+    this._freeBoosterFallback.count += 1;
+    P.addBooster(type, 1);
+    return true;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -593,6 +700,8 @@ export class App {
     root.setAttribute('data-scheme', vars['--scheme']);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', vars['--bg-top']);
+    // the native strip behind the banner slot / navigation bar follows the page's bottom colour
+    Platform.setThemeColors({ background: theme.bg[1] });
     if (this.game && this.game.renderer) this.game.renderer.setTheme(theme);
     if (this.router) this.router.refresh('theme');
     this.emit('theme', theme.id);
@@ -614,12 +723,34 @@ export class App {
     if (this.toasts) this.toasts.show(text, opts);
   }
 
-  /** Completed missions → one toast each. */
+  /**
+   * Completed missions: a sound cue now; the toast waits while the game screen is up (it would
+   * cover score, best and combo) and shows once the player is on another screen. A run's result
+   * screen lists the missions itself (takeQueuedMissions).
+   */
   announceMissions(list) {
+    if (!list.length) return;
+    Sfx.play('unlock');
+    if (this.router && this.router.current === 'game') this._missionQueue.push(...list);
+    else this.showMissionToasts(list);
+  }
+
+  showMissionToasts(list) {
     for (const m of list) {
       this.toast(t('toast.missionDone', { text: t(m.textKey, { n: m.target }) }), { icon: 'missions', tone: 'good', ms: 3000 });
     }
-    if (list.length) Sfx.play('unlock');
+  }
+
+  /** Shows the queued mission toasts (the player left the game screen without a result screen). */
+  flushMissionToasts() {
+    if (!this._missionQueue.length || !this.toasts) return;
+    const list = this._missionQueue.splice(0);
+    this.showMissionToasts(list);
+  }
+
+  /** @returns {Object[]} missions completed during the run so far (removed from the toast queue) */
+  takeQueuedMissions() {
+    return this._missionQueue.splice(0);
   }
 
   /**

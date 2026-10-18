@@ -95,7 +95,9 @@ export function defaultSave() {
       interstitialsShown: 0,
       sessionRuns: 0,
       upsellDay: null,
+      runSecAtAd: 0,
       freeCoins: { day: null, count: 0 },
+      freeBoosters: { day: null, count: 0 },
     },
     iap: { adsRemoved: false, adsGiftGranted: false, grantedTokens: [] },
     flags: {
@@ -369,7 +371,10 @@ function nativeSave(json) {
  * @property {{ completed: Record<string, number>, streak: number, lastDay: string|null }} challenge
  * @property {{ runsFinished: number, playSecSinceAd: number, lastInterstitialAt: number,
  *   lastRewardedAt: number, interstitialsShown: number, sessionRuns: number,
- *   upsellDay: string|null, freeCoins: { day: string|null, count: number } }} ads
+ *   upsellDay: string|null, runSecAtAd: number, freeCoins: { day: string|null, count: number },
+ *   freeBoosters: { day: string|null, count: number } }} ads runSecAtAd = play seconds of the
+ *   running run at the moment of its last rewarded ad (0 = none); freeCoins / freeBoosters = rewarded
+ *   videos watched on `day`
  * @property {{ adsRemoved: boolean, adsGiftGranted: boolean, grantedTokens: string[] }} iap
  * @property {{ tutorialDone: boolean, notifAsked: string|null, notifOptIn: boolean,
  *   notifDeclines: number, reviewAsked: boolean, firstRecordShown: boolean }} flags

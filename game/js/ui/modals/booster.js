@@ -22,7 +22,7 @@ export const boosterModal = {
       <p class="modal__text">${esc(t(`booster.${type}.desc`))}</p>
       <div class="modal__actions">
         ${btn({ action: 'booster.buy', label: formatNumber(price), icon: 'coin', size: 'lg', cls: app.progression.coins < price ? 'is-short' : '' })}
-        ${app.isRewardedAvailable() ? btn({ action: 'booster.watch', label: t('booster.watch', { name }), icon: 'ad', variant: 'ad' }) : ''}
+        ${app.isRewardedAvailable() && app.freeBoostersLeft() > 0 ? btn({ action: 'booster.watch', label: t('booster.watch', { name }), icon: 'ad', variant: 'ad' }) : ''}
         ${btn({ action: 'booster.close', labelKey: 'common.notNow', variant: 'ghost' })}
       </div>`;
   },
@@ -39,14 +39,14 @@ export const boosterModal = {
       m.close(true);
     },
     async watch(m, el, app) {
-      if (m.data.busy) return;
+      if (m.data.busy || app.freeBoostersLeft() < 1) return;
       m.data.busy = true;
       el.disabled = true;
       const ok = await app.showRewarded('booster');
       m.data.busy = false;
       if (m.isClosed) return;
       if (ok) {
-        app.progression.addBooster(m.props.type, 1);
+        app.grantFreeBooster(m.props.type);
         m.close(true);
       } else {
         el.disabled = false;

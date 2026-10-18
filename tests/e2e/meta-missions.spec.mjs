@@ -49,8 +49,10 @@ export default async function metaMissionsSpec() {
     await tap(page, 'revive.skip');
     await waitModal(page, 'gameover');
     let s = await state(page);
-    const doneToasts = s.toasts.filter((x) => x.startsWith('Mission complete'));
-    assert(doneToasts.length === 3, `three "Mission complete" toasts (${doneToasts})`);
+    // no toast over the HUD during the run, none over the result's coin counter: the result card lists them
+    assert(!s.toasts.some((x) => x.startsWith('Mission complete')), `no mission toast while the game screen is up (${s.toasts})`);
+    const doneLines = await ev(page, () => [...document.querySelectorAll('[data-modal="gameover"] .result__mission.is-done')].map((e) => e.textContent.trim()));
+    assert(doneLines.length === 3 && doneLines.every((x) => x.startsWith('Mission complete')), `result card lists the three completed missions (${doneLines})`);
     let sv = await ev(page, () => window.__blocko.save());
     assert(sv.missions.list.every((m) => m.progress >= m.target && !m.claimed), 'all three completed by the run');
     await tap(page, 'gameover.home');

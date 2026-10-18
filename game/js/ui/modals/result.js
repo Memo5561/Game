@@ -23,14 +23,42 @@ export function armAdButtons(m) {
   }, CONFIG.ADS.AD_BUTTON_ARM_MS);
 }
 
+/** The "Watch ad: ×2" button (starts unarmed: ignores taps for AD_BUTTON_ARM_MS). */
+function doubleButton(modalId) {
+  return btn({ action: `${modalId}.double`, labelKey: 'result.double', icon: 'ad', variant: 'ad', size: 'sm', cls: 'is-arming', attrs: ARMING });
+}
+
 /** Coins row: "+N" and, once, "Watch ad: ×2" (only with a rewarded video ready). */
 export function coinsRow(sum, app, modalId) {
   if (!(sum.coinsEarned > 0)) return '';
   const ad = !sum.doubled && app.isRewardedAvailable();
   return `<div class="result__row result__coins">
       <span class="result__coin-amount" data-ref="coinsBox">${icon('coin')}<span>+</span><span data-ref="coins" data-value="0">0</span></span>
-      ${ad ? btn({ action: `${modalId}.double`, labelKey: 'result.double', icon: 'ad', variant: 'ad', size: 'sm', cls: 'is-arming', attrs: ARMING }) : ''}
+      ${ad ? doubleButton(modalId) : ''}
     </div>`;
+}
+
+/**
+ * A rewarded video that finishes loading while the result screen is open (right after another ad,
+ * during SDK warm-up) still gets its "Watch ad: ×2" offer. Call from onOpen; cleanupResult undoes it.
+ */
+export function watchDoubleOffer(m, app, modalId) {
+  m.data.unsubAd = app.on('adState', () => {
+    const sum = m.props.summary;
+    if (m.isClosed || sum.doubled || m.data.doubling || !(sum.coinsEarned > 0) || !app.isRewardedAvailable()) return;
+    const row = m.$('.result__coins');
+    if (!row || row.querySelector('[data-action$=".double"], .result__doubled')) return;
+    row.insertAdjacentHTML('beforeend', doubleButton(modalId));
+    // armed late, like the auto-opened ones, so a tap meant for something else cannot hit it
+    clearTimeout(m.data.lateArmTimer);
+    m.data.lateArmTimer = setTimeout(() => {
+      const b = row.querySelector('[data-arm]');
+      if (b) {
+        b.removeAttribute('aria-disabled');
+        b.classList.remove('is-arming');
+      }
+    }, CONFIG.ADS.AD_BUTTON_ARM_MS);
+  });
 }
 
 /** XP bar row + level-up / theme-unlock lines. */
@@ -54,13 +82,21 @@ export function xpRows(sum) {
   return html;
 }
 
-/** One line of progress toward the nearest daily mission (empty while missions are locked). */
-export function missionLine(app) {
+/**
+ * Mission lines of a result card: every mission this run completed (the toasts wait for the result
+ * screen, so they never cover it), else one line of progress toward the nearest daily mission
+ * (empty while missions are locked).
+ * @param {Object} app
+ * @param {{ missionsDone?: Object[] }} [sum] run summary
+ */
+export function missionLine(app, sum = {}) {
   const list = app.progression.missions().filter((m) => !m.claimed);
   if (!list.length) return '';
-  const done = list.find((m) => m.progress >= m.target);
-  if (done) {
-    return `<div class="result__line result__mission is-done">${icon('check')}<span>${esc(t('result.missionDone', { text: t(done.textKey, { n: done.target }) }))}</span></div>`;
+  const completed = list.filter((m) => m.progress >= m.target);
+  const fresh = completed.filter((m) => (sum.missionsDone || []).some((d) => d.id === m.id));
+  const done = fresh.length ? fresh : completed.slice(0, 1);
+  if (done.length) {
+    return done.map((d) => `<div class="result__line result__mission is-done">${icon('check')}<span>${esc(t('result.missionDone', { text: t(d.textKey, { n: d.target }) }))}</span></div>`).join('');
   }
   const best = list.reduce((a, b) => (b.progress / b.target > a.progress / a.target ? b : a));
   return `<div class="result__line result__mission">${icon('missions')}<span class="result__mission-text">${esc(t(best.textKey, { n: best.target }))}</span>
@@ -135,7 +171,26 @@ export function backHome(m, app) {
   app.go('home');
 }
 
+/**
+ * Marks a result taller than its screen (small phone, landscape): `.is-overflowing` pins the
+ * buttons to the bottom edge, so Home / Retry never hide below the fold.
+ */
+export function trackOverflow(m) {
+  const root = m.$('.result');
+  const check = () => {
+    if (!m.isClosed && root) root.classList.toggle('is-overflowing', m.dialog.scrollHeight > m.dialog.clientHeight + 1);
+  };
+  m.data.overflowCheck = check;
+  window.addEventListener('resize', check);
+  requestAnimationFrame(check);
+  m.data.overflowTimer = setTimeout(check, 500); // after the entry animation and the first reflows
+}
+
 export function cleanupResult(m) {
+  if (m.data.overflowCheck) window.removeEventListener('resize', m.data.overflowCheck);
+  clearTimeout(m.data.overflowTimer);
   clearTimeout(m.data.armTimer);
+  clearTimeout(m.data.lateArmTimer);
   clearTimeout(m.data.reviewTimer);
+  if (m.data.unsubAd) m.data.unsubAd();
 }

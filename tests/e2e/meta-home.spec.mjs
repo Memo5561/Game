@@ -6,6 +6,7 @@
 // shows its stars + streak flame; the missions badge counts claimable missions + the chest; a day
 // rollover re-renders home and opens the new day's calendar.
 // Run: node tests/e2e/run.mjs meta-home
+import { CONFIG } from '../../game/js/config.js';
 import { openGame, assert, ev, state, idle, waitModal, waitState, tap, playMoves, assertNoErrors } from './ui.helpers.mjs';
 import { freshSave, goToDay, todayKey, text, shotB } from './meta.helpers.mjs';
 
@@ -16,8 +17,9 @@ const hidden = (page, ref) => ev(page, (r) => document.querySelector(`.screen.is
 async function playCountedRun(page) {
   await tap(page, 'home.play');
   await waitState(page, '(st) => st.screen === "game" && st.session && st.session.status === "playing"');
-  const placed = await playMoves(page, 6);
-  assert(placed === 6, `placed ${placed}`);
+  const want = CONFIG.ADS.RUN_MIN_PIECES + 1;
+  const placed = await playMoves(page, want);
+  assert(placed === want, `placed ${placed}`);
   await ev(page, () => window.__blocko.forceGameOver());
   await waitModal(page, 'revive');
   await tap(page, 'revive.skip');

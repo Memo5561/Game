@@ -33,7 +33,7 @@ export default {
   'praise.amazing': 'Fantastico!',
   'praise.unbelievable': 'Incredibile!',
   combo: 'Combo x{n}',
-  nospace: 'Spazio esaurito!',
+  nospace: 'Niente spazio!',
   newbest: 'Nuovo record!',
 
   // --- home -----------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ export default {
   'daily.sub.next': 'Prossimo premio tra {time}',
   'daily.claim': 'Riscuoti',
   'daily.double': 'Guarda video: ×2',
-  'daily.day': '{n}º giorno',
+  'daily.day': '{n}º',
   'daily.streakSaved': 'Serie salvata!',
   'daily.boosterGift': '+{hammer} Martello, +{shuffle} Mescola',
 
@@ -101,7 +101,7 @@ export default {
   'tutorial.title': 'Come si gioca',
   'tutorial.step1': 'Trascina il blocco sulla griglia per riempire la riga.',
   'tutorial.step2': 'Anche le colonne piene spariscono: riempi questa!',
-  'tutorial.step3': 'Completa una riga e una colonna insieme per una combo!',
+  'tutorial.step3': 'Elimina di nuovo subito: una combo moltiplica il punteggio!',
   'tutorial.skip': 'Salta',
   'tutorial.done': 'Ottimo! Ora tocca a te.',
 
@@ -119,7 +119,7 @@ export default {
   'confirm.abandon.ok': 'Inizia',
 
   // --- revive / stuck -------------------------------------------------------------------------
-  'revive.title': 'Spazio esaurito!',
+  'revive.title': 'Niente spazio!',
   'revive.toBest': { one: 'Manca {n} al record', other: 'Mancano {n} al record' },
   'revive.hint': 'Libera 2 righe e 2 colonne',
   'revive.free': 'Seconda chance gratis!',
@@ -159,6 +159,8 @@ export default {
   'toast.purchaseError': 'L’acquisto non è andato a buon fine.',
   'toast.purchaseUnavailable': 'Al momento gli acquisti non sono disponibili.',
   'toast.alreadyOwned': 'Acquisto precedente consegnato',
+  'toast.alreadyOwnedChecking': 'Controllo del tuo acquisto precedente…',
+  'toast.alreadyOwnedPending': 'Il tuo acquisto precedente è ancora in elaborazione.',
   'toast.restoreError': 'Impossibile raggiungere Google Play.',
   'toast.restored': 'Acquisti ripristinati.',
   'toast.restoreNone': 'Nessun acquisto da ripristinare.',
@@ -173,7 +175,7 @@ export default {
   'mission.clear_lines': 'Elimina {n} linee',
   'mission.score_single': 'Fai {n} punti in una partita',
   'mission.play_games': { one: 'Finisci {n} partita', other: 'Finisci {n} partite' },
-  'mission.combo_reach': 'Raggiungi una combo x{n}',
+  'mission.combo_reach': 'Raggiungi una combo\u00A0x{n}',
   'mission.place_pieces': 'Posiziona {n} pezzi',
   'mission.multi_clear': { one: 'Elimina 2+ linee in un colpo', other: 'Elimina 2+ linee in un colpo {n} volte' },
   'mission.all_clear': { one: 'Svuota tutta la griglia', other: 'Svuota tutta la griglia {n} volte' },
@@ -263,6 +265,7 @@ export default {
   'legal.title': 'Note legali',
   'legal.email': 'E-mail',
   'legal.phone': 'Telefono',
+  'legal.contactForm': 'Modulo di contatto',
   'legal.vat': 'Partita IVA',
   'legal.heading': 'Informazioni ai sensi del §\u00A05\u00A0DDG',
   'legal.contact': 'Contatti',

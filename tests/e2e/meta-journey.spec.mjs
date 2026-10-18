@@ -7,6 +7,7 @@
 // (+10 per newly earned star, no unlock); Map from the result returns to the map.
 // Run: node tests/e2e/run.mjs meta-journey
 import { CONFIG } from '../../game/js/config.js';
+import { generateLevel } from '../../game/js/core/levels.js';
 import { openGame, veteranSave, assert, ev, state, idle, waitModal, waitState, tap, assertNoErrors } from './ui.helpers.mjs';
 import { text, back, shotB } from './meta.helpers.mjs';
 
@@ -155,17 +156,18 @@ export default async function metaJourneySpec() {
     assert(/Level 60/.test(sheet) && /Super hard/i.test(sheet) && /Collect/i.test(sheet), `sheet: title, tag, goal (${sheet})`);
     const pars = await ev(page, () => [...document.querySelectorAll('[data-modal="levelStart"] .ls__row')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()));
     const L = CONFIG.ECONOMY;
-    assert(pars.length === 3 && pars[0].includes(`+${L.LEVEL_COMPLETE_COINS + 3 * L.LEVEL_STAR_COINS}`) && /Complete the level/.test(pars[2]), `par rows (${pars})`);
+    const reward = generateLevel(UNLOCKED).rewardCoins; // hard / super hard levels pay more (LevelDef.rewardCoins)
+    assert(pars.length === 3 && pars[0].includes(`+${reward + 3 * L.LEVEL_STAR_COINS}`) && /Complete the level/.test(pars[2]), `par rows (${pars})`);
     const gems = await ev(page, () => document.querySelectorAll('[data-modal="levelStart"] .ls__gem').length);
     assert(gems >= 1, 'gem goals shown');
     await shotB(page, 'journey-levelStart-phone');
     await tap(page, 'levelStart.play');
     s = await waitState(page, '(st) => st.screen === "game" && st.session && st.session.mode === "journey"');
     assert(await ev(page, () => window.__blocko.app.game.session.level.number) === UNLOCKED, 'level 60 started');
-    for (let i = 0; i < 2; i++) {
-      const m = (await ev(page, () => window.__blocko.validMoves())).find((x) => x.lines === 0);
-      await ev(page, (x) => window.__blocko.place(x.trayIndex, x.r, x.c), m);
-    }
+    // one placement is enough for a saved run (a second blind move can strand the tray on a hard level)
+    const moves = await ev(page, () => window.__blocko.validMoves());
+    const first = moves.find((x) => x.lines === 0) || moves[0];
+    await ev(page, (x) => window.__blocko.place(x.trayIndex, x.r, x.c), first);
     await tap(page, 'game.pause');
     await waitModal(page, 'pause');
     await tap(page, 'pause.home');

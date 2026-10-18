@@ -18,7 +18,7 @@ function xpToReach(level) {
 async function runToGameOver(page, start = 'home.play') {
   if (start) await tap(page, start);
   await waitState(page, '(st) => st.screen === "game" && st.session && st.session.status === "playing" && st.modals.length === 0');
-  await playMoves(page, 6);
+  await playMoves(page, CONFIG.ADS.RUN_MIN_PIECES + 1);
   await ev(page, () => window.__blocko.forceGameOver());
   await waitModal(page, 'revive');
   await tap(page, 'revive.skip');

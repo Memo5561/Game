@@ -62,9 +62,33 @@ test('missions for locked features are never generated', () => {
     assert.equal(seen.none.has(type), false, `${type} without ${feature}`);
     assert.equal(seen.journey.has(type), feature === 'journey', type);
   }
-  assert.deepEqual([...seen.all].sort(), [...MISSION_TYPES].sort(), 'every type shows up once unlocked');
+  assert.deepEqual([...seen.all].sort(), MISSION_TYPES.filter((t) => t !== 'all_clear').sort(),
+    'every type but the luck-based all_clear shows up once unlocked');
   // generateMissions with no unlock list behaves like an empty one
   assert.deepEqual(generateMissions('2026-10-18', 1), generateMissions('2026-10-18', 1, []));
+});
+
+test('all_clear (luck, not skill) is never generated any more but old saved lists still progress', () => {
+  for (const day of days(400)) {
+    for (const features of [[], ['journey'], ALL_FEATURES]) {
+      for (const level of [1, 8, 30]) {
+        assert.ok(generateMissions(day, level, features).every((m) => m.type !== 'all_clear'), `${day} ${features}`);
+      }
+    }
+  }
+  // a list stored by an older version: the all_clear mission still advances, completes and keeps its text key
+  const saved = [mission('all_clear', 1, { id: '2026-10-01-2', textKey: 'mission.all_clear', reward: 70 })];
+  const res = progressMissions(saved, { type: 'all_clear' });
+  assert.equal(res.completed.length, 1);
+  assert.equal(saved[0].progress, 1);
+  assert.ok(MISSION_TYPES.includes('all_clear'), 'the type (and its text) stays known');
+});
+
+test('every generated mission is reachable by skill: the hard slot only uses skill or volume based types', () => {
+  const hardTypes = new Set();
+  for (const day of days(500)) hardTypes.add(generateMissions(day, 5, ALL_FEATURES)[2].type);
+  assert.deepEqual([...hardTypes].sort(), ['clear_lines', 'combo_reach', 'daily_challenge', 'journey_levels', 'multi_clear',
+    'place_pieces', 'play_games', 'score_single']);
 });
 
 test('targets grow gently and monotonically with the player level, then cap', () => {

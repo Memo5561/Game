@@ -12,7 +12,7 @@ export const MISSION_TYPES = Object.freeze([
   'combo_reach',     // reach combo x{n}
   'place_pieces',    // place {n} pieces
   'multi_clear',     // clear MULTI_CLEAR_LINES+ lines with one placement {n} times
-  'all_clear',       // clear the whole board {n} times
+  'all_clear',       // clear the whole board {n} times – legacy: no longer generated (luck, not skill), still tracked for saved lists
   'journey_levels',  // complete {n} journey levels
   'daily_challenge', // complete the daily challenge ({n} = 1)
   'use_booster',     // use {n} boosters
@@ -23,7 +23,8 @@ export const MULTI_CLEAR_LINES = 2;
 
 /**
  * Mission design table. `targets` per slot [easy, medium, hard] at player level 1 (null = never in
- * that slot); `feature` must be unlocked for the type to be offered; `step` marks targets that
+ * that slot; a type that is null everywhere is not generated any more but keeps its progress rule
+ * for missions in older saves); `feature` must be unlocked for the type to be offered; `step` marks targets that
  * grow with the player level and is the rounding step of the scaled value.
  */
 const DEFS = Object.freeze({
@@ -33,7 +34,7 @@ const DEFS = Object.freeze({
   combo_reach: { targets: [3, 5, 8] },
   place_pieces: { targets: [30, 80, 150], step: 5 },
   multi_clear: { targets: [2, 4, 8] },
-  all_clear: { targets: [null, null, 1] },
+  all_clear: { targets: [null, null, null] }, // never offered: a whole-board clear is mostly luck
   journey_levels: { targets: [1, 2, 4], feature: 'journey' },
   daily_challenge: { targets: [null, null, 1], feature: 'daily' },
   use_booster: { targets: [1, 2, null], feature: 'journey' },

@@ -47,7 +47,7 @@ export default {
   'home.dailyGoal': 'Objetivo: {n} puntos',
   'home.dailyDone': 'Hecho – ¡hasta mañana!',
   'home.locked.games': { one: 'Disponible tras {n} partida más', other: 'Disponible tras {n} partidas más' },
-  'home.locked.journeyLevel': 'Llega al nivel {n} de Aventura',
+  'home.locked.journeyLevel': 'Disponible en el nivel {n} de Aventura',
   'home.levelAria': 'Nivel de jugador {n}: {xp} de {next} XP',
   'home.starsAria': 'Estrellas: {n} de {max}',
 
@@ -55,9 +55,9 @@ export default {
   'daily.title': 'Recompensa diaria',
   'daily.sub.first': 'Vuelve cada día – ¡las recompensas crecen!',
   'daily.sub.streak': { one: '{n} día seguido – ¡sigue así!', other: '{n} días seguidos – ¡sigue así!' },
-  'daily.sub.grace': 'Un día perdido – ¡tu racha sigue!',
+  'daily.sub.grace': 'Te saltaste un día – ¡tu racha sigue a salvo!',
   'daily.sub.next': 'Próxima recompensa en {time}',
-  'daily.claim': 'Recoger',
+  'daily.claim': 'Reclamar',
   'daily.double': 'Ver anuncio: ×2',
   'daily.day': 'Día {n}',
   'daily.streakSaved': '¡Racha salvada!',
@@ -101,7 +101,7 @@ export default {
   'tutorial.title': 'Cómo jugar',
   'tutorial.step1': 'Arrastra el bloque al tablero para llenar la fila.',
   'tutorial.step2': 'Las columnas llenas también desaparecen: ¡llena esta!',
-  'tutorial.step3': '¡Completa una fila y una columna a la vez para hacer un combo!',
+  'tutorial.step3': '¡Limpia otra vez enseguida: un combo multiplica tu puntuación!',
   'tutorial.skip': 'Saltar',
   'tutorial.done': '¡Genial! Ahora te toca a ti.',
 
@@ -126,7 +126,7 @@ export default {
   'revive.watch': 'Ver anuncio: revivir',
   'revive.coins': 'Usar {n} monedas',
   'revive.skip': 'No, gracias',
-  'stuck.body': 'Sigue jugando con una ayuda o reviviendo.',
+  'stuck.body': 'Una ayuda o revivir te permite seguir jugando.',
   'stuck.giveUp': 'Rendirse',
 
   // --- run results ----------------------------------------------------------------------------
@@ -147,7 +147,7 @@ export default {
   'result.missing': 'Te faltaron',
   'result.streak': { one: 'Racha de {n} día', other: 'Racha de {n} días' },
   'result.next': 'Siguiente',
-  'result.retry': 'Reintentar',
+  'result.retry': 'Repetir',
   'result.map': 'Mapa',
   'result.tryAgain': 'Reintentar',
 
@@ -159,6 +159,8 @@ export default {
   'toast.purchaseError': 'No se pudo completar la compra.',
   'toast.purchaseUnavailable': 'Las compras no están disponibles ahora.',
   'toast.alreadyOwned': 'Compra anterior entregada',
+  'toast.alreadyOwnedChecking': 'Comprobando tu compra anterior…',
+  'toast.alreadyOwnedPending': 'Tu compra anterior aún se está procesando.',
   'toast.restoreError': 'No se pudo conectar con Google Play.',
   'toast.restored': 'Compras restauradas.',
   'toast.restoreNone': 'No hay compras que restaurar.',
@@ -169,11 +171,11 @@ export default {
   'toast.reminderOn': 'Recordatorio activado – ¡hasta mañana!',
 
   // --- missions -------------------------------------------------------------------------------
-  'missions.bonus': 'Recoge las 3 misiones',
+  'missions.bonus': 'Reclama las 3 misiones',
   'mission.clear_lines': 'Limpia {n} líneas',
   'mission.score_single': 'Consigue {n} puntos en una partida',
   'mission.play_games': { one: 'Termina {n} partida', other: 'Termina {n} partidas' },
-  'mission.combo_reach': 'Consigue un combo x{n}',
+  'mission.combo_reach': 'Consigue un combo\u00A0x{n}',
   'mission.place_pieces': 'Coloca {n} piezas',
   'mission.multi_clear': { one: 'Limpia 2+ líneas a la vez', other: 'Limpia 2+ líneas a la vez {n} veces' },
   'mission.all_clear': { one: 'Vacía todo el tablero', other: 'Vacía todo el tablero {n} veces' },
@@ -207,7 +209,7 @@ export default {
   'shop.bestValue': 'Mejor oferta',
   'shop.freeCoins': 'Ver anuncio: +{n} monedas',
   'shop.unavailable': 'La tienda no está disponible ahora.',
-  'shop.tab.coins': 'Packs', // "Monedas" does not fit the 320 px tab
+  'shop.tab.coins': 'Monedas',
   'shop.tab.themes': 'Temas',
   'shop.tab.boosters': 'Ayudas',
   'shop.removeAds.giftLine': 'Regalo: +{coins} monedas, +{hammer} Martillo, +{shuffle} Mezcla',
@@ -263,6 +265,7 @@ export default {
   'legal.title': 'Aviso legal',
   'legal.email': 'Correo',
   'legal.phone': 'Teléfono',
+  'legal.contactForm': 'Formulario de contacto',
   'legal.vat': 'NIF-IVA',
   'legal.heading': 'Información conforme al §\u00A05\u00A0DDG',
   'legal.contact': 'Contacto',

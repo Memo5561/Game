@@ -16,7 +16,7 @@
 import { CONFIG } from '../config.js';
 import { GameSession, SESSION_VERSION } from '../core/game.js';
 import { getShape } from '../core/shapes.js';
-import { generateLevel } from '../core/levels.js';
+import { generateLevel, generateDailyLevel } from '../core/levels.js';
 import { PRAISE_LEVELS } from '../core/scoring.js';
 import { Renderer } from '../render/renderer.js';
 import { getTheme } from '../render/theme.js';
@@ -32,6 +32,8 @@ import { wait, dur } from '../ui/anim.js';
 const IDLE_CAP_MS = 20000;
 /** Tutorial hand hint after this much idle time. */
 const HINT_IDLE_MS = 1500;
+/** Level id of a daily challenge (core/levels.js: 'D' + day key). */
+const dailyLevelId = (day) => `D${day}`;
 /** Tutorial: celebration after the last step before the first classic run starts. */
 const TUTORIAL_CELEBRATION_MS = 600;
 /** Pause between the win celebration and the level result. */
@@ -113,6 +115,24 @@ export class GameController {
   savedRun() {
     const s = this.session;
     return s && !this.finalized && s.mode !== 'tutorial' && this.app.save.run ? s : null;
+  }
+
+  /**
+   * A saved daily challenge of an earlier day ends here (no reward, like any abandoned run): the
+   * Daily card then offers today's level instead of continuing yesterday's.
+   * @returns {boolean} a stale run was ended
+   */
+  expireStaleDaily() {
+    const s = this.savedRun();
+    if (!s || s.mode !== 'daily' || !s.level || s.level.id === dailyLevelId(this.app.clock.today())) return false;
+    this.abandonRun();
+    return true;
+  }
+
+  /** Active seconds of the current run right now (no side effects on the play clock). */
+  playSecNow() {
+    const running = this._lastTick && this.session && this.session.mode !== 'tutorial';
+    return this.playSec + (running ? Math.min(performance.now() - this._lastTick, IDLE_CAP_MS) / 1000 : 0);
   }
 
   /**
@@ -267,7 +287,7 @@ export class GameController {
     if (reason === 'won' && s.level) {
       stars = s.stars();
       if (s.mode === 'journey') {
-        const r = P.completeLevel(s.level.number, stars);
+        const r = P.completeLevel(s.level.number, stars, s.level.rewardCoins);
         levelCoins = r.coins;
         firstTime = r.firstTime;
         xpResults.push(r.xp);
@@ -321,6 +341,11 @@ export class GameController {
       doubled: false,
     };
     if (missions.length) app.announceMissions(missions);
+    // a result screen lists the missions the run completed (no toast over its coin counter)
+    if (reason !== 'abandoned') {
+      const seen = new Set();
+      this.summary.missionsDone = [...app.takeQueuedMissions(), ...missions].filter((m) => !seen.has(m.id) && seen.add(m.id));
+    }
     // level-up celebration on the next arrival at home (the result screen shows a level-up line)
     if (levels.length && app.retention) app.retention.queueLevelUp({ levels, coins: levelUpCoins, themes: unlockedThemes });
     return this.summary;
@@ -562,8 +587,10 @@ export class GameController {
       this.drag.cancel();
       const m = this.app.modals.open('booster', { type });
       m.closed.then((got) => {
-        if (got && this.session === s) this.applyBooster(type);
-        else if (this.stuck) this._regreyAndShowStuck();
+        if (got && this.session === s) {
+          this.hud.syncBoosters(); // the badge shows the booster just bought / won
+          this.applyBooster(type);
+        } else if (this.stuck) this._regreyAndShowStuck();
       });
       return;
     }
@@ -732,7 +759,9 @@ export class GameController {
     const s = this.session;
     if (!s) return;
     this.app.modals.closeAll();
-    this.startRun(s.mode, { level: s.level });
+    // a daily run left over from yesterday restarts as today's challenge
+    const level = s.mode === 'daily' && s.level ? generateDailyLevel(this.app.clock.today()) : s.level;
+    this.startRun(s.mode, { level });
   }
 
   /** Pause modal → Home: the run stays saved (Continue). */
@@ -749,8 +778,11 @@ export class GameController {
   async leaveResult(action, m) {
     if (this._leaving) return;
     this._leaving = true;
+    // the Play review card never shares a result screen with an interstitial (and is never
+    // requested over one): leaving now cancels a review that has not been asked yet
+    clearTimeout(m.data.reviewTimer);
     try {
-      await this.app.maybeInterstitial(m.shownAt);
+      if (!m.data.reviewShown) await this.app.maybeInterstitial(m.shownAt);
       // FTUE: ads (consent, banner) start only once the first result screen is left
       this.app.startAds();
       const sum = m.props.summary || {};
@@ -785,6 +817,7 @@ export class GameController {
     this.drag.cancel();
     s.status = 'over';
     this.persist();
+    this.hud.sync();
     this.onOver(Promise.resolve());
     return true;
   }

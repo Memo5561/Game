@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { CONFIG } from '../../game/js/config.js';
 import { defaultSave } from '../../game/js/meta/storage.js';
 import { generateMissions, MISSION_TYPES } from '../../game/js/meta/missions.js';
-import { Progression, dayKey, daysBetween, xpForLevel } from '../../game/js/meta/progression.js';
+import { Progression, dayKey, daysBetween, runCoins, xpForLevel } from '../../game/js/meta/progression.js';
+import { generateLevel } from '../../game/js/core/levels.js';
 
 const { ECONOMY, PROGRESSION: P, ADS, UNLOCKS, PRODUCTS } = CONFIG;
 
@@ -192,7 +193,9 @@ test('recordGame: classic runs set the best score, pay coins and XP', () => {
   const { p, save, clock, changes } = setup();
   const coins0 = save.coins;
   const r = p.recordGame({ mode: 'classic', score: 1000, lines: 20, maxCombo: 4, pieces: 30, allClears: 1, playSec: 95.5 });
-  const coins = Math.max(ECONOMY.COINS_MIN_PER_GAME, Math.floor(1000 * ECONOMY.COINS_PER_SCORE));
+  const coins = Math.floor(ECONOMY.RUN_COINS_FACTOR * Math.sqrt(1000));
+  assert.equal(coins, runCoins(1000));
+  assert.ok(coins > 0);
   assert.equal(r.newBest, true);
   assert.equal(r.firstRecord, true);
   assert.equal(r.coinsEarned, coins);
@@ -220,21 +223,66 @@ test('recordGame: classic runs set the best score, pay coins and XP', () => {
   assert.equal(save.stats.playSec, 125.5);
 });
 
-test('recordGame: minimum coins, XP cap and short runs', () => {
+test('runCoins: floor(RUN_COINS_FACTOR × √score), concave, no minimum', () => {
+  assert.equal(ECONOMY.COINS_PER_SCORE, undefined, 'the linear payout is gone');
+  assert.equal(ECONOMY.COINS_MIN_PER_GAME, undefined, 'and so is the minimum');
+  assert.equal(runCoins(0), 0);
+  assert.equal(runCoins(1), Math.floor(ECONOMY.RUN_COINS_FACTOR));
+  assert.equal(runCoins(10000), Math.floor(ECONOMY.RUN_COINS_FACTOR * 100));
+  assert.equal(runCoins(NaN), 0);
+  assert.equal(runCoins(-50), 0);
+  let prev = 0;
+  for (let score = 0; score <= 200000; score += 37) {
+    const c = runCoins(score);
+    assert.ok(c >= prev, `monotonic at ${score}`);
+    prev = c;
+  }
+  // concave: ten times the score is far less than ten times the coins
+  assert.ok(runCoins(100000) < 4 * runCoins(10000));
+  assert.ok(runCoins(200000) <= Math.floor(ECONOMY.RUN_COINS_FACTOR * Math.sqrt(200000)));
+  assert.ok(runCoins(200000) < 1000, 'a monster run stays far below a coin pack');
+});
+
+test('recordGame: coin payout follows runCoins, XP cap and short runs', () => {
   const { p, save } = setup();
-  assert.equal(p.recordGame({ mode: 'classic', score: 40, lines: 0, pieces: ADS.RUN_MIN_PIECES }).coinsEarned,
-    ECONOMY.COINS_MIN_PER_GAME);
+  assert.equal(p.recordGame({ mode: 'classic', score: 40, lines: 0, pieces: ADS.RUN_MIN_PIECES }).coinsEarned, runCoins(40));
+  assert.equal(p.recordGame({ mode: 'classic', score: 9000, lines: 5, pieces: 80 }).coinsEarned, runCoins(9000));
   const xp0 = save.xp;
   p.recordGame({ mode: 'classic', score: 100000, lines: 10000, pieces: 900 });
   assert.equal(save.xp - xp0, P.XP_RUN_CAP);
 
   const xp1 = save.xp;
+  const coins1 = save.coins;
   const short = p.recordGame({ mode: 'classic', score: 80, lines: 1, pieces: ADS.RUN_MIN_PIECES - 1, playSec: 10 });
   assert.equal(short.counted, false);
-  assert.equal(short.coinsEarned, Math.floor(80 * ECONOMY.COINS_PER_SCORE), 'no minimum for uncounted runs');
+  assert.equal(short.coinsEarned, 0, 'uncounted runs pay no coins (no farming by restarting)');
+  assert.equal(save.coins, coins1);
   assert.equal(save.xp, xp1, 'no XP for uncounted runs');
-  assert.equal(save.stats.gamesPlayed, 2, 'uncounted runs do not advance gamesPlayed (unlock farming)');
-  assert.equal(save.stats.totalScore, 40 + 100000 + 80, 'but other stats still include the run');
+  assert.equal(save.stats.gamesPlayed, 3, 'uncounted runs do not advance gamesPlayed (unlock farming)');
+  assert.equal(save.stats.totalScore, 40 + 9000 + 100000 + 80, 'but other stats still include the run');
+});
+
+test('recordGame: only counted runs set the best score; firstRecord stays for the first real record', () => {
+  const { p, save } = setup();
+  // a run restarted after 2 pieces must not become the "best score" …
+  const tiny = p.recordGame({ mode: 'classic', score: 7, lines: 0, pieces: 2, playSec: 6 });
+  assert.deepEqual({ ...tiny, xp: undefined }, { newBest: false, firstRecord: false, coinsEarned: 0, xp: undefined, counted: false });
+  assert.equal(p.bestScore, 0);
+  assert.equal(save.stats.totalScore, 7, 'it still shows up in the totals');
+  const short = p.recordGame({ mode: 'classic', score: 60, pieces: ADS.RUN_MIN_PIECES - 1 });
+  assert.equal(short.newBest, false);
+  assert.equal(p.bestScore, 0);
+  // … so the first real game over still gets the one-time first-record moment
+  const first = p.recordGame({ mode: 'classic', score: 900, lines: 12, pieces: 30 });
+  assert.equal(first.counted, true);
+  assert.equal(first.newBest, true);
+  assert.equal(first.firstRecord, true);
+  assert.equal(p.bestScore, 900);
+  // an uncounted run can't beat a real record either
+  assert.equal(p.recordGame({ mode: 'classic', score: 5000, pieces: ADS.RUN_MIN_PIECES - 1 }).newBest, false);
+  assert.equal(p.bestScore, 900);
+  const second = p.recordGame({ mode: 'classic', score: 950, pieces: ADS.RUN_MIN_PIECES });
+  assert.deepEqual([second.newBest, second.firstRecord], [true, false]);
 });
 
 test('recordGame: journey/daily runs earn XP but no run coins and never touch the best score', () => {
@@ -653,6 +701,30 @@ test('completeLevel: first win vs. replays', () => {
   assert.equal(p.completeLevel(0, 3).coins, 0);
 });
 
+test('completeLevel pays the level\'s own rewardCoins (hard / super hard levels pay more); replays pay stars only', () => {
+  const { p, save } = setup();
+  for (const n of [9, 15, 20]) {
+    const level = generateLevel(n);
+    const factor = { normal: 1, hard: 1.5, superhard: 2 }[level.tag];
+    assert.equal(level.rewardCoins, Math.round(ECONOMY.LEVEL_COMPLETE_COINS * factor), `L${n} rewardCoins`);
+    const coins0 = save.coins;
+    const first = p.completeLevel(n, 2, level.rewardCoins);
+    assert.equal(first.coins, level.rewardCoins + 2 * ECONOMY.LEVEL_STAR_COINS, `L${n} first win`);
+    assert.equal(save.coins - coins0 - first.xp.coins, first.coins);
+    const replay = p.completeLevel(n, 3, level.rewardCoins);
+    assert.equal(replay.coins, ECONOMY.LEVEL_STAR_COINS, `L${n} replay pays the new star only, never the base again`);
+    assert.equal(p.completeLevel(n, 3, level.rewardCoins).coins, 0);
+  }
+  assert.ok(generateLevel(15).rewardCoins > generateLevel(9).rewardCoins);
+  assert.ok(generateLevel(20).rewardCoins > generateLevel(15).rewardCoins);
+  // backward compatible: without (or with an invalid) third argument the old flat amount is paid
+  for (const [i, bad] of [undefined, null, 0, -3, NaN, 'x'].entries()) {
+    const fresh = setup();
+    assert.equal(fresh.p.completeLevel(30 + i, 1, bad).coins, ECONOMY.LEVEL_COMPLETE_COINS + ECONOMY.LEVEL_STAR_COINS, String(bad));
+  }
+  assert.equal(setup().p.completeLevel(2, 3, 33.9).coins, 33 + 3 * ECONOMY.LEVEL_STAR_COINS, 'floored like every coin amount');
+});
+
 test('completeLevel reports XP level-ups', () => {
   const { p, save } = setup();
   save.xp = xpForLevel(1) - 1;
@@ -734,6 +806,44 @@ test('free coins: FREE_COINS_ADS_PER_DAY grants per day', () => {
   clock.addDays(2);
   assert.equal(p.freeCoinsLeft(), ADS.FREE_COINS_ADS_PER_DAY);
   assert.equal(p.grantFreeCoins(), ECONOMY.FREE_COINS_AD_AMOUNT);
+});
+
+test('free boosters: FREE_BOOSTER_ADS_PER_DAY grants per day, persisted in the save', () => {
+  const { p, save, clock, changes } = setup({ coins: 0 });
+  save.boosters.hammer = 0;
+  save.boosters.shuffle = 0;
+  assert.equal(p.freeBoostersLeft(), ADS.FREE_BOOSTER_ADS_PER_DAY);
+  assert.equal(p.grantFreeBooster('shuffle'), true);
+  assert.equal(p.boosterCount('shuffle'), 1);
+  assert.equal(p.freeBoostersLeft(), ADS.FREE_BOOSTER_ADS_PER_DAY - 1);
+  assert.deepEqual(save.ads.freeBoosters, { day: '2026-10-18', count: 1 });
+  while (p.freeBoostersLeft() > 0) assert.equal(p.grantFreeBooster('hammer'), true);
+  const before = JSON.stringify(save);
+  const calls = changes.count;
+  assert.equal(p.grantFreeBooster('hammer'), false, 'limit reached');
+  assert.equal(p.grantFreeBooster('shuffle'), false);
+  assert.equal(JSON.stringify(save), before, 'nothing granted');
+  assert.equal(changes.count, calls);
+  assert.equal(p.boosterCount('hammer') + p.boosterCount('shuffle'), ADS.FREE_BOOSTER_ADS_PER_DAY);
+  assert.equal(save.coins, 0, 'free boosters cost and pay no coins');
+
+  // an app restart (new Progression over the same, saved data) does not reset the cap
+  const restarted = new Progression(JSON.parse(JSON.stringify(save)), { now: clock.now });
+  assert.equal(restarted.freeBoostersLeft(), 0);
+  assert.equal(restarted.grantFreeBooster('hammer'), false);
+
+  clock.addDays(-1);
+  assert.equal(p.freeBoostersLeft(), 0, 'moving the clock back does not refill');
+  clock.addDays(2);
+  assert.equal(p.freeBoostersLeft(), ADS.FREE_BOOSTER_ADS_PER_DAY, 'a new day refills');
+  assert.equal(p.grantFreeBooster('hammer'), true);
+
+  // an unknown booster type grants nothing and does not use up a grant
+  const left = p.freeBoostersLeft();
+  assert.equal(p.grantFreeBooster('laser'), false);
+  assert.equal(p.freeBoostersLeft(), left);
+  // independent of the free-coin counter
+  assert.equal(p.freeCoinsLeft(), ADS.FREE_COINS_ADS_PER_DAY);
 });
 
 test('grantRemoveAdsGift is granted once', () => {

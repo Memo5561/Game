@@ -13,6 +13,9 @@
 //   - otherwise: a random solvable candidate, or – with probability RAW_P_MAX × difficulty
 //     (classic; journey/daily: RAW_P_MAX_LEVELS × difficulty) – the first sample unfiltered, so
 //     that runs eventually end
+// The OPENING tray of a journey/daily level (trayIndex 0) is the exception: it is always fully
+// placeable (no raw roll; if no candidate is solvable a tiny-piece rescue tray is dealt), so a
+// level attempt is never lost before the player has placed a single tray.
 // The generator never looks at the best score and never picks a tray because it is unsolvable.
 // Everything is deterministic: the search is bounded by a node budget (never by time) and the rng
 // is consumed in a fixed order.
@@ -465,6 +468,10 @@ export class PieceGenerator {
     const fitting = candidates.filter((cand) => cand.shapes.some((s) => board.anyPlacement(s)));
     if (fitting.length === 0) return this.toPieces(smallestFitting(board, 3), candidates[0].colors);
 
+    // The first tray of a journey/daily level must be fully placeable (classic tray 0 is covered by
+    // the early phase): no unfiltered raw roll, and a rescue tray instead of an unsolvable pick.
+    const opening = this.mode !== 'classic' && (ctx.trayIndex || 0) === 0;
+
     let chosen;
     if (phase === 'early') {
       const minFirst = multiRoll < cfg.EARLY_MULTI_P ? 2 : 0;
@@ -483,13 +490,17 @@ export class PieceGenerator {
         clearing.push(cand);
         if (wantGems && a.maxGems >= 1) gemClearing.push(cand);
       }
-      chosen = pickFirstNonEmpty(pickRoll, gemClearing, clearing, solvable, fitting);
-    } else if (rawRoll < (this.mode === 'classic' ? cfg.RAW_P_MAX : cfg.RAW_P_MAX_LEVELS) * d) {
+      chosen = opening
+        ? pickOrNull(pickRoll, gemClearing, clearing, solvable) || this.rescue(board, 3) || pickFirstNonEmpty(pickRoll, fitting)
+        : pickFirstNonEmpty(pickRoll, gemClearing, clearing, solvable, fitting);
+    } else if (!opening && rawRoll < (this.mode === 'classic' ? cfg.RAW_P_MAX : cfg.RAW_P_MAX_LEVELS) * d) {
       chosen = fitting[0];
     } else {
       const opts = { nodeLimit: cfg.NODE_LIMIT, targetLines: 0 };
       const solvable = fitting.filter((cand) => analyzeTray(board, cand.shapes, opts).solvable);
-      chosen = pickFirstNonEmpty(pickRoll, solvable, fitting);
+      chosen = opening
+        ? pickOrNull(pickRoll, solvable) || this.rescue(board, 3) || pickFirstNonEmpty(pickRoll, fitting)
+        : pickFirstNonEmpty(pickRoll, solvable, fitting);
     }
     return this.toPieces(chosen.shapes, chosen.colors);
   }
@@ -633,17 +644,31 @@ export class PieceGenerator {
 }
 
 /**
+ * A random element of the first non-empty list, or null if all are empty.
+ * @template T
+ * @param {number} roll uniform 0..1
+ * @param {...T[]} lists
+ * @returns {T | null}
+ */
+function pickOrNull(roll, ...lists) {
+  for (const list of lists) {
+    if (list.length > 0) return list[Math.floor(roll * list.length)];
+  }
+  return null;
+}
+
+/**
  * A random element of the first non-empty list.
  * @template T
  * @param {number} roll uniform 0..1
  * @param {...T[]} lists
  * @returns {T}
+ * @throws {Error} if all lists are empty
  */
 function pickFirstNonEmpty(roll, ...lists) {
-  for (const list of lists) {
-    if (list.length > 0) return list[Math.floor(roll * list.length)];
-  }
-  throw new Error('pickFirstNonEmpty: all lists are empty');
+  const picked = pickOrNull(roll, ...lists);
+  if (picked === null) throw new Error('pickFirstNonEmpty: all lists are empty');
+  return picked;
 }
 
 /**

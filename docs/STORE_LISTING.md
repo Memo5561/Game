@@ -45,7 +45,7 @@ Testern).
 
 ## 3. Vollständige Beschreibung (max. 4000 Zeichen)
 
-### Deutsch (de-DE) – ca. 2.300 Zeichen
+### Deutsch (de-DE) – ca. 2.200 Zeichen
 
 ```
 Blocko ist ein entspannendes Block-Puzzle und Denkspiel für zwischendurch: Ziehe die Blöcke auf das 8×8-Spielfeld, fülle ganze Reihen und Spalten und räume sie ab. Plane clever, löse Kombos aus und knacke deinen eigenen Rekord!
@@ -87,7 +87,7 @@ Blocko ist kostenlos und wird durch Werbung finanziert. Belohnungsvideos sind im
 Fragen, Ideen oder einen Fehler gefunden? Schreib uns – die E-Mail-Adresse findest du unten bei den Kontaktdaten des Entwicklers.
 ```
 
-### Englisch (en-US) – ca. 2.000 Zeichen
+### Englisch (en-US) – ca. 1.900 Zeichen
 
 ```
 Blocko is a relaxing block puzzle and brain game for any spare moment: drag blocks onto the 8×8 board, fill complete rows and columns and clear them. Plan ahead, trigger combos and beat your own high score!
@@ -143,7 +143,7 @@ Blocko es un rompecabezas de bloques relajante y un juego de ingenio para cualqu
 CÓMO SE JUEGA
 • Arrastra uno de los tres bloques al tablero.
 • Las filas y columnas completas se eliminan, incluso varias a la vez.
-• Si vuelves a limpiar en menos de tres movimientos, tu combo crece… y tu puntuación también.
+• Si vuelves a limpiar en un máximo de tres movimientos, tu combo crece… y tu puntuación también.
 • La partida termina cuando ya no cabe ninguno de los bloques restantes.
 
 TRES MODOS DE JUEGO
@@ -180,17 +180,17 @@ Blocko es gratis y se financia con anuncios. Los anuncios con recompensa son sie
 ### Französisch (fr-FR) – ca. 2.300 Zeichen
 
 ```
-Blocko est un puzzle de blocs relaxant et un jeu de réflexion pour chaque moment de libre : fais glisser les blocs sur la grille de 8×8, complète des lignes et des colonnes entières et fais-les disparaître. Anticipe, enchaîne les combos et bats ton propre record !
+Blocko est un puzzle de blocs relaxant et un jeu de réflexion pour tous tes moments libres : fais glisser les blocs sur la grille de 8×8, complète des lignes et des colonnes entières et fais-les disparaître. Anticipe, enchaîne les combos et bats ton propre record !
 
 COMMENT JOUER
 • Fais glisser l’un des trois blocs sur la grille.
 • Les lignes et colonnes pleines disparaissent – même plusieurs à la fois.
-• Efface à nouveau en moins de trois coups pour faire grimper ton combo… et ton score.
+• Efface à nouveau en trois coups maximum pour faire grimper ton combo… et ton score.
 • La partie se termine quand plus aucun des blocs restants ne rentre.
 
 TROIS MODES DE JEU
 • Classique : joue sans fin et vise le meilleur score. Reprends une partie en cours quand tu veux.
-• Aventure : des niveaux illimités avec des gemmes à collecter, jusqu’à trois étoiles par niveau et des niveaux défis corsés en chemin.
+• Aventure : des niveaux illimités avec des gemmes à collecter, jusqu’à trois étoiles par niveau et des niveaux-défis corsés en chemin.
 • Défi du jour : un nouveau puzzle chaque jour – garde ta série en vie.
 
 RÉCOMPENSES ET PROGRESSION
@@ -203,7 +203,7 @@ RÉCOMPENSES ET PROGRESSION
 ASTUCES POUR LES GROS SCORES
 • Garde de la place pour les grands blocs de 3×3 et de cinq.
 • Efface plusieurs lignes d’un coup – ça rapporte beaucoup plus de points.
-• Une grille entièrement vide rapporte un gros paquet de points.
+• Une grille entièrement vide rapporte un gros bonus.
 
 CONÇU POUR SE DÉTENDRE
 • Pas de chrono en mode Classique, pas de système d’énergie – joue aussi longtemps que tu veux
@@ -219,7 +219,7 @@ Blocko est gratuit et financé par la publicité. Les vidéos récompensées son
 Des questions, des idées ou un bug ? Écris-nous – tu trouveras l’adresse e-mail plus bas, dans les coordonnées du développeur.
 ```
 
-### Italienisch (it-IT) – ca. 2.100 Zeichen
+### Italienisch (it-IT) – ca. 2.200 Zeichen
 
 ```
 Blocko è un puzzle a blocchi rilassante e un gioco di logica per ogni momento libero: trascina i blocchi sulla griglia 8×8, completa righe e colonne intere e falle sparire. Pianifica le mosse, concatena le combo e batti il tuo record!
@@ -261,7 +261,7 @@ Blocko è gratuito ed è finanziato dalla pubblicità. I video con premio sono s
 Domande, idee o hai trovato un bug? Scrivici: trovi l’indirizzo e-mail qui sotto, nei contatti dello sviluppatore.
 ```
 
-### Portugiesisch (pt-BR) – ca. 2.100 Zeichen
+### Portugiesisch (pt-BR) – ca. 2.200 Zeichen
 
 ```
 Blocko é um quebra-cabeça de blocos relaxante e um jogo de raciocínio para qualquer momento livre: arraste os blocos para o tabuleiro 8×8, complete linhas e colunas inteiras e limpe-as. Planeje suas jogadas, faça combos e bata o seu próprio recorde!
@@ -274,7 +274,7 @@ COMO JOGAR
 
 TRÊS MODOS DE JOGO
 • Clássico: jogue sem parar e persiga o seu recorde. Continue uma partida inacabada quando quiser.
-• Aventura: níveis ilimitados com gemas para coletar, até três estrelas por nível e níveis de desafio caprichados pelo caminho.
+• Aventura: níveis ilimitados com gemas para coletar, até três estrelas por nível e níveis de desafio mais difíceis pelo caminho.
 • Desafio diário: um quebra-cabeça novo todo dia – mantenha sua sequência.
 
 RECOMPENSAS E PROGRESSO
@@ -287,7 +287,7 @@ RECOMPENSAS E PROGRESSO
 DICAS PARA PONTUAÇÕES ALTAS
 • Deixe espaço livre para os blocos grandes de 3×3 e de cinco.
 • Limpe várias linhas de uma vez – isso vale muito mais pontos.
-• Um tabuleiro totalmente vazio rende muitos pontos extras.
+• Um tabuleiro totalmente vazio rende um grande bônus.
 
 FEITO PARA RELAXAR
 • Sem cronômetro no modo Clássico, sem sistema de energia – jogue o quanto quiser
@@ -328,7 +328,7 @@ NASIL OYNANIR
 
 YÜKSEK PUAN İÇİN İPUÇLARI
 • Büyük 3×3’lük ve beşli bloklar için yer bırak.
-• Aynı anda birkaç sıra temizle – çok daha fazla puan kazandırır.
+• Aynı anda birkaç satır veya sütun temizle – çok daha fazla puan kazandırır.
 • Tamamen boş bir tahta büyük bir bonus getirir.
 
 RAHATLAMAK İÇİN TASARLANDI
@@ -345,7 +345,7 @@ Blocko ücretsizdir ve reklamlarla desteklenir. Ödüllü videolar her zaman ist
 Sorun ya da fikrin mi var, bir hata mı buldun? Bize yaz – e-posta adresini aşağıda, geliştirici iletişim bilgilerinde bulabilirsin.
 ```
 
-### Russisch (ru-RU) – ca. 2.000 Zeichen
+### Russisch (ru-RU) – ca. 2.100 Zeichen
 
 ```
 Blocko — расслабляющая головоломка с блоками и игра для ума на любую свободную минуту: перетаскивай блоки на поле 8×8, заполняй целые ряды и столбцы и очищай их. Планируй ходы, собирай комбо и бей собственный рекорд!
@@ -382,7 +382,7 @@ Blocko — расслабляющая головоломка с блоками �
 • На английском, немецком, испанском, французском, итальянском, португальском, турецком и русском
 
 ЧЕСТНО И БЕСПЛАТНО
-Blocko — бесплатная игра, которая существует за счёт рекламы. Видео с наградой всегда смотрятся по желанию. Разовая покупка убирает баннер и рекламу между играми. Есть и необязательные наборы монет. Все темы и бонусы можно открыть и без покупок.
+Blocko бесплатна и поддерживается рекламой. Видео с наградой всегда необязательны. Разовая покупка убирает баннер и рекламу между играми. Есть и необязательные наборы монет. Все темы и бонусы можно открыть и без покупок.
 
 Вопросы, идеи, ошибки? Напиши нам — адрес электронной почты указан ниже, в контактах разработчика.
 ```
@@ -395,29 +395,56 @@ Blocko — бесплатная игра, которая существует з
 |---|---|---|
 | App-Symbol | `store/icon-512.png` | 512 × 512 px, PNG, max. 1 MB. Google rundet die Ecken selbst ab. |
 | Feature-Grafik | `store/feature-graphic.png` | 1024 × 500 px, PNG/JPG. Keine wichtigen Inhalte an den Rändern. |
-| Smartphone-Screenshots | mit `npm run assets` erzeugen (Ordner `store/`) | 2–8 Bilder, Hochformat 9:16 (z. B. 1080 × 1920) |
-| Tablet-Screenshots (7"/10") | optional, empfohlen | für bessere Darstellung auf Tablets |
+| Smartphone-Screenshots | `store/screenshots/<Sprache>/phone/` (mit `npm run assets` erzeugt) | 2–8 Bilder, PNG ohne Alphakanal, 9:16, 1080 × 1920 px |
+| 7-Zoll-Tablet-Screenshots | `store/screenshots/<Sprache>/tablet-7/` | 2–8 Bilder, PNG ohne Alphakanal, 9:16, 1350 × 2400 px |
+| 10-Zoll-Tablet-Screenshots | `store/screenshots/<Sprache>/tablet-10/` | 2–8 Bilder, PNG ohne Alphakanal, 9:16, 1620 × 2880 px |
+
+Screenshot-Regeln, die `npm run assets` bei jedem Lauf prüft (Stand Okt. 2026, vor dem Upload in der
+Console gegenprüfen): 2–8 Bilder pro Gerätetyp, PNG (24 Bit, ohne Alphakanal) oder JPEG, jede Seite
+320–3840 px, die lange Seite höchstens doppelt so lang wie die kurze, Seitenverhältnis 16:9 oder 9:16,
+höchstens 8 MB pro Datei. Die Bilder sind bewusst alle exakt 9:16, damit sie für Smartphone **und**
+beide Tablet-Typen gültig sind (die Play-Hilfeseiten waren beim Erstellen nicht erreichbar).
 
 **Die ersten 2–3 Screenshots sind die wichtigsten.** Viele Nutzer sehen nur sie.
+
+### Screenshots erzeugen
+
+```
+npm run assets                       # de + en, Smartphone + beide Tablets  → store/screenshots/
+npm run assets -- --langs all        # zusätzlich es, fr, it, pt, tr, ru
+npm run assets -- --devices phone --scenes 1,2     # nur einzelne Geräte / Szenen (Nummer oder Name)
+npm run assets -- --check            # nur prüfen (Mindestgröße 320 px, 16:9 / 9:16, kein Alphakanal, 2–8 Bilder)
+```
+
+Das Skript `tools/store-assets.mjs` startet das echte Spiel im Browser (Mobil-Emulation, feste Uhrzeit
+18.10.2026, gleiche Spielerdaten in jedem Lauf), baut jede Szene über die Debug-Schnittstelle
+(`window.__blocko`) auf und setzt Bildunterschrift + Gerätrahmen darum (`tools/templates/store-shot.html`).
+Es werden keine Mock-Anzeigen, keine Debug-Hinweise und keine Toasts gezeigt. Die Texte stehen in der
+Tabelle `CAPTIONS` im Skript (alle 8 App-Sprachen), das Wort zwischen `*Sternchen*` wird gold hervorgehoben.
+Nach Änderungen an der Oberfläche einfach neu erzeugen und die Bilder ansehen.
 
 ### Screenshot-Reihenfolge und Bildunterschriften
 
 Kurzer Text oben im Bild, große Schrift, maximal 5 Wörter.
 
-| # | Szene | Text DE | Text EN |
-|---|---|---|---|
-| 1 | Spielfeld kurz vor dem Abräumen, die Reihe ist hervorgehoben | **Ziehen. Ablegen. Abräumen!** | **Drag. Drop. Clear!** |
-| 2 | Mehrfach-Abräumen mit Lob-Text („Excellent!“) und Kombo | **Kombos für Riesenpunkte** | **Combos for huge scores** |
-| 3 | Abenteuer-Level mit Edelsteinen und Sternen | **Unbegrenzt viele Level** | **Unlimited levels** |
-| 4 | Tägliche Herausforderung | **Jeden Tag ein neues Rätsel** | **A new puzzle every day** |
-| 5 | Design-Auswahl (Juwel, Neon, Holz, Gold …) | **Sechs Block-Designs** | **Six block themes** |
-| 6 | Ruhiges Spielfeld, Highscore-Anzeige | **Ohne Zeitdruck – auch offline** | **No timer – play offline** |
-| 7 | Tagesbelohnung / Missionen | **Tägliche Belohnungen** | **Daily rewards** |
+| # | Datei | Szene | Text DE | Text EN |
+|---|---|---|---|---|
+| 1 | `01-drag` | Spielfeld kurz vor dem Abräumen: Stein schwebt über dem Feld, Geisterbild und die Zeilen/Spalte, die verschwinden, leuchten | **Ziehen. Ablegen. Abräumen!** | **Drag. Drop. Clear!** |
+| 2 | `02-combo` | Großes Mehrfach-Abräumen mitten in der Animation: „Exzellent!“, Kombo x5, Partikel, +Punkte | **Kombos für Riesenpunkte** | **Combos for huge scores** |
+| 3 | `03-map` | Abenteuer-Karte mit Sternen, Kapitel und schwerem Level | **Unbegrenzt viele Level** | **Unlimited levels** |
+| 4 | `04-level` | Abenteuer-Level mit Edelsteinen, Zielen, Boostern und Sternen | **Sammle Edelsteine & Sterne** | **Collect gems, earn stars** |
+| 5 | `05-daily` | Tägliche Herausforderung mit Punkte-Ziel | **Jeden Tag ein neues Rätsel** | **A new puzzle every day** |
+| 6 | `06-themes` | Design-Auswahl (Juwel, Neon, Bonbon, Holz, Pixel, Gold) | **Sechs Block-Designs** | **Six block themes** |
+| 7 | `07-rewards` | 7-Tage-Kalender der Tagesbelohnung | **Tägliche Belohnungen** | **Daily rewards** |
+| 8 | `08-newbest` | Ergebnis-Bildschirm mit „Neuer Rekord!“ | **Knacke deinen Highscore** | **Beat your high score** |
 
 Hinweise:
-- Der Screenshot muss das echte Spiel zeigen (keine Fantasie-Szenen).
-- Keine Werbebanner auf Screenshots zeigen. Keine Preise und keine „Kostenlos“-Sticker.
+- Der Screenshot muss das echte Spiel zeigen (keine Fantasie-Szenen). Die Szenen sind echte Spielzustände,
+  nur vorbereitet (Spielfeld, Steine und Spielstand sind per Debug-Schnittstelle vorgegeben).
+- Keine Werbebanner auf Screenshots zeigen. Keine Preise und keine „Kostenlos“-Sticker. Das Skript startet das
+  Spiel dafür ohne Werbung (`mock=nofill`), die Münzpreise der Designs sind Spielwährung.
 - Für jede Sprache eigene Screenshots mit übersetztem Text sind ideal. Fang mit DE und EN an.
+- „Ohne Zeitdruck – auch offline“ / „No timer – play offline“ ist ein guter Zusatztext für Kurzbeschreibung oder Feature-Grafik; dafür gibt es keine eigene Szene.
 
 ## 5. Promo-Video (optional)
 
@@ -465,6 +492,24 @@ Willkommen bei Blocko! Die erste Version mit Klassik-Modus, Abenteuer, tägliche
 <en-US>
 Welcome to Blocko! The first version with Classic mode, Journey, Daily Challenge, six block themes and rewards. Have fun – and feel free to send us your feedback!
 </en-US>
+<es-ES>
+¡Bienvenido a Blocko! La primera versión, con modo Clásico, Aventura, Desafío diario, seis temas de bloques y recompensas. ¡Que te diviertas y cuéntanos qué te parece!
+</es-ES>
+<fr-FR>
+Bienvenue dans Blocko ! La première version, avec le mode Classique, l’Aventure, le Défi du jour, six thèmes de blocs et des récompenses. Amuse-toi bien – et n’hésite pas à nous écrire ton avis !
+</fr-FR>
+<it-IT>
+Benvenuto in Blocko! La prima versione, con modalità Classica, Avventura, Sfida del giorno, sei temi per i blocchi e premi. Buon divertimento – e scrivici pure il tuo parere!
+</it-IT>
+<pt-BR>
+Bem-vindo ao Blocko! A primeira versão, com modo Clássico, Aventura, Desafio diário, seis temas de blocos e recompensas. Divirta-se e mande seu feedback para a gente!
+</pt-BR>
+<tr-TR>
+Blocko’ya hoş geldin! Klasik mod, Macera, Günlük Mücadele, altı blok teması ve ödüllerle ilk sürüm. İyi eğlenceler – geri bildirimlerini bize yazmaktan çekinme!
+</tr-TR>
+<ru-RU>
+Добро пожаловать в Blocko! Первая версия: классический режим, Кампания, Испытание дня, шесть тем для блоков и награды. Приятной игры — и не стесняйся писать нам отзывы!
+</ru-RU>
 ```
 
 Für Updates konkret und kurz, z. B. „Fehler behoben: Texte im Shop wurden auf kleinen Bildschirmen
