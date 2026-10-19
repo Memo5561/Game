@@ -4,6 +4,8 @@
 // Usage: node tools/simulate.mjs [--runs=200] [--levels=100] [--attempts=8] [--days=30]
 //          [--start=2026-10-01] [--seed=1] [--bot=greedy|planner] [--experience=10]
 //          [--config='{"RAW_P_MAX":0.15}']   (JSON merged over CONFIG.GENERATOR to try tunings)
+//        node tools/simulate.mjs --assist [--runs=300] [--seed=1] [--experience=10] [--bots=greedy,planner]
+//          [--config='{"ASSIST":{...}}']     (near-record assist: record-break rate with vs. without, see simulateAssist)
 //        node tools/simulate.mjs --economy [--days=30] [--players=3] [--profiles=casual,engaged,strong]
 //          [--ads=both|0|1] [--seed=1]       (coin economy of whole play days, see simulateEconomy)
 //
@@ -241,10 +243,10 @@ function timeGenerator(session, times) {
  * A session whose generator uses GEN_CONFIG (the first tray is already dealt with CONFIG).
  * @param {Object} opts GameSession.create options
  */
-function createSession(opts) {
+function createSession(opts, genConfig = GEN_CONFIG) {
   const session = GameSession.create(opts);
-  if (GEN_CONFIG !== CONFIG.GENERATOR) {
-    session.generator = Object.assign(new PieceGenerator({ rng: session.rng, mode: session.mode, config: GEN_CONFIG }),
+  if (genConfig !== CONFIG.GENERATOR) {
+    session.generator = Object.assign(new PieceGenerator({ rng: session.rng, mode: session.mode, config: genConfig }),
       { uid: session.generator.uid });
   }
   return session;
@@ -324,6 +326,60 @@ function simulateClassic() {
   console.log(`multi-line clears (>=2 lines): ${pct(phaseMultiMoves, phaseClearMoves)} of clearing moves in the early phase (trays 1–${GEN_CONFIG.EARLY_TRAYS}), ${pct(earlyMultiMoves, earlyClearMoves)} in trays 1–20, ${pct(multiMoves, clearMoves)} overall`);
   console.log(`trays 1–20 that offer a multi-line clear: ${pct(earlyMultiTrays, earlyTrays)}`);
   console.log(`nextTray time   avg ${fmt(mean(genTimes), 3)} ms  p95 ${fmt(quantile(genTimes, 0.95), 3)} ms  p99 ${fmt(quantile(genTimes, 0.99), 3)} ms  max ${fmt(genTimes[genTimes.length - 1], 2)} ms`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Near-record assist (--assist)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Per bot: a batch of plain runs gives the median score M; then the SAME seeds are played again
+ * with best = M, once without assist (NEAR_RECORD_P = 0) and once with the configured assist. The
+ * seeds are shared, so the runs are identical until the score first reaches NEAR_RECORD_FROM × M.
+ * Reports how often the record (score > M) is broken and that the game does not become endless.
+ */
+function simulateAssist() {
+  const bots = String(args.bots || 'greedy,planner').split(',');
+  const off = Object.freeze({ ...GEN_CONFIG, ASSIST: Object.freeze({ ...GEN_CONFIG.ASSIST, NEAR_RECORD_P: 0 }) });
+  const a = GEN_CONFIG.ASSIST;
+  console.log(`\n=== Near-record assist: ${RUNS} paired runs per bot (experience ${EXPERIENCE}); FROM ${a.NEAR_RECORD_FROM}, P ${a.NEAR_RECORD_P}, MIN_BEST ${a.MIN_BEST} ===`);
+  for (const bot of bots) {
+    const base = [];
+    for (let i = 0; i < RUNS; i++) {
+      const s = createSession({ mode: 'classic', seed: hashString(`assist-base-${BASE_SEED}-${i}`), gamesPlayed: EXPERIENCE });
+      playOut(s, { bot });
+      base.push(s.score);
+    }
+    const sorted = base.slice().sort((x, y) => x - y);
+    const best = Math.max(quantile(sorted, 0.5), 1);
+    const run = (cfg) => {
+      let broke = 0;
+      let nearRuns = 0;
+      const trays = [];
+      const scores = [];
+      for (let i = 0; i < RUNS; i++) {
+        const s = createSession({ mode: 'classic', seed: hashString(`assist-test-${BASE_SEED}-${i}`), gamesPlayed: EXPERIENCE, bestScore: best }, cfg);
+        let near = false;
+        playOut(s, { bot, onPlace: (res, sess) => { if (sess.isNearRecord()) near = true; } });
+        if (s.score > best) broke++;
+        if (near) nearRuns++;
+        trays.push(s.trayIndex + 1);
+        scores.push(s.score);
+      }
+      trays.sort((x, y) => x - y);
+      scores.sort((x, y) => x - y);
+      return { broke, nearRuns, trays, scores };
+    };
+    const without = run(off);
+    const withAssist = run(GEN_CONFIG);
+    const rate = (r) => (100 * r.broke) / RUNS;
+    console.log(`\n${bot} bot, record to beat M = ${best} (median of ${RUNS} plain runs)`);
+    console.log('                     record broken   reached assist zone   trays p10 / median / p90   score median');
+    for (const [name, r] of [['without assist', without], ['with assist   ', withAssist]]) {
+      console.log(`  ${name}   ${pct(r.broke, RUNS).padStart(7)}        ${pct(r.nearRuns, RUNS).padStart(7)}            ${quantile(r.trays, 0.1)} / ${quantile(r.trays, 0.5)} / ${quantile(r.trays, 0.9)}              ${quantile(r.scores, 0.5)}`);
+    }
+    console.log(`  difference: ${rate(withAssist) - rate(without) >= 0 ? '+' : ''}${fmt(rate(withAssist) - rate(without), 1)} percentage points record-break chance; capped runs (endless): ${withAssist.trays.filter((t) => t > MAX_TRAYS).length}`);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -658,6 +714,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const t0 = performance.now();
   if (args.economy) {
     simulateEconomy();
+  } else if (args.assist) {
+    simulateAssist();
   } else {
     if (GEN_CONFIG !== CONFIG.GENERATOR) console.log('generator config override:', args.config);
     if (RUNS > 0) simulateClassic();

@@ -56,7 +56,7 @@ test('defaultSave has the complete v1 shape with CONFIG starting values', () => 
   assert.equal(s.xp, 0);
   assert.deepEqual(s.stats, {
     gamesPlayed: 0, classicGames: 0, bestScore: 0, totalScore: 0, totalLines: 0, bestCombo: 0,
-    piecesPlaced: 0, allClears: 0, playSec: 0,
+    piecesPlaced: 0, allClears: 0, playSec: 0, shortRunStreak: 0,
   });
   assert.deepEqual(s.themes, { owned: ['jewel'], selected: 'jewel' });
   assert.equal(DEFAULT_THEME, 'jewel');

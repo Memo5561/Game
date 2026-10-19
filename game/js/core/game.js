@@ -61,7 +61,7 @@ const STATUSES = new Set(['playing', 'over', 'won']);
 const N = CONFIG.BOARD_SIZE;
 const TRAY_SIZE = CONFIG.TRAY_SIZE;
 const { COMBO_KEEP_MOVES, ALL_CLEAR_BONUS } = CONFIG.SCORING;
-const { MERCY_AFTER_REVIVE } = CONFIG.GENERATOR;
+const { MERCY_AFTER_REVIVE, ASSIST } = CONFIG.GENERATOR;
 
 /**
  * Scripted tutorial steps. Board rows: '.' = empty, digit = color index. The single tray piece
@@ -97,6 +97,8 @@ const COUNTER_KEYS = Object.freeze([
   'score', 'combo', 'movesSinceClear', 'traysSinceClear', 'trayIndex', 'piecesPlaced', 'linesCleared',
   'maxCombo', 'allClears', 'experience', 'bestScore', 'mercyTrays', 'tutorialStep',
 ]);
+/** Counters added later: older saves lack them (default 0 instead of rejecting the run). */
+const OPTIONAL_COUNTER_KEYS = Object.freeze(['shortRunStreak']);
 /** Boolean run state saved 1:1 by toJSON/fromJSON. */
 const FLAG_KEYS = Object.freeze(['reviveUsed', 'clearedThisTray', 'newBestReached', 'tutorialStepDone']);
 
@@ -129,6 +131,8 @@ export class GameSession {
     this.experience = 0;
     /** best score before this run (unchanged during the run) */
     this.bestScore = 0;
+    /** very short classic runs in a row before this one (>= SHORT_RUNS_FOR_EASY_START → generous start) */
+    this.shortRunStreak = 0;
     /** @type {Status} */
     this.status = 'playing';
     /** @type {Goals} */
@@ -157,9 +161,10 @@ export class GameSession {
    * @param {LevelDef} [opts.level] required for journey/daily
    * @param {number} [opts.bestScore=0] classic best score so far (for `newBest`)
    * @param {number} [opts.gamesPlayed=0] finished games of the player (→ `experience`)
+   * @param {number} [opts.shortRunStreak=0] very short classic runs in a row (gentler start)
    * @returns {GameSession}
    */
-  static create({ mode = 'classic', seed, level = null, bestScore = 0, gamesPlayed = 0 } = {}) {
+  static create({ mode = 'classic', seed, level = null, bestScore = 0, gamesPlayed = 0, shortRunStreak = 0 } = {}) {
     if (!MODES.includes(mode)) throw new Error(`GameSession.create: unknown mode ${mode}`);
     const needsLevel = LEVEL_MODES.has(mode);
     if (needsLevel && !level) throw new Error(`GameSession.create: mode ${mode} needs a level`);
@@ -171,6 +176,7 @@ export class GameSession {
     s.level = needsLevel ? cloneData(level) : null;
     s.bestScore = Math.max(0, bestScore || 0);
     s.experience = Math.max(0, gamesPlayed || 0);
+    s.shortRunStreak = mode === 'classic' ? Math.max(0, shortRunStreak || 0) : 0;
 
     if (mode === 'tutorial') {
       s.loadTutorialStep();
@@ -225,6 +231,10 @@ export class GameSession {
       if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`GameSession.fromJSON: invalid ${key}`);
       s[key] = v;
     }
+    for (const key of OPTIONAL_COUNTER_KEYS) {
+      const v = json[key];
+      s[key] = typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
+    }
     for (const key of FLAG_KEYS) s[key] = !!json[key];
     if (s.mode === 'tutorial' && !(s.tutorialStep >= 0 && s.tutorialStep < TUTORIAL.length)) {
       throw new Error('GameSession.fromJSON: invalid tutorial step');
@@ -252,6 +262,7 @@ export class GameSession {
       generator: this.generator.toJSON(),
     };
     for (const key of COUNTER_KEYS) out[key] = this[key];
+    for (const key of OPTIONAL_COUNTER_KEYS) out[key] = this[key];
     for (const key of FLAG_KEYS) out[key] = this[key];
     return out;
   }
@@ -538,6 +549,16 @@ export class GameSession {
     return this.tray.slice();
   }
 
+  /**
+   * Near-record assist: classic, a meaningful best, score within [NEAR_RECORD_FROM × best, best).
+   * Ends the moment the record is broken. @returns {boolean}
+   */
+  isNearRecord() {
+    const a = this.generator.config.ASSIST || ASSIST; // the generator's config may be overridden (tools/simulate.mjs)
+    return this.mode === 'classic' && this.bestScore >= a.MIN_BEST
+      && this.score >= a.NEAR_RECORD_FROM * this.bestScore && this.score < this.bestScore;
+  }
+
   /** @returns {Piece[]} next tray from the generator (consumes one mercy tray) */
   dealTray() {
     const tray = this.generator.nextTray(this.board, {
@@ -550,6 +571,8 @@ export class GameSession {
       mercyTrays: this.mercyTrays,
       level: this.level || undefined,
       goals: this.goals,
+      nearRecord: this.isNearRecord(),
+      assistedStart: this.mode === 'classic' && this.shortRunStreak >= (this.generator.config.ASSIST || ASSIST).SHORT_RUNS_FOR_EASY_START,
     });
     if (this.mercyTrays > 0) this.mercyTrays--;
     return tray;

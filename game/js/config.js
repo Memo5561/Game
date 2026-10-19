@@ -59,6 +59,15 @@ export const CONFIG = Object.freeze({
     MERCY_FILL: 0.55,         // board fill ratio that triggers mercy
     MERCY_TRAYS_NO_CLEAR: 2,  // trays without a clear that trigger mercy
     MERCY_AFTER_REVIVE: 2,    // trays of mercy after a revive
+    // Fun assist (classic only). It only ever HELPS (never makes trays worse, never depends on device,
+    // country or wall clock, never touches the score):
+    ASSIST: Object.freeze({
+      NEAR_RECORD_FROM: 0.65,   // score >= this share of the best (and still below it) → near-record assist
+      NEAR_RECORD_P: 0.9,       // chance per tray to deal a mercy tray (solvable + clearing) while near the record
+      MIN_BEST: 1500,           // no near-record assist for tiny personal bests
+      SHORT_RUN_TRAYS: 12,      // a classic run with fewer trays than this counts as a very short run
+      SHORT_RUNS_FOR_EASY_START: 2, // this many short runs in a row → next run gets the generous early phase
+    }),
     RAMP_TRAYS: 60,           // classic: d = clamp(D_MIN + trayIndex / RAMP_TRAYS, D_MIN, D_MAX)
     D_MIN: 0.1,
     D_MAX: 1.0,
@@ -130,6 +139,8 @@ export const CONFIG = Object.freeze({
     INTERSTITIAL_MIN_TOTAL_PLAY_SEC: 480,     // none during roughly the whole first session
     INTERSTITIAL_MIN_PLAY_SEC_SINCE_AD: 180,  // active in-run seconds since any full-screen ad (rewarded included)
     INTERSTITIAL_MIN_INTERVAL_SEC: 120,       // wall clock since any full-screen ad
+    NEAR_RECORD_SKIP_FROM: 0.85,              // 'close call' for ad timing: final score >= this share of the best
+    SKIP_AFTER_HIGH_MOMENTS: true,            // no interstitial after a new best, a close call or a 3-star win (postponed, not lost)
     SKIP_FIRST_RUN_OF_SESSION: true,          // session = cold start or resume after >= SESSION_GAP_MIN
     SESSION_GAP_MIN: 30,
     RUN_MIN_PIECES: 8,                        // shorter runs don't count (games played, XP, ad cadence)

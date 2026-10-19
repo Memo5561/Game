@@ -55,14 +55,15 @@ async function reviewRules() {
     await page.waitForTimeout(REVIEW_MS + 300);
     assert((await calls(page, 'requestReview')).length === 0 && !(await asked()), 'a quick Play again does not spend the review ask');
 
-    // an interstitial is due: leaving cancels the review, no card over the ad
+    // an interstitial is due, but a new best is an emotional moment: leaving cancels the review and the ad is postponed
     await ev(page, () => window.__blocko.save({ stats: { bestScore: 10 }, ads: { sessionRuns: 3, playSecSinceAd: 900, lastInterstitialAt: 0, lastRewardedAt: 0 } }));
     await newBestGameOver(page);
     await page.waitForTimeout(CONFIG.ADS.RESULT_SCREEN_MIN_MS + 100);
     await tap(page, 'gameover.again');
-    await page.waitForFunction(() => window.__adLog.includes('Interstitial'), null, { timeout: 5000 });
+    await waitState(page, '(st) => st.modals.length === 0 && st.session.score === 0');
     await page.waitForTimeout(REVIEW_MS + 300);
-    assert((await calls(page, 'requestReview')).length === 0 && !(await asked()), 'no review card over / after an interstitial');
+    assert(!(await adLog(page)).includes('Interstitial'), 'no interstitial right after a new best (postponed)');
+    assert((await calls(page, 'requestReview')).length === 0 && !(await asked()), 'no review card after leaving');
 
     // a calm result screen: the card is requested once, and then there is no interstitial
     await ev(page, () => window.__blocko.save({ stats: { bestScore: 10 }, ads: { sessionRuns: 3, playSecSinceAd: 900, lastInterstitialAt: 0, lastRewardedAt: 0 } }));

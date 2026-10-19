@@ -42,6 +42,8 @@ import { SHAPES, getShape, shapeWeight } from './shapes.js';
  * @property {number} [fill]            board fill ratio 0..1
  * @property {number} [experience]      finished games of the player
  * @property {number} [mercyTrays]      remaining mercy trays (after a revive)
+ * @property {boolean} [nearRecord]     extra: classic run close below the personal best (assist, see CONFIG.GENERATOR.ASSIST)
+ * @property {boolean} [assistedStart]  extra: gentler start after several very short runs (long generous early phase)
  * @property {LevelDef} [level]         journey/daily level (its difficulty is used)
  * @property {Object} [goals]           goal progress
  * @typedef {Object} TrayAnalysis
@@ -433,14 +435,18 @@ export class PieceGenerator {
   /**
    * Early phase only exists in classic runs (journey/daily difficulty comes from the level).
    * @param {TrayContext} ctx
-   * @returns {'early'|'mercy'|'normal'}
+   * @param {number} [assistRoll=1] uniform 0..1; with ctx.nearRecord a roll below NEAR_RECORD_P turns
+   *   a 'normal' tray into a 'mercy' one (assistance only ever helps)
+   * @returns {'early'|'mercy'|'assist'|'normal'}
    */
-  phaseFor(ctx) {
+  phaseFor(ctx, assistRoll = 1) {
     const cfg = this.config;
-    const earlyTrays = (ctx.experience || 0) < cfg.NEWBIE_GAMES ? cfg.NEWBIE_EARLY_TRAYS : cfg.EARLY_TRAYS;
+    const newbie = (ctx.experience || 0) < cfg.NEWBIE_GAMES || !!ctx.assistedStart;
+    const earlyTrays = newbie ? cfg.NEWBIE_EARLY_TRAYS : cfg.EARLY_TRAYS;
     if (this.mode === 'classic' && (ctx.trayIndex || 0) < earlyTrays) return 'early';
     if ((ctx.fill || 0) > cfg.MERCY_FILL || (ctx.traysSinceClear || 0) >= cfg.MERCY_TRAYS_NO_CLEAR
       || (ctx.mercyTrays || 0) > 0) return 'mercy';
+    if (this.mode === 'classic' && ctx.nearRecord && assistRoll < (cfg.ASSIST ? cfg.ASSIST.NEAR_RECORD_P : 0)) return 'assist';
     return 'normal';
   }
 
@@ -454,7 +460,6 @@ export class PieceGenerator {
     const cfg = this.config;
     const d = this.difficultyFor(ctx);
     this.lastDifficulty = d;
-    const phase = this.phaseFor(ctx);
     const weightOf = (s) => shapeWeight(s, d, cfg.FAMILY_WEIGHTS);
 
     // Fixed rng order: all candidates (shapes + colors) first, then the decision rolls.
@@ -464,6 +469,9 @@ export class PieceGenerator {
     const pickRoll = this.rng.next();
     const gemRoll = this.rng.next();
     const multiRoll = this.rng.next();
+    // always drawn (also without ctx.nearRecord) so that the rng stream never depends on the assist
+    const assistRoll = this.rng.next();
+    const phase = this.phaseFor(ctx, assistRoll);
 
     const fitting = candidates.filter((cand) => cand.shapes.some((s) => board.anyPlacement(s)));
     if (fitting.length === 0) return this.toPieces(smallestFitting(board, 3), candidates[0].colors);
@@ -476,7 +484,7 @@ export class PieceGenerator {
     if (phase === 'early') {
       const minFirst = multiRoll < cfg.EARLY_MULTI_P ? 2 : 0;
       chosen = this.bestForLines(board, fitting, minFirst) || this.rescue(board, 3) || fitting[0];
-    } else if (phase === 'mercy') {
+    } else if (phase === 'mercy' || phase === 'assist') {
       const wantGems = this.mode !== 'classic' && hasGems(board) && gemRoll < 1 - d;
       const opts = { nodeLimit: cfg.NODE_LIMIT, targetLines: 1, targetGems: wantGems ? 1 : 0 };
       const solvable = [];
@@ -490,9 +498,11 @@ export class PieceGenerator {
         clearing.push(cand);
         if (wantGems && a.maxGems >= 1) gemClearing.push(cand);
       }
-      chosen = opening
+      // assist: the best solvable candidate (most clears) if there is one – otherwise like mercy
+      const assisted = phase === 'assist' ? this.bestForLines(board, clearing) : null;
+      chosen = assisted || (opening
         ? pickOrNull(pickRoll, gemClearing, clearing, solvable) || this.rescue(board, 3) || pickFirstNonEmpty(pickRoll, fitting)
-        : pickFirstNonEmpty(pickRoll, gemClearing, clearing, solvable, fitting);
+        : pickFirstNonEmpty(pickRoll, gemClearing, clearing, solvable, fitting));
     } else if (!opening && rawRoll < (this.mode === 'classic' ? cfg.RAW_P_MAX : cfg.RAW_P_MAX_LEVELS) * d) {
       chosen = fitting[0];
     } else {

@@ -156,7 +156,7 @@ Board empty after a clear → `+ALL_CLEAR_BONUS`. UI shows "Combo xN" when `comb
 ```js
 export class PieceGenerator {
   constructor({ rng, mode })   // mode: 'classic'|'journey'|'daily'|'tutorial'
-  nextTray(board, ctx)         // ctx: { score, trayIndex, traysSinceClear, combo, fill, experience, mercyTrays, level?, goals? } → Piece[3]
+  nextTray(board, ctx)         // ctx: { score, trayIndex, traysSinceClear, combo, fill, experience, mercyTrays, nearRecord?, assistedStart?, level?, goals? } → Piece[3]
   reviveTray(board)            // 3 small/medium pieces placeable together
   shuffleTray(board, count)    // `count` new pieces, solvable together if at all possible
   toJSON(); static fromJSON(obj, rng)   // every counter it uses (uid, history…)
@@ -166,14 +166,21 @@ export function analyzeTray(board, shapes, { nodeLimit })
 ```
 Algorithm (all constants from `CONFIG.GENERATOR`):
 1. `d` = `level.difficulty` (journey/daily) or `clamp(D_MIN + trayIndex / RAMP_TRAYS, D_MIN, D_MAX)` (classic).
-   The generator NEVER reads bestScore and never selects a tray *because* it is unsolvable.
+   The generator NEVER reads bestScore (the session only passes the booleans `nearRecord`/`assistedStart`)
+   and never selects a tray *because* it is unsolvable. It never reads wall clock or device data.
 2. Sample `CANDIDATES` trays with `shapeWeight(shape, d)`; no 3 identical shapes; no 3 identical colors.
 3. Drop candidates where no piece fits right now (if all are impossible, use the smallest shapes that fit).
 4. Choose:
-   a. **Early** (`trayIndex < EARLY_TRAYS`, or `< NEWBIE_EARLY_TRAYS` while `experience < NEWBIE_GAMES`):
+   a. **Early** (`trayIndex < EARLY_TRAYS`, or `< NEWBIE_EARLY_TRAYS` while `experience < NEWBIE_GAMES` or `ctx.assistedStart`):
       the solvable candidate with the highest `min(maxLines, 3)`, ties by `maxSingle`.
    b. **Mercy** (`fill > MERCY_FILL` or `traysSinceClear >= MERCY_TRAYS_NO_CLEAR` or `mercyTrays > 0`):
       random among solvable candidates with `maxLines >= 1` (journey/daily: prefer lines containing gems; this help scales with `1 - difficulty`).
+   b2. **Near-record assist** (classic only, `ctx.nearRecord`; assist only ever helps): with probability
+      `ASSIST.NEAR_RECORD_P` (one extra rng roll, drawn on every tray so the stream never depends on the assist) a tray
+      that would be dealt in branch c becomes an assisted one: the solvable candidate with the most clears
+      (`bestForLines`, else as mercy). `GameSession.isNearRecord()`: `bestScore >= ASSIST.MIN_BEST` and
+      `NEAR_RECORD_FROM * best <= score < best` – ends the moment the record is broken. The score is never altered.
+      `assistedStart` (`stats.shortRunStreak >= ASSIST.SHORT_RUNS_FOR_EASY_START`) gives the newbie early-phase length.
    c. Otherwise: with probability `RAW_P_MAX * d` the first sample unfiltered; else random among solvable candidates.
    d. **Opening tray of a journey/daily level** (`trayIndex === 0`, any branch): always fully placeable. There is no
       raw roll, and if no candidate is solvable (normal or mercy branch) a tiny-piece `rescue()` tray is dealt, so an
@@ -211,7 +218,7 @@ export function levelKind(n)                // 'normal' | 'hard' | 'superhard'
 ```js
 export const SESSION_VERSION = 1
 export class GameSession {
-  static create({ mode, seed, level /* LevelDef */, bestScore, gamesPlayed })
+  static create({ mode, seed, level /* LevelDef */, bestScore, gamesPlayed, shortRunStreak })
   static fromJSON(json)     // throws on incompatible data (caller drops the run)
   toJSON()                  // exact resume incl. rng + generator state, traysSinceClear, mercy, tutorial step
 
@@ -308,7 +315,8 @@ export class Progression {
   get coins(); addCoins(n, source); spendCoins(n) /* bool */
   levelInfo()                   // { level, xp, xpIntoLevel, xpForNext, progress }
   addXP(n)                      // → { leveledUp, levels: [..], coins, unlockedThemes: [ids] }
-  recordGame({ mode, score, lines, maxCombo, pieces, allClears, playSec })
+  recordGame({ mode, score, lines, maxCombo, pieces, allClears, playSec, trays })
+     // classic + counted: stats.shortRunStreak++ if trays < ASSIST.SHORT_RUN_TRAYS, else reset to 0 (gentler next start)
      // → { newBest, firstRecord, coinsEarned /* classic only */, xp /* addXP result */, counted /* pieces >= RUN_MIN_PIECES */ }
      // classic, counted runs only (pieces >= RUN_MIN_PIECES): bestScore/newBest/firstRecord + runCoins(score) coins
      // (concave: floor(RUN_COINS_FACTOR * sqrt(score)), no minimum); uncounted runs set no record and pay nothing;
@@ -355,7 +363,8 @@ export class AdPolicy {
   onSessionStart()                    // cold start or resume after SESSION_GAP_MIN → ads.sessionRuns = 0
   onRunFinished({ playSec, pieces })  // once per finished/abandoned run (never tutorial); counts only pieces >= RUN_MIN_PIECES;
                                       // playSecSinceAd += max(0, playSec - ads.runSecAtAd), then runSecAtAd = 0
-  shouldShowInterstitial()            // !adsRemoved && total playSec >= MIN_TOTAL && playSecSinceAd >= MIN_PLAY_SEC_SINCE_AD
+  shouldShowInterstitial(ctx?)        // ctx { newBest, nearRecord, celebration }: any true (and ADS.SKIP_AFTER_HIGH_MOMENTS) → false, counters untouched
+                                      // !adsRemoved && total playSec >= MIN_TOTAL && playSecSinceAd >= MIN_PLAY_SEC_SINCE_AD
                                       // && now - max(lastInterstitialAt, lastRewardedAt) >= MIN_INTERVAL (clock moved back → elapsed)
                                       // && !(SKIP_FIRST_RUN_OF_SESSION && sessionRuns <= 1)
   markInterstitialShown()             // playSecSinceAd = 0, lastInterstitialAt, interstitialsShown++

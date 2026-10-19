@@ -162,13 +162,13 @@ export class Progression {
    * - classic coins = runCoins(score) = floor(RUN_COINS_FACTOR × √score), no minimum
    * - XP = min(XP_RUN_CAP, XP_RUN_BASE + lines × XP_PER_LINE), only for counted runs
    * @param {{ mode: string, score?: number, lines?: number, maxCombo?: number, pieces?: number,
-   *   allClears?: number, playSec?: number }} run
+   *   allClears?: number, playSec?: number, trays?: number }} run
    * @returns {{ newBest: boolean, firstRecord: boolean, coinsEarned: number, xp: XPResult,
    *   counted: boolean }} newBest = counted classic score above the previous best (also on the
    *   first record); firstRecord = the first counted classic run that scored at all; counted =
    *   pieces >= RUN_MIN_PIECES
    */
-  recordGame({ mode, score, lines, maxCombo, pieces, allClears, playSec } = {}) {
+  recordGame({ mode, score, lines, maxCombo, pieces, allClears, playSec, trays, abandoned = false } = {}) {
     const st = this.save.stats;
     const runScore = toCount(score);
     const runLines = toCount(lines);
@@ -181,6 +181,11 @@ export class Progression {
     if (counted) {
       st.gamesPlayed += 1;
       if (classic) st.classicGames += 1;
+    }
+    // Gentler restart: very short counted classic runs in a row (see CONFIG.GENERATOR.ASSIST)
+    // (deliberately abandoned runs neither extend nor reset it)
+    if (classic && counted && !abandoned) {
+      st.shortRunStreak = toCount(trays) < CONFIG.GENERATOR.ASSIST.SHORT_RUN_TRAYS ? toCount(st.shortRunStreak) + 1 : 0;
     }
     st.totalScore += runScore;
     st.totalLines += runLines;

@@ -166,6 +166,7 @@ export class GameController {
     const app = this.app;
     const s = GameSession.create({
       mode, level, bestScore: app.progression.bestScore, gamesPlayed: app.save.stats.gamesPlayed,
+      shortRunStreak: app.save.stats.shortRunStreak || 0,
     });
     this.useSession(s);
     if (app.router.current !== 'game') app.router.go('game');
@@ -276,7 +277,8 @@ export class GameController {
     save.run = null;
     const rec = P.recordGame({
       mode: s.mode, score: s.score, lines: s.linesCleared, maxCombo: s.maxCombo,
-      pieces: s.piecesPlaced, allClears: s.allClears, playSec,
+      pieces: s.piecesPlaced, allClears: s.allClears, playSec, trays: s.trayIndex,
+      abandoned: reason === 'abandoned',
     });
     const missions = P.trackEvent({ type: 'game_end', mode: s.mode, score: s.score, pieces: s.piecesPlaced });
     const xpResults = [rec.xp];
@@ -339,6 +341,13 @@ export class GameController {
       levelAfter: P.levelInfo(),
       missionsDone: missions,
       doubled: false,
+      // emotional moments that must not be followed by an interstitial (AdPolicy.shouldShowInterstitial)
+      adContext: {
+        newBest: rec.newBest,
+        nearRecord: s.mode === 'classic' && before.best > 0
+          && s.score >= CONFIG.ADS.NEAR_RECORD_SKIP_FROM * before.best,
+        celebration: reason === 'won' && stars === 3,
+      },
     };
     if (missions.length) app.announceMissions(missions);
     // a result screen lists the missions the run completed (no toast over its coin counter)
@@ -782,7 +791,7 @@ export class GameController {
     // requested over one): leaving now cancels a review that has not been asked yet
     clearTimeout(m.data.reviewTimer);
     try {
-      if (!m.data.reviewShown) await this.app.maybeInterstitial(m.shownAt);
+      if (!m.data.reviewShown) await this.app.maybeInterstitial(m.shownAt, (m.props.summary || {}).adContext);
       // FTUE: ads (consent, banner) start only once the first result screen is left
       this.app.startAds();
       const sum = m.props.summary || {};

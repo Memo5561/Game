@@ -116,12 +116,66 @@ export default async function gameplaySpec() {
     assert(ads.interstitialsShown === 2, 'second interstitial after the interval');
     assert((await adLog(page)).every((x) => x === 'Interstitial'), 'only interstitials were shown, only from result buttons');
 
+    // --- emotional moments: no interstitial after a new best or a close call, but after an ordinary game over ---
+    const dueAgain = async () => {
+      await ev(page, (ms) => window.__blocko.setNow(Date.now() + ms), (CONFIG.ADS.INTERSTITIAL_MIN_INTERVAL_SEC + 60) * 1000 + 600 * 1000);
+      await grantPlayTime(page);
+    };
+    const interstitials = async () => (await adLog(page)).filter((x) => x === 'Interstitial').length;
+    const stagedRun = async (score, best) => {
+      await ev(page, (b) => window.__blocko.save({ stats: { bestScore: b } }), best);
+      await ev(page, (sc) => window.__blocko.startGame('classic', { score: sc }), score);
+      await waitState(page, '(st) => st.screen === "game" && st.session.status === "playing"');
+    };
+    const assist = CONFIG.GENERATOR.ASSIST;
+
+    // state flags: assist active only inside [FROM*best, best), gone after the record
+    await stagedRun(Math.ceil(4000), 5000);
+    let st = await state(page);
+    assert(st.session.nearRecord === true && st.session.best === 5000, 'near-record assist active at 80% of the best');
+    await ev(page, () => window.__blocko.startGame('classic', { score: 5001, best: 5000 }));
+    st = await state(page);
+    assert(st.session.nearRecord === false, 'assist ends once the record is broken');
+    await ev(page, (n) => window.__blocko.startGame('classic', { score: 100, best: 5000, shortRunStreak: n }), assist.SHORT_RUNS_FOR_EASY_START);
+    st = await state(page);
+    assert(st.session.nearRecord === false && st.session.assistedStart === true, 'gentle start after several short runs');
+    await ev(page, () => window.__blocko.startGame('journey', { level: 3, best: 5000 }));
+    st = await state(page);
+    assert(st.session.nearRecord === false && st.session.assistedStart === false, 'journey never gets the classic assist');
+
+    // (1) close call at game over → postponed
+    await dueAgain();
+    const base = await interstitials();
+    await stagedRun(Math.ceil(5000 * 0.9), 5000);
+    await shortRunToGameOver(page);
+    await page.waitForTimeout(MIN_MS + 200);
+    await tap(page, 'gameover.again');
+    await waitState(page, '(st) => st.modals.length === 0 && st.session.score === 0');
+    assert((await interstitials()) === base, 'no interstitial after a close call');
+    ads = await ev(page, () => window.__blocko.save().ads);
+    assert(ads.playSecSinceAd >= CONFIG.ADS.INTERSTITIAL_MIN_PLAY_SEC_SINCE_AD, 'the postponed ad did not consume the play-time counter');
+
+    // (2) new best → postponed
+    await stagedRun(9000, 5000);
+    await shortRunToGameOver(page);
+    await page.waitForTimeout(MIN_MS + 200);
+    await tap(page, 'gameover.again');
+    await waitState(page, '(st) => st.modals.length === 0 && st.session.score === 0');
+    assert((await interstitials()) === base, 'no interstitial after a new best');
+
+    // (3) ordinary game over, ad is due → shown (the postponed one)
+    await shortRunToGameOver(page);
+    await page.waitForTimeout(MIN_MS + 200);
+    await tap(page, 'gameover.home');
+    await page.waitForFunction((n) => window.__adLog.filter((x) => x === 'Interstitial').length === n + 1, base, { timeout: 5000 });
+    await waitState(page, '(st) => st.screen === "home" && st.modals.length === 0');
+
     // Home → Play never shows one
     await grantPlayTime(page);
     await ev(page, (ms) => window.__blocko.setNow(Date.now() + ms), 3600 * 1000);
     await tap(page, 'home.play');
     await idle(page);
-    assert((await adLog(page)).length === 2, 'no interstitial from Home → Play');
+    assert((await interstitials()) === base + 1 && (await adLog(page)).length === base + 1, 'no interstitial from Home → Play');
     assertNoErrors(g, 'gameplay');
   } finally {
     await g.close();

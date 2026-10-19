@@ -57,12 +57,16 @@ export class AdPolicy {
 
   /**
    * Ask right before an interstitial would be shown (leaving a run-result screen).
+   * @param {{ newBest?: boolean, nearRecord?: boolean, celebration?: boolean }} [context] emotional
+   *   moments (new best, close call, 3-star win): with SKIP_AFTER_HIGH_MOMENTS none of them is
+   *   interrupted by an ad. Nothing is consumed: the ad is simply postponed to the next result screen.
    * @returns {boolean}
    */
-  shouldShowInterstitial() {
+  shouldShowInterstitial(context = {}) {
     const c = this.config;
     const ads = this.save.ads;
     if (this.save.iap.adsRemoved) return false;
+    if (c.SKIP_AFTER_HIGH_MOMENTS && context && (context.newBest || context.nearRecord || context.celebration)) return false;
     if (this.save.stats.playSec < c.INTERSTITIAL_MIN_TOTAL_PLAY_SEC) return false;
     if (ads.playSecSinceAd < c.INTERSTITIAL_MIN_PLAY_SEC_SINCE_AD) return false;
     const elapsedMs = this._nowMs() - Math.max(ads.lastInterstitialAt, ads.lastRewardedAt);

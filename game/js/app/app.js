@@ -598,12 +598,14 @@ export class App {
    * ≥ RESULT_SCREEN_MIN_MS, only with the result modal alone on screen, never right after a
    * purchase, and only if AdPolicy agrees.
    * @param {number} shownAt performance.now() when the result screen became visible
+   * @param {{ newBest?: boolean, nearRecord?: boolean, celebration?: boolean }} [context] emotional
+   *   moment of the result (AdPolicy skips the ad, the counters stay untouched)
    * @returns {Promise<boolean>} shown
    */
-  async maybeInterstitial(shownAt) {
+  async maybeInterstitial(shownAt, context = {}) {
     if (!shownAt || performance.now() - shownAt < CONFIG.ADS.RESULT_SCREEN_MIN_MS) return false;
     if (this.modals.stack.length !== 1 || this.lastPurchaseAt > shownAt) return false;
-    if (!this.adsStarted || !this.adPolicy.shouldShowInterstitial()) return false;
+    if (!this.adsStarted || !this.adPolicy.shouldShowInterstitial(context)) return false;
     flushSave(this.save);
     Sfx.suspend();
     let shown = false;

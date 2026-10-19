@@ -20,6 +20,7 @@
 //   extras: pointerFor(i, r, c) → page coordinates of a real drag; cellPoint(r, c) → page coordinates of
 //   a board cell; missingKeys(); audio(); platform; app
 
+import { CONFIG } from '../config.js';
 import { Platform } from '../platform/bridge.js';
 import { GameSession, listValidMoves } from '../core/game.js';
 import { getShape } from '../core/shapes.js';
@@ -65,6 +66,9 @@ export function installDebug(app) {
         movesSinceClear: s.movesSinceClear,
         piecesPlaced: s.piecesPlaced,
         reviveUsed: s.reviveUsed,
+        nearRecord: s.isNearRecord(),
+        assistedStart: s.mode === 'classic' && s.shortRunStreak >= CONFIG.GENERATOR.ASSIST.SHORT_RUNS_FOR_EASY_START,
+        trayIndex: s.trayIndex,
         board: Array.from(s.board.cells),
         gems: Array.from(s.board.gems),
         tray: s.tray.map((p) => (p ? { shapeId: p.shapeId, color: p.color } : null)),
@@ -170,6 +174,7 @@ export function installDebug(app) {
       level,
       bestScore: opts.best ?? app.progression.bestScore,
       gamesPlayed: app.save.stats.gamesPlayed,
+      shortRunStreak: opts.shortRunStreak ?? app.save.stats.shortRunStreak ?? 0,
     });
     if (opts.board) stageBoard(s, opts.board, opts.gems);
     if (opts.tray) s.tray = opts.tray.map((p) => (p ? s.generator.createPiece(p.shapeId, p.color) : null));

@@ -51,6 +51,17 @@ müssen **alle** Bedingungen erfüllt sein:
 5. Nicht die erste Runde einer Sitzung (`SKIP_FIRST_RUN_OF_SESSION`).
 6. Ergebnis-Bildschirm war mindestens `RESULT_SCREEN_MIN_MS` (1 s) sichtbar.
 
+### 2.2a Keine Werbung in emotionalen Momenten
+
+Damit der Spielspaß nicht leidet, wird ein Interstitial **verschoben** (nicht verworfen, keine Zähler
+werden zurückgesetzt), wenn das Ergebnis ein Höhepunkt war: neuer Rekord, knapp am Rekord
+(Endstand ≥ `GENERATOR.ASSIST.NEAR_RECORD_FROM` × Bestwert) oder ein Level-Sieg mit 3 Sternen.
+Beim nächsten gewöhnlichen Ergebnis-Bildschirm läuft die Werbung dann regulär. Abschaltbar mit
+`ADS.SKIP_AFTER_HIGH_MOMENTS: false`. Dazu passend hilft das Spiel nahe am Rekord etwas
+(`GENERATOR.ASSIST`) und startet nach mehreren sehr kurzen Runden sanfter – die Hilfe macht
+Stücke nur besser, nie schlechter, hängt nie von Gerät, Land oder Uhrzeit ab und ändert nie den Punktestand.
+Die Hilfe ist nicht an Werbung, Wiederbelebung oder Käufe gekoppelt.
+
 **Nie**: beim App-Start, beim Zurückkehren in die App, beim Beenden/Zurück-Taste, aus dem
 Pausenmenü, im Tutorial, nach einem Kauf, während ein Dialog offen ist, mitten in einer Runde.
 

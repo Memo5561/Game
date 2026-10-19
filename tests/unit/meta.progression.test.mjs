@@ -206,7 +206,7 @@ test('recordGame: classic runs set the best score, pay coins and XP', () => {
   assert.equal(p.bestScore, 1000);
   assert.deepEqual(save.stats, {
     gamesPlayed: 1, classicGames: 1, bestScore: 1000, totalScore: 1000, totalLines: 20, bestCombo: 4,
-    piecesPlaced: 30, allClears: 1, playSec: 95.5,
+    piecesPlaced: 30, allClears: 1, playSec: 95.5, shortRunStreak: 1,
   });
   assert.equal(save.lastPlayedAt, clock.now().getTime());
   assert.equal(changes.count, 1, 'one change notification per call');

@@ -80,6 +80,7 @@ export function defaultSave() {
       piecesPlaced: 0,
       allClears: 0,
       playSec: 0,
+      shortRunStreak: 0,    // very short classic runs in a row (gentler next start)
     },
     themes: { owned: [DEFAULT_THEME], selected: DEFAULT_THEME },
     boosters: { hammer: STARTING_BOOSTERS.hammer, shuffle: STARTING_BOOSTERS.shuffle },
@@ -361,7 +362,7 @@ function nativeSave(json) {
  * @property {number} xp total XP (the level is derived from it)
  * @property {{ gamesPlayed: number, classicGames: number, bestScore: number, totalScore: number,
  *   totalLines: number, bestCombo: number, piecesPlaced: number, allClears: number,
- *   playSec: number }} stats bestScore is classic only
+ *   playSec: number, shortRunStreak: number }} stats bestScore is classic only
  * @property {{ owned: string[], selected: string }} themes
  * @property {{ hammer: number, shuffle: number }} boosters
  * @property {{ lastClaimDay: string|null, day: number, streak: number }} daily login calendar;
