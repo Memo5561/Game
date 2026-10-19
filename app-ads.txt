@@ -1,0 +1,3 @@
+# app-ads.txt for Blocko - upload to the ROOT of your developer website: https://memo5561.github.io/app-ads.txt
+# Replace pub-XXXXXXXXXXXXXXXX with your AdMob publisher ID (AdMob > Settings > Account information). Keep the rest of the line unchanged.
+google.com, pub-1792665244557755, DIRECT, f08c47fec0942fa0
