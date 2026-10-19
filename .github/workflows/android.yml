@@ -45,7 +45,7 @@ jobs:
         run: ./gradlew bundleRelease --stacktrace -PBLOCKO_ADS_MODE=test
       - name: Check that the bridge survived R8
         run: |
-          AAB="$(ls android/app/build/outputs/bundle/release/*.aab)"
+          AAB="$(realpath android/app/build/outputs/bundle/release/*.aab)"
           mkdir -p /tmp/aabcheck && cd /tmp/aabcheck && unzip -q -o "$AAB" 'base/dex/*.dex' 'base/manifest/AndroidManifest.xml' 'base/assets/index.html'
           # the keep rule must preserve the @JavascriptInterface method names that bridge.js calls
           for m in getInfo ready showRewarded queryProducts ackGrant pageUnloading setThemeColors; do
