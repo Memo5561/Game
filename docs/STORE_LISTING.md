@@ -479,7 +479,7 @@ Shorts und Reels (siehe [MARKETING.md](MARKETING.md)).
   - E-Mail: `1makdigital55@gmail.com` ← **durch deine Support-Adresse ersetzen** (dieselbe wie im Impressum)
   - Website: `https://memo5561.github.io` (wichtig für `app-ads.txt`)
   - Telefon: optional
-- **Datenschutzerklärung**: `https://memo5561.github.io/blocko/privacy-policy.html`
+- **Datenschutzerklärung**: `https://memo5561.github.io/Game/privacy-policy.html`
 
 ## 7. Versionshinweise („Neuerungen“) – Vorlage
 

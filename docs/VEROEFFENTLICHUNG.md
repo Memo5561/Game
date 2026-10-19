@@ -225,8 +225,8 @@ memo5561.github.io/            (Wurzel des Repositorys)
 4. **Settings → Pages**: Prüfe, dass „Deploy from a branch“, Branch `main` und Ordner `/ (root)`
    eingestellt sind. Nach 1–5 Minuten ist die Seite online.
 5. Teste im Browser. Die Adressen müssen **genau** mit `config.js` übereinstimmen:
-   - [ ] <https://memo5561.github.io/blocko/privacy-policy.html> = `PRIVACY_POLICY_URL`
-   - [ ] <https://memo5561.github.io/blocko/impressum.html> = `IMPRINT_URL`
+   - [ ] <https://memo5561.github.io/Game/privacy-policy.html> = `PRIVACY_POLICY_URL`
+   - [ ] <https://memo5561.github.io/Game/impressum.html> = `IMPRINT_URL`
    - [ ] <https://memo5561.github.io/app-ads.txt> (die Publisher-ID trägst du in Schritt 3 ein)
 
 `app-ads.txt` füllst du erst nach Schritt 3 mit deiner echten Publisher-ID. Lade die Datei dann
@@ -304,7 +304,7 @@ der EU kaum Einnahmen und verstößt gegen Google-Richtlinien.
 2. **Apps**: Blocko auswählen.
 3. **Sprachen**: alle 8 Sprachen des Spiels hinzufügen: **Deutsch, Englisch, Spanisch,
    Französisch, Italienisch, Portugiesisch, Türkisch, Russisch**. Standardsprache: Englisch.
-4. **Datenschutzerklärung-URL**: `https://memo5561.github.io/blocko/privacy-policy.html`.
+4. **Datenschutzerklärung-URL**: `https://memo5561.github.io/Game/privacy-policy.html`.
 5. **Nutzeroptionen**: „Einwilligen“ und „Optionen verwalten“ sind Standard. **Empfehlung: zusätzlich
    „Nicht einwilligen“ (Do not consent) aktivieren.** Ablehnen sollte so einfach sein wie Zustimmen.
    Das verlangen die deutschen Datenschutzbehörden. Es senkt zwar die Einwilligungsrate etwas,
@@ -500,7 +500,7 @@ Unter **Richtlinien → App-Inhalte** (bzw. im Dashboard). Die exakten Antworten
 
 | Abschnitt | Antwort |
 |---|---|
-| Datenschutzerklärung | `https://memo5561.github.io/blocko/privacy-policy.html` |
+| Datenschutzerklärung | `https://memo5561.github.io/Game/privacy-policy.html` |
 | App-Zugriff | Alle Funktionen ohne Anmeldung verfügbar |
 | Werbung | **Ja, enthält Werbung** |
 | Einstufung (IARC-Fragebogen) | Kategorie Spiel. Werbung + digitale Käufe ehrlich angeben. Erwartet: **PEGI 3** (USK gilt nur für Deutschland) mit Hinweis **„In-Game-Käufe“** |

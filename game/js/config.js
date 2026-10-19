@@ -11,8 +11,8 @@ export const CONFIG = Object.freeze({
   PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.makdigitalstudio.blocko',
   PLAY_STORE_MARKET_URL: 'market://details?id=com.makdigitalstudio.blocko',
   // Host docs/site/* on a GitHub Pages *user site* (repo "memo5561.github.io") – see docs/VEROEFFENTLICHUNG.md.
-  PRIVACY_POLICY_URL: 'https://memo5561.github.io/blocko/privacy-policy.html',
-  IMPRINT_URL: 'https://memo5561.github.io/blocko/impressum.html',
+  PRIVACY_POLICY_URL: 'https://memo5561.github.io/Game/privacy-policy.html',
+  IMPRINT_URL: 'https://memo5561.github.io/Game/impressum.html',
 
   // Legal notice (Impressum) – REQUIRED for a commercial app. Austria: § 5 ECG, § 14 UGB, § 63 GewO.
   // tools/check-release.mjs refuses a release while placeholders are left here.

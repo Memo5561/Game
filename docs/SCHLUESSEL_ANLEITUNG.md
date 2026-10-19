@@ -9,7 +9,37 @@ Der GitHub-Workflow „Release AAB (signed)“ liest ihn aus vier **Secrets**, d
 > App-Signatur), das dauert aber und ist lästig. **Sichere die Datei und die Passwörter an mindestens
 > zwei Orten** (z. B. Passwort-Manager und ein USB-Stick), nicht nur auf einem Gerät.
 
-## 1. Schlüssel erzeugen (einmalig, am PC)
+## Weg A: Nur mit dem Handy (empfohlen, kein PC nötig)
+
+GitHub erzeugt den Schlüssel für dich. Du brauchst nur den Handy-Browser (am besten „Desktop-Ansicht“).
+
+**A1. Zugriffstoken erstellen** (damit der Workflow die Secrets setzen darf)
+GitHub → dein Profilbild → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**
+- Name: `blocko-secrets`, Ablauf: 30 Tage
+- Repository access: **Only select repositories → Game**
+- Permissions → Repository permissions → **Secrets: Read and write**
+- Erstellen und den Token **sofort kopieren** (wird nur einmal gezeigt).
+
+**A2. Zwei Secrets anlegen** (Repo `Memo5561/Game` → Settings → Secrets and variables → Actions → New repository secret)
+| Name | Wert |
+|---|---|
+| `SECRETS_PAT` | der Token aus A1 |
+| `KEY_BACKUP_PASSPHRASE` | ein langes Passwort, das **du dir merkst und separat notierst** (mind. 12 Zeichen). Ohne dieses Passwort lässt sich das Backup nicht öffnen. |
+
+**A3. Workflow starten:** Reiter **Actions → „Create upload key (once)“ → Run workflow**. Das Feld „overwrite“ **leer lassen**.
+
+**A4. Backup herunterladen:** Im fertigen Lauf unter **Artifacts** die Datei `blocko-upload-key-backup-ENCRYPTED` laden (nur 7 Tage verfügbar) und an **zwei verschiedenen Orten** sichern (z. B. Cloud-Speicher und E-Mail an dich). Die Datei ist mit deiner Passphrase verschlüsselt.
+
+**A5. Token löschen:** Danach den Token aus A1 bei GitHub widerrufen und das Secret `SECRETS_PAT` löschen. Er wird nur zum Anlegen gebraucht.
+
+Danach sind die vier Secrets (`ANDROID_KEYSTORE_*`, `ANDROID_KEY_*`) gesetzt, und „Release AAB (signed)“ funktioniert.
+
+> Backup öffnen (nur im Notfall, am PC oder in Termux):
+> `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in blocko-upload-key-backup.enc -out backup.tgz && tar xzf backup.tgz`
+
+## Weg B: Am PC (falls du doch einen hast)
+
+### B1. Schlüssel erzeugen (einmalig, am PC)
 
 Du brauchst Java (ist in **Android Studio** enthalten) oder ein installiertes JDK 17+.
 
@@ -27,7 +57,7 @@ keytool -genkeypair -v -keystore blocko-upload.jks -alias upload -keyalg RSA -ke
 
 Du erhältst die Datei **`blocko-upload.jks`**.
 
-## 2. Datei in Base64 umwandeln (für GitHub)
+### B2. Datei in Base64 umwandeln (für GitHub)
 
 **Windows (PowerShell):**
 ```powershell
@@ -39,7 +69,7 @@ base64 -w0 blocko-upload.jks      # macOS: base64 -i blocko-upload.jks
 ```
 Der lange Text (eine Zeile) ist der Wert für das erste Secret.
 
-## 3. Vier Secrets bei GitHub eintragen
+### B3. Vier Secrets bei GitHub eintragen
 
 Repo `Memo5561/Game` → **Settings → Secrets and variables → Actions → New repository secret**:
 

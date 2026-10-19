@@ -1,0 +1,36 @@
+name: Publish legal pages (GitHub Pages)
+
+# Copies docs/site/ (Impressum, Datenschutzerklärung, Startseite) to the branch "gh-pages".
+# One-time setup in the repo: Settings > Pages > Source = "Deploy from a branch" > Branch "gh-pages", folder "/ (root)".
+# Result: https://memo5561.github.io/Game/
+
+on:
+  push:
+    branches: [ main, 'ccr-**' ]
+    paths: [ 'docs/site/**', '.github/workflows/pages.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push docs/site to gh-pages
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/site && cp -r docs/site /tmp/site
+          touch /tmp/site/.nojekyll
+          cd /tmp/site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish docs/site from $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages

@@ -1,0 +1,68 @@
+name: Create upload key (once)
+
+# Creates the Google Play upload key IN GITHUB (no PC needed), stores it as the four repository secrets
+# used by "Release AAB (signed)" and gives you an ENCRYPTED backup to download.
+# Needs two secrets you create yourself first (see docs/SCHLUESSEL_ANLEITUNG.md):
+#   SECRETS_PAT             fine-grained token for this repo with "Secrets: read and write"
+#   KEY_BACKUP_PASSPHRASE   a long passphrase of your choice (needed to open the backup file)
+
+on:
+  workflow_dispatch:
+    inputs:
+      overwrite:
+        description: "Type OVERWRITE to replace an existing key (danger: the old key is lost)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.SECRETS_PAT }}
+      BACKUP_PASS: ${{ secrets.KEY_BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check prerequisites
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "::error::Secret SECRETS_PAT is missing (see docs/SCHLUESSEL_ANLEITUNG.md)"; exit 1; }
+          [ -n "$BACKUP_PASS" ] || { echo "::error::Secret KEY_BACKUP_PASSPHRASE is missing"; exit 1; }
+          [ "${#BACKUP_PASS}" -ge 12 ] || { echo "::error::KEY_BACKUP_PASSPHRASE must have at least 12 characters"; exit 1; }
+          if gh secret list --repo "$GITHUB_REPOSITORY" | grep -q '^ANDROID_KEYSTORE_BASE64'; then
+            if [ "${{ inputs.overwrite }}" != "OVERWRITE" ]; then
+              echo "::error::An upload key already exists. Nothing was changed. (Type OVERWRITE only if you really want a new key.)"
+              exit 1
+            fi
+          fi
+
+      - name: Generate key, store secrets, encrypt backup
+        run: |
+          set -euo pipefail
+          STOREPASS="$(openssl rand -base64 24 | tr -d '/+=\n')"
+          echo "::add-mask::$STOREPASS"
+          ALIAS=upload
+          keytool -genkeypair -keystore blocko-upload.jks -alias "$ALIAS" -keyalg RSA -keysize 4096 -validity 10000 \
+            -storepass "$STOREPASS" -keypass "$STOREPASS" \
+            -dname "CN=Mehmet Ali Koese, O=MAK Digital Studio, L=Wien, C=AT" > /dev/null 2>&1
+          B64="$(base64 -w0 blocko-upload.jks)"
+          echo "::add-mask::$B64"
+          gh secret set ANDROID_KEYSTORE_BASE64   --repo "$GITHUB_REPOSITORY" --body "$B64"
+          gh secret set ANDROID_KEYSTORE_PASSWORD --repo "$GITHUB_REPOSITORY" --body "$STOREPASS"
+          gh secret set ANDROID_KEY_ALIAS         --repo "$GITHUB_REPOSITORY" --body "$ALIAS"
+          gh secret set ANDROID_KEY_PASSWORD      --repo "$GITHUB_REPOSITORY" --body "$STOREPASS"
+          # encrypted backup: keystore + passwords (AES-256, key derived from your KEY_BACKUP_PASSPHRASE)
+          mkdir backup
+          cp blocko-upload.jks backup/
+          printf 'storeFile=blocko-upload.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$STOREPASS" "$ALIAS" "$STOREPASS" > backup/keystore.properties
+          tar -czf backup.tgz backup
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:BACKUP_PASS -in backup.tgz -out blocko-upload-key-backup.enc
+          shred -u backup/* backup.tgz blocko-upload.jks 2>/dev/null || rm -rf backup backup.tgz blocko-upload.jks
+          echo "Upload key created, 4 secrets set, encrypted backup ready."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blocko-upload-key-backup-ENCRYPTED
+          path: blocko-upload-key-backup.enc
+          retention-days: 7
+          if-no-files-found: error

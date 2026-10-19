@@ -21,7 +21,7 @@ Menünamen können sich ändern. Gemeint sind jeweils die gleichnamigen Abschnit
 ## 1. Datenschutzerklärung
 
 ```
-https://memo5561.github.io/blocko/privacy-policy.html
+https://memo5561.github.io/Game/privacy-policy.html
 ```
 
 Muss öffentlich erreichbar sein (kein PDF, keine Anmeldung, nicht nach Ländern gesperrt) und zur
