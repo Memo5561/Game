@@ -476,7 +476,7 @@ Shorts und Reels (siehe [MARKETING.md](MARKETING.md)).
 - **Tags** (bis zu 5, aus Googles Liste wählen, je nachdem, was angeboten wird). Vorschläge:
   Block-Puzzle / Blöcke, Logik, Offline, Einzelspieler, Casual / Gelegenheitsspiel, Entspannend
 - **Kontaktdaten** (öffentlich sichtbar):
-  - E-Mail: `support@example.com` ← **durch deine Support-Adresse ersetzen** (dieselbe wie im Impressum)
+  - E-Mail: `1makdigital55@gmail.com` ← **durch deine Support-Adresse ersetzen** (dieselbe wie im Impressum)
   - Website: `https://memo5561.github.io` (wichtig für `app-ads.txt`)
   - Telefon: optional
 - **Datenschutzerklärung**: `https://memo5561.github.io/blocko/privacy-policy.html`

@@ -23,7 +23,7 @@ Identität, deine Konten und deine Daten braucht. Die ausführliche Anleitung st
    Ändere sie in `game/js/config.js` (`PACKAGE_ID`, URLs) **und** in `android/app/build.gradle.kts`.
    Prüfe vorher, ob „Blocko“ als Marke/App-Name frei ist.
 2. **Deine Daten eintragen** in `game/js/config.js` → `LEGAL`: Name, ladungsfähige Anschrift,
-   E-Mail und **Telefonnummer oder Kontaktformular** (Pflicht nach § 5 DDG). Dieselben Daten gehören in
+   E-Mail und **Telefonnummer oder Kontaktformular** (Impressum nach § 5 ECG, § 14 UGB, § 63 GewO). Dieselben Daten gehören in
    `docs/site/impressum.html` und `docs/site/privacy-policy.html`.
 3. **Webseite veröffentlichen** (GitHub Pages, Repo `memo5561.github.io`): Inhalt von `docs/site/`.
    Die URLs müssen zu `PRIVACY_POLICY_URL` / `IMPRINT_URL` in `config.js` passen.
@@ -44,7 +44,7 @@ Identität, deine Konten und deine Daten braucht. Die ausführliche Anleitung st
    nicht versehentlich echte Anzeigen anklicken (das kann dein AdMob-Konto sperren).
 10. **Vor dem Release:** `BLOCKO_ADS_MODE=live` mit echten IDs, dann `npm run check-release`.
     Der Check meldet, solange noch Platzhalter (Impressum, Telefon, Ad-IDs, `app-ads.txt`) übrig sind.
-11. **Steuern/Recht:** Gewerbeanmeldung, Steuerberater fragen (Kleinunternehmer, Umsatzsteuer bei
+11. **Steuern/Recht:** Gewerbeanmeldung (Magistratisches Bezirksamt/USP), SVS, Finanzamt Österreich (FinanzOnline), Steuerberater/Wirtschaftstreuhänder fragen (Kleinunternehmer, Umsatzsteuer bei
     Google-Auszahlungen). Siehe [RECHTLICHES.md](RECHTLICHES.md) – das ist keine Rechtsberatung.
 
 ## Was du selbst nie tun solltest

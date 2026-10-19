@@ -725,7 +725,7 @@ chooser; haptics via `VibratorManager`/`Vibrator` with predefined effects (API-l
 - Data safety: data collected via Google Mobile Ads SDK (approx. location, device/advertising IDs,
   app interactions, diagnostics) for advertising/analytics/fraud prevention; encrypted in transit;
   no account. Contains ads = yes; Advertising ID = yes.
-- Legal (Germany): Impressum (§ 5 DDG) in the app and online, privacy policy (DE/EN) in `docs/site/`,
+- Legal (Austria): Impressum (§ 5 ECG, § 14 UGB) in the app and online, privacy policy (DE/EN) in `docs/site/`,
   trader declaration in Play Console, Gewerbeanmeldung/tax hints (not legal advice).
 - `app-ads.txt` at the root of the developer website (GitHub Pages user site `memo5561.github.io`).
 - New personal Play developer accounts: closed test with ≥ 12 testers for 14 days before production

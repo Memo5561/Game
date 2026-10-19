@@ -55,7 +55,7 @@ führen. Prüfe deshalb vorab:
 
 - [ ] **Google Play**: Suche nach „Blocko“ und ähnlichen Schreibweisen. Gibt es schon ein Spiel mit
       fast gleichem Namen?
-- [ ] **DPMA** (deutsche Marken): DPMAregister <https://register.dpma.de> → Marken → Einsteigerrecherche.
+- [ ] **Österreichisches Patentamt** (österreichische Marken): Markenrecherche auf <https://www.patentamt.at>.
       Relevant sind vor allem die Klassen **9** (Software/Spiele zum Herunterladen) und **41**
       (Unterhaltung/Online-Spiele).
 - [ ] **EUIPO** (EU-Marken): <https://www.tmdn.org/tmview> (TMview durchsucht EU- und nationale
@@ -104,7 +104,7 @@ beginnt mit einem Buchstaben.
 - [ ] `docs/site/*.html`, `docs/STORE_LISTING.md`
 
 **Checkliste Schritt 0**
-- [ ] Name geprüft (Play, DPMA, EUIPO/TMview, WIPO)
+- [ ] Name geprüft (Play, Patentamt AT, EUIPO/TMview, WIPO)
 - [ ] Paket-ID endgültig festgelegt und in `config.js` + `build.gradle.kts` eingetragen
 - [ ] `npm run check-release` meldet **keinen** Fehler zur Paket-ID (andere Fehler sind jetzt noch normal)
 
@@ -178,7 +178,7 @@ Weitere Build-Varianten (Details in [android/README.md](../android/README.md)):
 ## Schritt 2 – Webseite mit Datenschutzerklärung, Impressum und app-ads.txt (GitHub Pages)
 
 Google Play verlangt eine **öffentlich erreichbare Datenschutzerklärung** (als Webseite, kein PDF).
-In Deutschland brauchst du außerdem ein **Impressum**. AdMob prüft die Datei **app-ads.txt** im
+In Österreich brauchst du außerdem ein **Impressum** (§ 5 ECG, § 14 UGB, § 63 GewO, § 25 Mediengesetz). AdMob prüft die Datei **app-ads.txt** im
 Stammverzeichnis deiner Entwickler-Webseite. Das alles hostest du kostenlos mit GitHub Pages.
 
 ### 2.1 Platzhalter ausfüllen
@@ -186,11 +186,11 @@ Stammverzeichnis deiner Entwickler-Webseite. Das alles hostest du kostenlos mit 
 Öffne in `docs/site/` die Dateien `privacy-policy.html` und `impressum.html` und ersetze alle
 gelb markierten Platzhalter durch deine echten Daten:
 
-- `Vorname Nachname` → dein vollständiger Name
-- `Musterstraße 1`, `12345 Musterstadt` → deine **ladungsfähige Anschrift** (kein Postfach)
-- `support@example.com` → deine Support-E-Mail-Adresse (Tipp: eine eigene Adresse nur für das Spiel)
-- Telefonnummer und USt-IdNr: ausfüllen oder die Zeile löschen (Hinweise stehen als Kommentar in
-  der Datei)
+- Name, Anschrift (Quellenstraße 24b/21/9, 1100 Wien), E-Mail und Telefon sind bereits eingetragen
+- Die mit `XXXX` markierten Felder im Impressum ausfüllen: Unternehmensgegenstand/Gewerbewortlaut,
+  Gewerbebehörde, Wirtschaftskammer/Fachgruppe
+- Firmenbuch (nur falls eingetragen) und UID-Nummer (nur falls vorhanden): ausfüllen oder den
+  Abschnitt löschen (Hinweise stehen als Kommentar in der Datei)
 - Zum Schluss im `<body>`-Tag `class="draft"` entfernen. Dann verschwinden die gelbe Markierung und
   der Entwurfs-Hinweis.
 
@@ -249,7 +249,7 @@ Versionsgeschichte. Lade dort **niemals** Schlüssel, Passwörter oder `keystore
 
 1. <https://admob.google.com> → mit deinem Google-Konto anmelden (am besten dasselbe wie für die
    Play Console).
-2. Land **Deutschland**, Zeitzone und Währung (EUR) wählen. **⚠ Zeitzone und Zahlungswährung lassen
+2. Land **Österreich**, Zeitzone und Währung (EUR) wählen. **⚠ Zeitzone und Zahlungswährung lassen
    sich später nicht oder nur schwer ändern.**
 3. Den AdMob-Bedingungen zustimmen.
 
@@ -339,7 +339,7 @@ Blockieren kostet etwas Umsatz. Ein Puzzle mit Casino-Werbung schadet aber Bewer
 1. **Zahlungen → Zahlungsinformationen**: Name/Anschrift (wie im Ausweis), Bankkonto (IBAN).
 2. **Steuerinformationen**: Google fragt nach US-Steuerangaben (für Privatpersonen meist Formular
    **W-8BEN**). Ohne diese Angaben kann Google Quellensteuer auf Einnahmen von US-Nutzern
-   einbehalten. Beim Doppelbesteuerungsabkommen hilft dir ggf. dein Steuerberater.
+   einbehalten. Beim Doppelbesteuerungsabkommen hilft dir ggf. dein Steuerberater bzw. Wirtschaftstreuhänder (Doppelbesteuerungsabkommen Österreich–USA).
 3. **Adressbestätigung (PIN)**: Sobald deine Einnahmen eine kleine Schwelle erreichen, schickt Google
    einen Brief mit einer PIN, die du in AdMob eingibst.
 4. **Auszahlung** erfolgt monatlich, sobald die Auszahlungsschwelle erreicht ist (für EUR bisher
@@ -440,7 +440,7 @@ Damit du In-App-Produkte verkaufen kannst, brauchst du ein **Händlerkonto (Paym
 
 1. Play Console → etwa unter **Einstellungen → Zahlungsprofil** bzw. **Monetarisierung einrichten**
    → Zahlungsprofil erstellen oder verknüpfen.
-2. Angaben: Name/Firma, Anschrift, Bankkonto (IBAN), Kundensupport-E-Mail, ggf. USt-IdNr,
+2. Angaben: Name/Firma, Anschrift, Bankkonto (IBAN), Kundensupport-E-Mail, ggf. UID-Nummer,
    Steuerangaben.
 3. Google behält bei Verkäufen eine **Servicegebühr** ein. Bisher sind das 15 % auf die erste
    1 Mio. USD Umsatz pro Jahr, darüber 30 %. Die Bedingungen ändern sich (u. a. durch EU-Regeln).
@@ -503,7 +503,7 @@ Unter **Richtlinien → App-Inhalte** (bzw. im Dashboard). Die exakten Antworten
 | Datenschutzerklärung | `https://memo5561.github.io/blocko/privacy-policy.html` |
 | App-Zugriff | Alle Funktionen ohne Anmeldung verfügbar |
 | Werbung | **Ja, enthält Werbung** |
-| Einstufung (IARC-Fragebogen) | Kategorie Spiel. Werbung + digitale Käufe ehrlich angeben. Erwartet: **USK ab 0 / PEGI 3** mit Hinweis **„In-Game-Käufe“** |
+| Einstufung (IARC-Fragebogen) | Kategorie Spiel. Werbung + digitale Käufe ehrlich angeben. Erwartet: **PEGI 3** (USK gilt nur für Deutschland) mit Hinweis **„In-Game-Käufe“** |
 | Zielgruppe | **Nur „18 und älter“**. „Spricht Kinder an?“ → **Nein** |
 | Datensicherheit | siehe PLAY_CONSOLE_ANGABEN.md (Daten über das Google Mobile Ads SDK) |
 | Werbe-ID | **Ja**, für Werbung/Analysen/Betrugsprävention |
@@ -515,9 +515,9 @@ Unter **Richtlinien → App-Inhalte** (bzw. im Dashboard). Die exakten Antworten
 **Warum Zielgruppe 18+?** Wählst du Altersgruppen unter 13 Jahren, gilt das
 **Google-Play-Familienprogramm** (Families Policy). Dann darfst du nur speziell zertifizierte
 Werbe-SDKs nutzen, keine personalisierte Werbung zeigen und musst viele Zusatzregeln erfüllen. Bei
-Jugendlichen unter 16 verlangt außerdem **Art. 8 DSGVO** (in Deutschland) die Einwilligung der
-Eltern für personalisierte Werbung. Blocko ist ein Gelegenheitsspiel für Erwachsene. Die
-**Altersfreigabe** (USK 0) ist davon unabhängig: Sie sagt nur, dass der Inhalt für alle unbedenklich
+Kindern unter 14 verlangt außerdem **Art. 8 DSGVO** (in Österreich, § 4 Abs. 4 DSG) die Einwilligung der
+Erziehungsberechtigten für personalisierte Werbung. Blocko ist ein Gelegenheitsspiel für Erwachsene. Die
+**Altersfreigabe** (PEGI 3) ist davon unabhängig: Sie sagt nur, dass der Inhalt für alle unbedenklich
 ist. **⚠ Gestalte Icon, Screenshots und Texte nicht kindlich** (keine Comic-Maskottchen, keine
 Sprache, die sich an Kinder richtet). Sonst kann Google die App trotzdem als „für Kinder
 ansprechend“ einstufen.
@@ -703,7 +703,7 @@ So richtest du den Test ein:
 
 1. **Testen → Geschlossener Test → Track verwalten** (Standard-Track „Alpha“) → **Neuen Release
    erstellen** → dasselbe AAB wie im internen Test (oder ein neueres) hochladen.
-2. **Länder/Regionen**: Deutschland und alle Länder deiner Tester.
+2. **Länder/Regionen**: Österreich und alle Länder deiner Tester.
 3. **Tester**: E-Mail-Liste anlegen (Gmail-Adressen bzw. Google-Konten der Tester) **oder** eine
    Google Group verwenden. Bei vielen Testern ist eine Gruppe bequemer.
 4. **Feedback-Kanal** angeben (deine E-Mail-Adresse oder ein Formular-Link).
@@ -801,7 +801,7 @@ Fehler (✘) **musst** du beheben, bevor du hochlädst.
    „Test Ad“-Kennzeichnung. **⚠ Erscheint keine Test-Kennzeichnung, nicht klicken!**
    - [ ] Jetzt erscheint **deine eigene DSGVO-Nachricht** (Sprache des Handys, Buttons „Einwilligen“,
          „Optionen verwalten“, ggf. „Nicht einwilligen“). Die Release-Version simuliert keinen
-         Standort. Du siehst den Dialog, weil du dich in Deutschland (EWR) befindest.
+         Standort. Du siehst den Dialog, weil du dich in Österreich (EWR) befindest.
    - [ ] Einstellungen → Datenschutz-Einstellungen öffnet den Dialog erneut.
 
 ### 9.4 Hochladen und gestaffelt ausrollen

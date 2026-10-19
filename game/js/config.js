@@ -22,7 +22,14 @@ export const CONFIG = Object.freeze({
     EMAIL: '1makdigital55@gmail.com',
     PHONE: '+43 664 1517640',
     CONTACT_FORM_URL: '',
-    VAT_ID: '',
+    // Required for the Austrian Impressum – copy from your Gewerbeschein (check-release fails while empty):
+    ACTIVITY: '',   // Unternehmensgegenstand / Gewerbewortlaut
+    AUTHORITY: '',  // Gewerbebehörde, e.g. 'Magistratisches Bezirksamt für den 10. Bezirk, Wien'
+    CHAMBER: '',    // e.g. 'Wirtschaftskammer Wien, Fachgruppe …'
+    // Optional (hidden in the app when empty):
+    REGISTER: '',   // only if registered: 'FN … , Handelsgericht Wien'
+    LAW: 'Gewerbeordnung: www.ris.bka.gv.at',
+    VAT_ID: '',     // 'ATU…' if you have a UID
   }),
 
 

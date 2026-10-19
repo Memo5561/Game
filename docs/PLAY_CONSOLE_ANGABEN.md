@@ -57,7 +57,7 @@ App passen. Die Datei liegt in `docs/site/privacy-policy.html`.
 | Enthält Werbung (falls gefragt) | **Ja** | |
 | Webbrowser / Suchmaschine / uneingeschränkter Internetzugang | **Nein** | Die WebView zeigt nur das eingebaute Spiel |
 
-**Erwartetes Ergebnis:** **USK ab 0 Jahren**, **PEGI 3**, ESRB „Everyone“, jeweils mit dem Hinweis
+**Erwartetes Ergebnis:** **PEGI 3**, ESRB „Everyone“, jeweils mit dem Hinweis
 **„In-Game-Käufe“** (In-Game Purchases).
 
 ## 5. Zielgruppe und Inhalte
@@ -71,9 +71,9 @@ App passen. Die Datei liegt in `docs/site/privacy-policy.html`.
 3. Die App nimmt **nicht** am Familienprogramm (Families/„Von Lehrkräften empfohlen“) teil.
 
 **Warum 18+?** Bei Altersgruppen unter 13 gilt die **Families-Richtlinie** (nur zertifizierte
-Werbe-SDKs, keine personalisierte Werbung, viele Zusatzpflichten). Unter 16 verlangt **Art. 8
-DSGVO** in Deutschland die Einwilligung der Eltern für personalisierte Werbung. Die
-Altersfreigabe (USK 0) ist davon getrennt. **⚠ Icon, Screenshots und Texte nicht kindlich
+Werbe-SDKs, keine personalisierte Werbung, viele Zusatzpflichten). Unter 14 verlangt **Art. 8
+DSGVO** in Österreich (§ 4 Abs. 4 DSG) die Einwilligung der Erziehungsberechtigten für personalisierte Werbung. Die
+Altersfreigabe (PEGI 3) ist davon getrennt. **⚠ Icon, Screenshots und Texte nicht kindlich
 gestalten**, sonst kann Google die Zielgruppen-Angabe anzweifeln.
 
 ## 6. Nachrichten-Apps
@@ -196,7 +196,7 @@ dieser Berechtigungen braucht ein eigenes Erklärungsformular, außer der Werbe-
 - [ ] Datenschutzerklärung (URL erreichbar, Inhalt passt zu den Angaben hier)
 - [ ] App-Zugriff: alles ohne Anmeldung
 - [ ] Werbung: Ja
-- [ ] Einstufung: abgeschlossen, Ergebnis USK 0 / PEGI 3 + In-Game-Käufe
+- [ ] Einstufung: abgeschlossen, Ergebnis PEGI 3 + In-Game-Käufe
 - [ ] Zielgruppe: nur 18+, spricht Kinder nicht an
 - [ ] Nachrichten-App: Nein
 - [ ] Datensicherheit: 5 Datentypen wie in 7.2/7.3, verschlüsselt, kein Konto
