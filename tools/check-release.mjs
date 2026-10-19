@@ -29,7 +29,15 @@ const legal = CONFIG.LEGAL;
 if (!legal.OWNER_NAME || PLACEHOLDER.test(legal.OWNER_NAME)) errors.push('CONFIG.LEGAL.OWNER_NAME is a placeholder (Impressum!)');
 if (!legal.ADDRESS_LINES.length || legal.ADDRESS_LINES.some((l) => PLACEHOLDER.test(l))) errors.push('CONFIG.LEGAL.ADDRESS_LINES contains placeholders (Impressum needs a ladungsfähige Anschrift)');
 if (!legal.EMAIL || PLACEHOLDER.test(legal.EMAIL)) errors.push('CONFIG.LEGAL.EMAIL is a placeholder');
-if (!legal.PHONE && !legal.CONTACT_FORM_URL) errors.push('CONFIG.LEGAL: set PHONE or CONTACT_FORM_URL – § 5 DDG requires a second fast contact channel besides e-mail');
+if (!legal.PHONE && !legal.CONTACT_FORM_URL) errors.push('CONFIG.LEGAL: set PHONE or CONTACT_FORM_URL – the Impressum should offer a second fast contact channel besides e-mail (Austria: § 5 ECG; Play trader status needs a phone number anyway)');
+// Austria (§ 5 ECG, § 14 UGB, § 63 GewO, § 25 MedienG): a Gewerbetreibender must state the business purpose,
+// the trade authority and the chamber (WKO); REGISTER (Firmenbuch) and VAT_ID (UID) only if they exist.
+for (const k of ['ACTIVITY', 'AUTHORITY', 'CHAMBER']) {
+  if (!legal[k]) errors.push(`CONFIG.LEGAL.${k} is empty (Austrian Impressum: Unternehmensgegenstand / Gewerbebehörde / WKO)`);
+}
+for (const k of ['ACTIVITY', 'AUTHORITY', 'CHAMBER', 'REGISTER', 'LAW', 'VAT_ID']) {
+  if (legal[k] && PLACEHOLDER.test(legal[k])) errors.push(`CONFIG.LEGAL.${k} is a placeholder`);
+}
 
 // --- site pages -------------------------------------------------------------
 for (const f of ['docs/site/privacy-policy.html', 'docs/site/impressum.html']) {

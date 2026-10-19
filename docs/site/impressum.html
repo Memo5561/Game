@@ -7,13 +7,16 @@
 <title>Blocko – Impressum / Legal Notice</title>
 <!--
   ANLEITUNG (siehe docs/VEROEFFENTLICHUNG.md, Schritt 2, und docs/RECHTLICHES.md, Abschnitt 4):
-  1. Alle gelb markierten Angaben (class="ph") durch deine echten Daten ersetzen.
-     Dieselben Daten gehören in game/js/config.js → LEGAL (Impressum in der App).
-  2. Telefon ODER Kontaktformular ist PFLICHT (§ 5 DDG: neben der E-Mail ein zweiter schneller,
-     direkter Kontaktweg, EuGH C-298/07) – mindestens eine der beiden Zeilen ausfüllen, die andere
-     darf gelöscht werden. Die USt-IdNr nur eintragen, wenn du eine hast (sonst Abschnitt löschen).
-  3. Danach im <body>-Tag class="draft" entfernen.
-  4. npm run check-release prüft, ob noch Platzhalter enthalten sind.
+  1. Alle gelb markierten Angaben (class="ph") ergänzen. Name, Anschrift , Telefon
+     und E-Mail sind bereits eingetragen. Dieselben Daten gehören in game/js/config.js → LEGAL
+     (Impressum in der App).
+  2. Rechtsgrundlagen (Österreich): § 5 E-Commerce-Gesetz (ECG), § 14 UGB, § 63 Gewerbeordnung (GewO),
+     § 25 Mediengesetz. Neben der E-Mail ist ein zweiter schneller Kontaktweg (Telefon) üblich und
+     empfohlen; die Play-Console verlangt für den Händlerstatus ohnehin eine Telefonnummer.
+  3. Nicht zutreffende Zeilen (z. B. Firmenbuch, wenn du nicht eingetragen bist; UID, wenn du keine
+     hast) komplett löschen. Aufsichtsbehörde: bei einem Gewerbe ist das die Gewerbebehörde.
+  4. Danach im <body>-Tag class="draft" entfernen.
+  5. npm run check-release prüft, ob noch Platzhalter enthalten sind.
   Diese Seite lädt keine externen Dateien.
 -->
 <style>
@@ -75,38 +78,66 @@
 
 <section class="card" lang="de">
   <h1>Impressum</h1>
-  <p class="muted">Angaben gemäß § 5 Digitale-Dienste-Gesetz (DDG) · Information pursuant to Section 5 of the German Digital Services Act (DDG)</p>
+  <p class="muted">Angaben gemäß § 5 E-Commerce-Gesetz (ECG), § 14 Unternehmensgesetzbuch (UGB) und § 63 Gewerbeordnung (GewO) sowie Offenlegung gemäß § 25 Mediengesetz · Information pursuant to Section 5 of the Austrian E-Commerce Act (ECG), Section 14 of the Austrian Commercial Code (UGB), Section 63 of the Austrian Trade Act (GewO) and Section 25 of the Austrian Media Act</p>
 
-  <h2>Anbieter · Provider</h2>
+  <h2>Medieninhaber und Diensteanbieter · Media owner and service provider</h2>
   <div class="contact">
-    <!-- ANPASSEN: dein vollständiger Name (bei einer Firma: Firma, Rechtsform und Vertretungsberechtigte) -->
-    <span class="ph">Vorname Nachname</span><br>
-    <!-- ANPASSEN: ladungsfähige Anschrift (kein Postfach) -->
-    <span class="ph">Musterstraße 1</span><br>
-    <span class="ph">12345 Musterstadt</span><br>
-    Deutschland / Germany
+    Mehmet Ali Köse<br>
+    Einzelunternehmer · <span lang="en">sole proprietor</span><br>
+    Quellenstraße 24b/21/9<br>
+    1100 Wien<br>
+    Österreich / Austria
   </div>
 
   <h2>Kontakt · Contact</h2>
   <p>
-    <!-- ANPASSEN: deine Support-E-Mail-Adresse (zweimal in dieser Zeile) -->
-    E-Mail: <a href="mailto:support@example.com"><span class="ph">support@example.com</span></a><br>
-    <!-- PFLICHT: Telefonnummer ODER Kontaktformular (mindestens eine der beiden Zeilen ausfüllen,
-         die nicht genutzte Zeile komplett löschen). Dieselbe Angabe gehört in game/js/config.js → LEGAL
-         (PHONE bzw. CONTACT_FORM_URL). -->
-    Telefon / Phone: <span class="ph">+49 XXX XXXXXXX</span><br>
-    Kontaktformular / Contact form: <a href="https://example.com/kontakt"><span class="ph">https://example.com/kontakt</span></a>
+    E-Mail: <a href="mailto:1makdigital55@gmail.com">1makdigital55@gmail.com</a><br>
+    Telefon / Phone: <a href="tel:+436641517640">+43 664 1517640</a>
   </p>
 
-  <!-- OPTIONAL: Diesen Abschnitt (h2 + p) komplett löschen, wenn du keine USt-IdNr bzw. Wirtschafts-ID hast -->
-  <h2>Umsatzsteuer-ID · VAT ID</h2>
-  <p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG / VAT identification number: <span class="ph">DEXXXXXXXXX</span></p>
+  <h2>Unternehmensgegenstand · Business purpose</h2>
+  <p><span class="ph">XXXX (z. B. Entwicklung und Vertrieb von Software und Spiele-Apps; genauer Wortlaut laut Gewerbeanmeldung)</span></p>
+  <p lang="en"><span class="ph">XXXX (e.g. development and distribution of software and game apps; exact wording as in the trade registration)</span></p>
+
+  <h2>Gewerbe und Behörde · Trade and authority</h2>
+  <p>Gewerbewortlaut / Berufsbezeichnung: <span class="ph">XXXX (laut Gewerbeanmeldung)</span>, verliehen in Österreich<br>
+  Gewerbebehörde / Aufsichtsbehörde: <span class="ph">XXXX (z. B. Magistratisches Bezirksamt für den … Bezirk, Wien)</span><br>
+  Anwendbare Rechtsvorschrift: Gewerbeordnung (GewO), abrufbar unter
+  <a href="https://www.ris.bka.gv.at" rel="noopener">www.ris.bka.gv.at</a></p>
+  <p lang="en">Trade / professional title: <span class="ph">XXXX (as in the trade registration)</span>, granted in Austria<br>
+  Trade authority / supervisory authority: <span class="ph">XXXX (e.g. Magistratisches Bezirksamt, Vienna)</span><br>
+  Applicable law: Austrian Trade Act (Gewerbeordnung, GewO), available at
+  <a href="https://www.ris.bka.gv.at" rel="noopener">www.ris.bka.gv.at</a></p>
+
+  <h2>Kammerzugehörigkeit · Chamber membership</h2>
+  <p>Mitglied der Wirtschaftskammer <span class="ph">XXXX (z. B. Wien)</span>, Fachgruppe <span class="ph">XXXX</span>,
+  <a href="https://www.wko.at" rel="noopener">www.wko.at</a></p>
+  <p lang="en">Member of the Austrian Economic Chamber (WKO), <span class="ph">XXXX (e.g. Vienna)</span>, professional group <span class="ph">XXXX</span>.</p>
+
+  <!-- OPTIONAL: Diesen Abschnitt (h2 + p) komplett löschen, wenn du nicht im Firmenbuch eingetragen bist
+       (Einzelunternehmer ohne Eintragung haben keine Firmenbuchnummer). -->
+  <h2>Firmenbuch · Commercial register</h2>
+  <p>Firmenbuchnummer: <span class="ph">XXXX</span>, Firmenbuchgericht: <span class="ph">XXXX</span> ·
+  <span lang="en">Commercial register number / court</span></p>
+
+  <!-- OPTIONAL: Diesen Abschnitt (h2 + p) komplett löschen, wenn du keine UID hast (z. B. als Kleinunternehmer
+       ohne UID-Nummer). Eine UID gibt es bei FinanzOnline bzw. beim Finanzamt Österreich. -->
+  <h2>Umsatzsteuer-Identifikationsnummer (UID) · VAT ID</h2>
+  <p>UID-Nummer: <span class="ph">ATUXXXXXXXX</span></p>
+
+  <h2>Offenlegung gemäß § 25 Mediengesetz · Disclosure under the Media Act</h2>
+  <p>Medieninhaber und Herausgeber: Mehmet Ali Köse, Anschrift siehe oben.<br>
+  Grundlegende Richtung: Information über das Spiel „Blocko“ (Android-App) und Bereitstellung der
+  zugehörigen rechtlichen Informationen.</p>
+  <p lang="en">Media owner and publisher: Mehmet Ali Köse, address see above. Editorial line: information about the game
+  “Blocko” (Android app) and the related legal information.</p>
 
   <h2>Verbraucherstreitbeilegung · Consumer dispute resolution</h2>
-  <p>Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer
+  <p>Bei Fragen oder Beschwerden kannst du uns jederzeit unter den oben genannten Kontaktdaten erreichen.
+  Wir sind nicht verpflichtet und derzeit nicht bereit, an einem Streitbeilegungsverfahren vor einer
   Verbraucherschlichtungsstelle teilzunehmen.</p>
-  <p lang="en">We are neither willing nor obliged to participate in dispute resolution proceedings
-  before a consumer arbitration board.</p>
+  <p lang="en">You can contact us at any time using the details above. We are neither obliged nor currently willing to
+  participate in dispute resolution proceedings before a consumer arbitration body.</p>
 
   <h2>Datenschutz · Privacy</h2>
   <p>Informationen zum Datenschutz findest du in unserer <a href="privacy-policy.html">Datenschutzerklärung</a>. ·

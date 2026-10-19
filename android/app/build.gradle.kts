@@ -139,6 +139,9 @@ android {
 }
 
 dependencies {
+    // No Fragments are used, but an ad/billing dependency pulls in a very old androidx.fragment, which makes
+    // lintVital fail on the release build (InvalidFragmentVersionForActivityResult). Pin a current one.
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.core)
     implementation(libs.androidx.splashscreen)

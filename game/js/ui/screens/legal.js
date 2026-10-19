@@ -1,6 +1,7 @@
-// Legal notice (Impressum, § 5 DDG) – fully offline: CONFIG.LEGAL (name, address, email as a
-// mailto link, phone and/or contact form link – § 5 DDG wants a second fast channel – and the
-// VAT id when set), links to the online legal notice and the privacy
+// Legal notice (Impressum, Austria: § 5 ECG, § 14 UGB, § 63 GewO) – fully offline: CONFIG.LEGAL (name,
+// address, email as a mailto link, phone and/or contact form link – a second fast channel besides
+// e-mail – and the optional fields ACTIVITY, AUTHORITY, CHAMBER, REGISTER, LAW and VAT_ID, each shown
+// only when not empty), links to the online legal notice and the privacy
 // policy, open-source licenses (Nunito – SIL OFL 1.1; all sounds are synthesized in the app) and
 // the "contains ads / in-app purchases" note. Text is selectable.
 
@@ -49,13 +50,24 @@ function render() {
   if (L.CONTACT_FORM_URL) {
     contact.push(`<button type="button" class="legal__link" data-action="legal.form">${icon('external')}<span>${esc(t('legal.contactForm'))}</span></button>`);
   }
+  const optional = [
+    ['legal.activity', L.ACTIVITY],
+    ['legal.authority', L.AUTHORITY],
+    ['legal.chamber', L.CHAMBER],
+    ['legal.register', L.REGISTER],
+    ['legal.law', L.LAW],
+    ['legal.vat', L.VAT_ID],
+  ]
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<h3 class="legal__sub">${esc(t(k))}</h3><p class="legal__line">${esc(v)}</p>`)
+    .join('');
   body.innerHTML = `
     <section class="panel legal__card">
       <h2 class="legal__heading">${esc(t('legal.heading'))}</h2>
       <p class="legal__owner">${esc(L.OWNER_NAME)}<br>${L.ADDRESS_LINES.map(esc).join('<br>')}</p>
       <h3 class="legal__sub">${esc(t('legal.contact'))}</h3>
       ${contact.join('')}
-      ${L.VAT_ID ? `<h3 class="legal__sub">${esc(t('legal.vat'))}</h3><p class="legal__line">${esc(L.VAT_ID)}</p>` : ''}
+      ${optional}
       <div class="legal__buttons">
         <button type="button" class="legal__link" data-action="legal.online">${icon('external')}<span>${esc(t('legal.online'))}</span></button>
         <button type="button" class="legal__link" data-action="legal.privacy">${icon('shield')}<span>${esc(t('settings.privacyPolicy'))}</span></button>

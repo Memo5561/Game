@@ -92,7 +92,7 @@ export default async function metaSettingsSpec() {
     await idle(page);
     const legal = await text(page, '.screen.is-active .legal');
     const L = CONFIG.LEGAL;
-    for (const part of ['§ 5 DDG', L.OWNER_NAME, ...L.ADDRESS_LINES, L.EMAIL, 'Nunito', 'SIL Open Font License 1.1', 'synthesized', 'Contains ads', 'In-app purchases']) {
+    for (const part of ['§ 5 ECG', L.OWNER_NAME, ...L.ADDRESS_LINES, L.EMAIL, 'Nunito', 'SIL Open Font License 1.1', 'synthesized', 'Contains ads', 'In-app purchases']) {
       assert(legal.includes(part), `legal notice contains "${part}"`);
     }
     await tapIn(page, 'legal.email');
@@ -103,7 +103,7 @@ export default async function metaSettingsSpec() {
     assert(await ev(page, () => getComputedStyle(document.querySelector('.screen.is-active .legal')).userSelect) === 'text', 'legal text selectable');
     await ev(page, () => window.__blocko.setLang('de'));
     await idle(page);
-    assert(/Angaben gemäß § 5 DDG/.test(await text(page, '.screen.is-active .legal')) && await text(page, '.screen.is-active .screen-header__title') === 'Impressum', 'German: Impressum');
+    assert(/Angaben gemäß § 5 ECG/.test(await text(page, '.screen.is-active .legal')) && await text(page, '.screen.is-active .screen-header__title') === 'Impressum', 'German: Impressum');
     await shotB(page, 'legal-de-phone');
     await gotoSettings(page);
     const labels = await ev(page, () => [...document.querySelectorAll('.screen.is-active .row__label')].map((e) => e.textContent.trim()));
